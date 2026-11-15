@@ -28,6 +28,46 @@ it('preserves artwork, scripts and asset resolution inside the adapted guide', (
   expect(doc.querySelector('style')?.textContent).not.toMatch(/filter:|\.demo-stage.*background/);
 });
 
+it('moves the replaceable copy beside the demo and keeps beats in step with playback', () => {
+  const guide = `<html lang="zh-CN"><body>
+    <div class="overview"><section class="hero"><figure data-demo="{}"><input class="seek" value="0"><output>0</output>
+      <div class="demo-params"><label>Title<input type="text" value="Nodes"></label><label>Accent<input type="color" value="#f52e92"></label></div></figure></section>
+      <aside class="identity"><section class="palette"><button data-color="#F52E92"></button><button data-color="#3289fc"></button><button data-color="nope"></button></section></aside></div>
+    <section class="timeline-sheet"><div class="board-heading"><h2>Sequence</h2><p>Click a beat</p></div>
+      <div class="beats"><button data-time="0"></button><button data-time="4.8"></button></div></section></body></html>`;
+  const prepared = new DOMParser().parseFromString(prepareMotionGuide(guide, url, appearance), 'text/html');
+  const layout = [...prepared.querySelectorAll('script')].at(-1)!.textContent!;
+  document.documentElement.lang = 'zh-CN';
+  document.body.innerHTML = new DOMParser().parseFromString(guide, 'text/html').body.innerHTML;
+  new Function(layout)();
+  const panel = document.querySelector('.identity > .om-look')!;
+  expect(panel.textContent).toContain('换成你的品牌');
+  expect(panel.querySelector('.demo-params input[type=text]')).not.toBeNull();
+  expect(document.querySelector('.hero > .beats')).not.toBeNull();
+  expect(document.querySelector('.timeline-sheet .board-heading p')).toBeNull();
+  const swatches = [...panel.querySelectorAll<HTMLButtonElement>('.om-look-colors button')];
+  expect(swatches.map(button => button.dataset.color)).toEqual(['#f52e92', '#3289fc']);
+  const accent = panel.querySelector<HTMLInputElement>('input[type=color]')!;
+  const changed = vi.fn(); accent.addEventListener('input', changed);
+  swatches[1].click();
+  expect(accent.value).toBe('#3289fc');
+  expect(changed).toHaveBeenCalled();
+  expect(swatches[1].getAttribute('aria-pressed')).toBe('true');
+  const seek = document.querySelector<HTMLInputElement>('.seek')!;
+  seek.value = '5'; seek.dispatchEvent(new Event('input'));
+  const beats = [...document.querySelectorAll('.beats button')];
+  expect(beats.map(beat => beat.hasAttribute('data-current'))).toEqual([false, true]);
+  document.body.innerHTML = ''; document.documentElement.removeAttribute('lang');
+});
+
+it('leaves guides without replaceable inputs or beats unchanged', () => {
+  const prepared = new DOMParser().parseFromString(prepareMotionGuide(source, url, appearance), 'text/html');
+  document.body.innerHTML = '<h1>Guide</h1>';
+  expect(() => new Function([...prepared.querySelectorAll('script')].at(-1)!.textContent!)()).not.toThrow();
+  expect(document.body.innerHTML).toBe('<h1>Guide</h1>');
+  document.body.innerHTML = '';
+});
+
 it('syncs theme without re-fetching or replacing the guide document and keeps the sandbox', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(source, { headers: { 'content-type': 'text/html' } })));
   await act(async () => root.render(<TemplateMotionGuide url={url} title="Guide" />));
