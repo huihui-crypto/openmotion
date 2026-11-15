@@ -50,7 +50,7 @@ export const omEvents = {
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
       'open_detail', 'start_use', 'copy_instruction', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
       'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
-      'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source'],
+      'download_guide', 'download_project', 'view_full_page', 'view_repository', 'view_source', 'view_motion_md'],
     interaction_method: ['pointer', 'keyboard'], ...template,
     placement, position: 'integer', template_action: ['recreate', 'recreate_submit', 'open_edit'], target_agent: hosts,
     copy_attempt_id: 'uuid', download_attempt_id: 'uuid',

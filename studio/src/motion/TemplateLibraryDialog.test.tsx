@@ -438,6 +438,30 @@ it('reports the library funnel with registered fields: library, card open, detai
   expect(events('resource_download_result')).toEqual([expect.objectContaining({ delivery_status: 'fetch_failed', error_code: 'HTTP_404', download_attempt_id: download.download_attempt_id, template_id: 'one' })]);
   for (const item of tracked) expect(validProperties(studioEvents, item.event, item.properties), JSON.stringify(item)).toBe(true);
 });
+it('reads and copies a repository motion.md beside the live guide, keeping packages download-only', async () => {
+  const markdown = '---\nname: First\n---\n# Motion rules';
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/motion.md') ? new Response(markdown) : Response.json(url.endsWith('/integration') ? {} : { items: [{ ...items[0], motionDocumentUrl: '/api/template-source/one/motion.md' }, items[1]], catalogVersion: 'v1', next: null, total: 2 })));
+  await mount();
+  await act(async () => preview('First'));
+  const guide = host.querySelector<HTMLDetailsElement>('section[aria-label="Motion guide"] details:last-of-type')!;
+  await act(async () => { guide.open = true; guide.dispatchEvent(new Event('toggle')); });
+  expect(button('Live preview', guide).getAttribute('aria-pressed')).toBe('true');
+  await act(async () => button('motion.md', guide).click());
+  expect(guide.querySelector('pre')?.textContent).toBe(markdown);
+  expect(guide.querySelector('iframe')).toBeNull();
+  expect(events('ui_click', { element: 'view_motion_md' })).toEqual([expect.objectContaining({ area: 'template_detail', template_id: 'one' })]);
+  await act(async () => button('Copy', guide).click());
+  expect(navigator.clipboard.writeText).toHaveBeenCalledWith(markdown);
+  expect(button('Copied', guide)).toBeDefined();
+  for (const item of tracked) expect(validProperties(studioEvents, item.event, item.properties), JSON.stringify(item)).toBe(true);
+  fetchItems();
+  await act(async () => root.render(<></>));
+  await mount();
+  await act(async () => preview('First'));
+  const packaged = host.querySelector<HTMLDetailsElement>('section[aria-label="Motion guide"] details:last-of-type')!;
+  await act(async () => { packaged.open = true; packaged.dispatchEvent(new Event('toggle')); });
+  expect(button('motion.md', packaged)).toBeUndefined();
+});
 it('reports discovery choices with the list they produced, and one search per settled keyword', async () => {
   vi.useFakeTimers();
   try {

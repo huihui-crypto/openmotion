@@ -194,10 +194,16 @@
 }
 .guide summary { display: flex; align-items: center; gap: 8px; list-style: none; padding: 10px 12px; border-radius: 8px; }
 .guide summary::-webkit-details-marker { display: none; }
+.guideViews { display: inline-flex; gap: 2px; margin: 4px 12px 0; padding: 2px; border: 1px solid var(--library-line); border-radius: 8px; }
+.guideViews button { padding: 5px 10px; border-radius: 6px; font-size: 12px; color: var(--library-muted); }
+.guideViews button[aria-pressed=true] { color: inherit; background: var(--color-template-hover); }
+.motionSource { position: relative; margin-top: 12px; }
+.motionSource button { position: absolute; top: 8px; right: 8px; display: flex; align-items: center; gap: 5px; padding: 5px 8px; border: 1px solid var(--library-line); border-radius: 6px; font-size: 11px; background: var(--motion-raised); }
+.motionSource pre { height: 360px; margin: 0; overflow: auto; padding: 14px; border: 1px solid var(--library-line); border-radius: 8px; background: var(--color-template-prompt-bg); font: 11px/1.7 var(--motion-font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .guide summary::before { content: '›'; font-size: 17px; line-height: 1; transition: transform .15s; }
 .guide details[open] summary::before { transform: rotate(90deg); }
 .guide p { padding: 0 12px 8px; }
-.library :is(.projectActions button, .projectActions a, .guide summary, .expandInstruction, .instruction header button, .recreateActions button, .creator > a):hover:not(:disabled) { background: var(--color-template-hover); text-decoration: none; }
+.library :is(.guideViews button, .motionSource button, .projectActions button, .projectActions a, .guide summary, .expandInstruction, .instruction header button, .recreateActions button, .creator > a):hover:not(:disabled) { background: var(--color-template-hover); text-decoration: none; }
 .chips button:hover { background: var(--color-template-hover); }
 .chips button { max-width: 100%; overflow-wrap: anywhere; text-align: left; }
 .chips button svg { flex: none; }

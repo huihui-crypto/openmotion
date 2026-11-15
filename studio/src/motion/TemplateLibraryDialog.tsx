@@ -19,6 +19,7 @@ import { purposeOrder } from './templateDiscoveryTaxonomy';
 import { templateContributionUrl, templateSubmissionPrompt } from './templateContribution';
 import styles from './TemplateLibraryDialog.module.css';
 import { TemplateMotionGuide } from './TemplateMotionGuide';
+import { TemplateMotionSource } from './TemplateMotionSource';
 import { facetValues as values, templateFacets as facets, templateAspect, templateRatio, relatedTemplates, randomTemplate, type Facet } from './templateDiscovery';
 import { TemplateGalleryCard as TemplateCard, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
@@ -46,6 +47,9 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
 
 type Props = { returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void };
 
+/** Only a plain motion.md can be read in place; published packages stay download-only. */
+const readableMotionDocument = (url?: string) => !!url && /\.md$/i.test(new URL(url, 'https://openmotion.invalid/').pathname);
+
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 export function TemplateLibraryDialog(props: Props) {
   const { t, locale } = useI18n();
@@ -70,6 +74,7 @@ export function TemplateLibraryDialog(props: Props) {
   const [facetQuery, setFacetQuery] = useState('');
   const [brandsOnly, setBrandsOnly] = useState(false);
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
+  const [guideView, setGuideView] = useState<'live' | 'source'>('live');
   const lastRandom = useRef<string>(undefined);
   const info = useRef<IntegrationInfo | null>(null);
   const routeChange = useRef(props.onTemplateChange); routeChange.current = props.onTemplateChange;
@@ -254,7 +259,7 @@ export function TemplateLibraryDialog(props: Props) {
     const view = { id: tracking.newTrackingId(), placement }; detailView.current = view; instructionShown.current = undefined;
     const index = latest.current.items.findIndex(candidate => candidate.id === item.id);
     tracking.reportDetailShown(item, view, placement === 'related' || index < 0 ? undefined : index + 1);
-    setPreview(item); setPrompt(''); setPromptError(false); setFeedback(''); setManualCopy(''); setPromptExpanded(false); setGuideOpen(false);
+    setPreview(item); setPrompt(''); setPromptError(false); setFeedback(''); setManualCopy(''); setPromptExpanded(false); setGuideOpen(false); setGuideView('live');
     if (detailInfo.current) detailInfo.current.scrollTop = 0;
     if (!detail.current?.open) detail.current?.showModal();
   }, []);
@@ -442,7 +447,7 @@ export function TemplateLibraryDialog(props: Props) {
             {(preview.styleDescription || preview.reviewFocus || preview.motionGuideUrl) && <section className={styles.guide} aria-label={t('Motion guide')}>
               {preview.styleDescription && <details><summary>{t('Visual style')}</summary><p>{preview.styleDescription}</p></details>}
               {preview.reviewFocus && <details><summary>{t('Production notes')}</summary><p>{preview.reviewFocus}</p></details>}
-              {preview.motionGuideUrl && <details key={preview.id} onToggle={event => setGuideOpen(event.currentTarget.open)}><summary>{t('Motion guide')}</summary>{guideOpen && <TemplateMotionGuide url={preview.motionGuideUrl} title={t('Motion guide')} />}<a href={preview.motionGuideUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a></details>}
+              {preview.motionGuideUrl && <details key={preview.id} onToggle={event => setGuideOpen(event.currentTarget.open)}><summary>{t('Motion guide')}</summary>{guideOpen && <>{readableMotionDocument(preview.motionDocumentUrl) && <div className={styles.guideViews} role="group" aria-label={t('Motion guide')}><button aria-pressed={guideView === 'live'} onClick={() => setGuideView('live')}>{t('Live preview')}</button><button aria-pressed={guideView === 'source'} onClick={() => { if (guideView !== 'source') tracking.reportDetailLink(preview, 'view_motion_md', detailView.current); setGuideView('source'); }}>motion.md</button></div>}{guideView === 'source' && preview.motionDocumentUrl && readableMotionDocument(preview.motionDocumentUrl) ? <TemplateMotionSource url={preview.motionDocumentUrl} onCopy={copied => copied ? showToast('Copied. Paste into your Agent.', 'info') : showToast('Copy failed. Select the details to copy them.', 'error', 'feedback')} /> : <TemplateMotionGuide url={preview.motionGuideUrl} title={t('Motion guide')} />}</>}<a href={preview.motionGuideUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a></details>}
             </section>}
             {related.length > 0 && <section className={styles.related}><h3>{t('Related templates')}</h3><div>{related.map((item, index) => <button key={item.id} onClick={() => openRelated(item, index + 1)} aria-label={t('Preview template {title}', { title: item.title })}><TemplatePoster template={item} /><span className={styles.relatedCaption}>{item.title}</span></button>)}</div></section>}
           </div>

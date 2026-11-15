@@ -1,11 +1,12 @@
 # 公开变更记录
 
-## 2026-11-15: Put "make it yours" controls beside the embedded motion guide demo
+## 2026-11-15: Put "make it yours" controls beside the embedded motion guide demo and read motion.md in place
 
 - In the Studio template detail's embedded motion guide, move the existing replaceable copy, presets and accent control from under the overview demo into the right column as a "Make it yours" panel, and add one-click accent swatches taken from the guide's own palette.
 - Move the beat list directly under the overview demo and highlight the beat at the current playback time; clicking a beat still seeks the demo.
 - Generated guide files are unchanged. The layout runs in the existing sandboxed `srcdoc` adaptation after the guide's own scripts; guides without replaceable inputs or beats stay as they are, and the CORS fallback still shows the untouched remote page. "View full page" still opens the original guide.
-- Validation: `TemplateMotionGuide` tests (10) and Studio type checking passed; the Krea Nodes catalog guide was rendered in headless Chrome in light and dark appearance and at 400px width with no page errors or horizontal overflow.
+- Add a "Live preview / motion.md" switch to the Motion guide section when the template has a plain `motion.md` (repository templates). The motion.md view shows the file text with a Copy button, so users can check and paste it without downloading; published package archives stay download-only. Opening the view reports `ui_click` with `area: template_detail`, `element: view_motion_md`; copy results use the shared toast.
+- Validation: `TemplateMotionGuide` tests (10), `TemplateLibraryDialog` tests (including the new motion.md view), language-resource tests, tracking contract tests and Studio type checking passed; the Krea Nodes catalog guide was rendered in headless Chrome in light and dark appearance and at 400px width with no page errors or horizontal overflow.
 
 ## 2026-11-15: Keep template browsing on Home and restore project title controls
 

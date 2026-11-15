@@ -50,7 +50,10 @@
     "Filter categories": "筛选分类",
     "Close filters": "关闭筛选",
     "Search options…": "搜索选项…",
-    "No matching options.": "没有匹配的选项。"
+    "No matching options.": "没有匹配的选项。",
+    "Live preview": "实时预览",
+    "Could not load motion.md.": "motion.md 加载失败。",
+    "Loading motion.md…": "正在加载 motion.md…"
   },
   "ja": {
     "Made to move.": "動き出すアイデア",
@@ -103,7 +106,10 @@
     "Filter categories": "絞り込みの分類",
     "Close filters": "絞り込みを閉じる",
     "Search options…": "選択肢を検索…",
-    "No matching options.": "一致する選択肢がありません。"
+    "No matching options.": "一致する選択肢がありません。",
+    "Live preview": "ライブプレビュー",
+    "Could not load motion.md.": "motion.md を読み込めませんでした。",
+    "Loading motion.md…": "motion.md を読み込み中…"
   },
   "ko": {
     "Made to move.": "움직이는 아이디어",
@@ -156,7 +162,10 @@
     "Filter categories": "필터 분류",
     "Close filters": "필터 닫기",
     "Search options…": "옵션 검색…",
-    "No matching options.": "일치하는 옵션이 없습니다."
+    "No matching options.": "일치하는 옵션이 없습니다.",
+    "Live preview": "실시간 미리보기",
+    "Could not load motion.md.": "motion.md를 불러오지 못했습니다.",
+    "Loading motion.md…": "motion.md 불러오는 중…"
   },
   "de": {
     "Made to move.": "Für Bewegung gemacht",
@@ -209,7 +218,10 @@
     "Filter categories": "Filterkategorien",
     "Close filters": "Filter schließen",
     "Search options…": "Optionen suchen…",
-    "No matching options.": "Keine passenden Optionen."
+    "No matching options.": "Keine passenden Optionen.",
+    "Live preview": "Live-Vorschau",
+    "Could not load motion.md.": "motion.md konnte nicht geladen werden.",
+    "Loading motion.md…": "motion.md wird geladen…"
   },
   "fr": {
     "Made to move.": "Place au mouvement",
@@ -262,7 +274,10 @@
     "Filter categories": "Catégories de filtres",
     "Close filters": "Fermer les filtres",
     "Search options…": "Rechercher une option…",
-    "No matching options.": "Aucune option correspondante."
+    "No matching options.": "Aucune option correspondante.",
+    "Live preview": "Aperçu en direct",
+    "Could not load motion.md.": "Impossible de charger motion.md.",
+    "Loading motion.md…": "Chargement de motion.md…"
   },
   "ru": {
     "Made to move.": "Создано для движения",
@@ -315,7 +330,10 @@
     "Filter categories": "Категории фильтров",
     "Close filters": "Закрыть фильтры",
     "Search options…": "Поиск вариантов…",
-    "No matching options.": "Подходящих вариантов нет."
+    "No matching options.": "Подходящих вариантов нет.",
+    "Live preview": "Живой предпросмотр",
+    "Could not load motion.md.": "Не удалось загрузить motion.md.",
+    "Loading motion.md…": "Загрузка motion.md…"
   },
   "es": {
     "Made to move.": "Ideas en movimiento",
@@ -368,7 +386,10 @@
     "Filter categories": "Categorías de filtros",
     "Close filters": "Cerrar filtros",
     "Search options…": "Buscar opciones…",
-    "No matching options.": "No hay opciones coincidentes."
+    "No matching options.": "No hay opciones coincidentes.",
+    "Live preview": "Vista previa en vivo",
+    "Could not load motion.md.": "No se pudo cargar motion.md.",
+    "Loading motion.md…": "Cargando motion.md…"
   },
   "pt-BR": {
     "Made to move.": "Feito para se mover",
@@ -421,7 +442,10 @@
     "Filter categories": "Categorias de filtros",
     "Close filters": "Fechar filtros",
     "Search options…": "Buscar opções…",
-    "No matching options.": "Nenhuma opção correspondente."
+    "No matching options.": "Nenhuma opção correspondente.",
+    "Live preview": "Prévia ao vivo",
+    "Could not load motion.md.": "Não foi possível carregar o motion.md.",
+    "Loading motion.md…": "Carregando motion.md…"
   },
   "it": {
     "Made to move.": "Idee in movimento",
@@ -474,7 +498,10 @@
     "Filter categories": "Categorie di filtri",
     "Close filters": "Chiudi filtri",
     "Search options…": "Cerca opzioni…",
-    "No matching options.": "Nessuna opzione corrispondente."
+    "No matching options.": "Nessuna opzione corrispondente.",
+    "Live preview": "Anteprima dal vivo",
+    "Could not load motion.md.": "Impossibile caricare motion.md.",
+    "Loading motion.md…": "Caricamento di motion.md…"
   },
   "tr": {
     "Made to move.": "Hareket için tasarlandı",
@@ -527,6 +554,9 @@
     "Filter categories": "Filtre kategorileri",
     "Close filters": "Filtreleri kapat",
     "Search options…": "Seçenek ara…",
-    "No matching options.": "Eşleşen seçenek yok."
+    "No matching options.": "Eşleşen seçenek yok.",
+    "Live preview": "Canlı önizleme",
+    "Could not load motion.md.": "motion.md yüklenemedi.",
+    "Loading motion.md…": "motion.md yükleniyor…"
   }
 }

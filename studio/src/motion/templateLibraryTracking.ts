@@ -107,7 +107,7 @@ export function reportDownloadResult(template: Template, downloadAttemptId: stri
   send('resource_download_result', { ...studio, resource_kind: 'motion_guide', download_attempt_id: downloadAttemptId, delivery_status: status,
     ...(errorCode ? { error_code: errorCode } : {}), ...templateId(template), ...detail(view) });
 }
-/** Links that leave the detail: the full motion guide, the template's repository directory, or the original post. */
-export function reportDetailLink(template: Template, element: 'view_full_page' | 'view_repository' | 'view_source', view: DetailView | undefined) {
+/** Links that leave the detail (the full motion guide, the template's repository directory, the original post) and the in-place motion.md view. */
+export function reportDetailLink(template: Template, element: 'view_full_page' | 'view_repository' | 'view_source' | 'view_motion_md', view: DetailView | undefined) {
   send('ui_click', { ...studio, area: 'template_detail', element, ...templateId(template), ...detail(view) });
 }
