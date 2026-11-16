@@ -4,8 +4,8 @@
  * A row move restacks the moved clip: moved up, it rises above every clip
  * it overlaps in time on the rows now below it; moved down, it sinks below every
  * such clip on the rows now above it. At the zero floor a bottom move rebases
- * the other scope members uniformly, preserving their order. Otherwise neighbours
- * never change, so a clip nobody moved never goes behind anything (a full-frame scene on the top row stays put).
+ * the other scope members uniformly, preserving their order. Conflicting legacy CSS ranks are normalized within the edited paint scope so
+ * the visible lane order remains authoritative.
  *
  * Lane → screen mapping (see Timeline.tsx trackOrder / TimelineCanvas rows):
  * tracks are sorted ASCENDING and rendered top → bottom, so a LOWER `track`
@@ -192,6 +192,23 @@ export function computeStackingPatches(
         if (other.key !== clip.key && samePaintScope(clip, other)) other.zIndex += shift;
       }
       clip.zIndex = 0;
+    }
+
+  }
+  for (const clip of edited) {
+    const overlapping = live.filter(other => other.key !== clip.key && overlapsInTime(clip, other) && samePaintScope(clip, other));
+    const matchesLaneOrder = overlapping.every(other =>
+      other.track === clip.track || (laneIsAbove(clip, other)
+        ? paintsAbove(clip, other) : paintsAbove(other, clip)));
+    if (!matchesLaneOrder) {
+      // Legacy lane order may contradict the current CSS ranks. No change to
+      // the moved clip alone can put it between an upper z=1 and lower z=10.
+      // Realize the user's lane order for this paint scope, including later
+      // scenes, so the edit remains correct at every time and never uses z<0.
+      const scope = live.filter(other => samePaintScope(clip, other));
+      const lanes = [...new Set(scope.map(other => other.track))].sort((a, b) => b - a);
+      const rank = new Map(lanes.map((lane, index) => [lane, index]));
+      for (const other of scope) other.zIndex = rank.get(other.track)!;
     }
   }
   return live.filter((element) => element.zIndex !== originalZ.get(element.key))

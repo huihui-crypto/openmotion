@@ -75,7 +75,7 @@ interface TimelineClipDragGestureLifecycleInput {
     ((element: TimelineElement, intent: BlockedClipState["intent"]) => void) | undefined
   >;
   onLinkEditRef: RefObject<TimelineEditCallbacks["onLinkEdit"]>;
-  readZIndexRef: RefObject<((element: TimelineElement) => number) | undefined>;
+  readZIndexRef: RefObject<((element: TimelineElement, asTarget?: boolean) => number) | undefined>;
   onStackingPatchesRef: RefObject<
     ((patches: StackingPatch[]) => Promise<unknown> | void) | undefined
   >;

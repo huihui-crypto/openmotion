@@ -90,7 +90,7 @@ interface UseTimelineClipDragInput {
    * iframe + the canvas z-order persist path; forwarded straight to
    * commitDraggedClipMove. Both optional → absent = no-op (backward compatible).
    */
-  readZIndex?: (element: TimelineElement) => number;
+  readZIndex?: (element: TimelineElement, asTarget?: boolean) => number;
   onStackingPatches?: (patches: StackingPatch[]) => Promise<unknown> | void;
   refreshAfterLaneMove?: () => void;
   sessionEpoch?: number;

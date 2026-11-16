@@ -111,3 +111,8 @@ it("does not compact an unrelated root lane when trimming an expanded compositio
   const changes=[{element:child,start:0,duration:1}];
   expect(compactMainTrack([main],changes,true,true)).toEqual(changes);
 });
+
+it("does not send a deliberate downward layer move back to its vacated origin lane", () => {
+  const result = placement(6, {origin:{track:0,start:6}});
+  expect(result).toEqual({track:1,insertRow:1,start:6});
+});

@@ -133,7 +133,7 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     expect(between.insertRow).toBe(1);
     const inside = computeDragPreview(between, clientX, 150, context);
     expect(inside.insertRow).toBe(1);
-    const below = computeDragPreview(inside, clientX, 202, context);
+    const below = computeDragPreview(inside, clientX, 202, { ...context, elements: [moodboard] });
     expect(below.insertRow).toBeNull();
   });
 

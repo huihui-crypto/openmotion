@@ -195,7 +195,7 @@ export function resolveZoneDropPlacement(input: {
   const row = order.indexOf(desired);
   for (let index = row - 1; index >= 0; index--) {
     const track = order[index];
-    if (!zoneTracks.includes(track)) continue;
+    if (!zoneTracks.includes(track) || (input.origin?.track === track && track !== desired)) continue;
     if (isLaneFree(elements, track, safeStart, safeStart + duration, dragKey))
       return { track, insertRow: null, start: safeStart };
   }

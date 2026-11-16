@@ -236,13 +236,12 @@ describe("computeStackingPatches", () => {
   });
 });
 
-describe("computeStackingPatches — only the moved clip changes", () => {
-  it("a full-frame scene on the top row stays behind a caption moved up a row under it", () => {
-    // Agent-made films often put the scene on track 0. The caption (z1, later in the
-    // file) moves from track 3 to 2, still under the scene's row: nothing is below
-    // it, so nothing changes. Lifting the scene over it would hide the caption.
+describe("computeStackingPatches — realize lane order with minimal changes when possible", () => {
+  it("a scene on the top row paints above a caption left below it", () => {
+    // The visible lane order is authoritative even when an older file gave a
+    // lower caption a higher CSS rank. The top scene must paint above it.
     const elements = [el("scene", 0, 0, 10, 0, false, 0), el("caption", 2, 0, 10, 1, false, 1)];
-    expect(patchMap(elements, ["caption"], "up")).toEqual({});
+    expect(patchMap(elements, ["caption"], "up")).toEqual({ scene: 1, caption: 0 });
   });
 
   it("a caption moved to the top row comes in front of the full-frame scene", () => {
@@ -263,18 +262,18 @@ describe("computeStackingPatches — only the moved clip changes", () => {
   });
 
   it("moved down never goes under a clip on a lower row it paints over now", () => {
-    // v cannot get under r (z0, earlier in the file); dropping it to 0 would hide it under w.
+    // The existing CSS ranks leave no slot for v; realize all three lane ranks.
     const elements = [
       el("r", 0, 0, 10, 0, false, 0),
       el("v", 1, 0, 10, 2, false, 1),
       el("w", 2, 0, 10, 1, false, 2),
     ];
-    expect(patchMap(elements, ["v"], "down")).toEqual({});
+    expect(patchMap(elements, ["v"], "down")).toEqual({ r: 2, v: 1, w: 0 });
   });
 
   it("moved down sinks only as far as the clips on lower rows allow", () => {
     const elements = [el("s", 0, 0, 10, 5), el("v", 1, 0, 10, 9), el("w", 2, 0, 10, 7)];
-    expect(patchMap(elements, ["v"], "down")).toEqual({ v: 8 });
+    expect(patchMap(elements, ["v"], "down")).toEqual({ s: 2, v: 1, w: 0 });
   });
 
   it("moved down with equal z: the clip above, later in the file, already paints over it", () => {
@@ -308,4 +307,13 @@ it("rebases untouched same-scope neighbours equally and leaves other scopes alon
   const elements = [el("top", 0, 0, 10, 0, false, 0), el("moving", 2, 0, 10, 0, false, 1),
     el("later", 1, 20, 10, 4), { ...el("foreign", 0, 0, 10, 0), sourceFile: "other.html" }];
   expect(patchMap(elements, ["moving"], "down")).toEqual({ top: 1, later: 5 });
+});
+
+it("realizes a middle text lane when legacy CSS ranks leave no rank between its neighbours", () => {
+  const elements = [el("blue", 0, 0, 10, 1), el("text", 1, 2, 4, 11), el("old-title", 2, 0, 10, 10)];
+  const patches = patchMap(elements, ["text"], "down");
+  const z = Object.fromEntries(elements.map(e => [e.key, patches[e.key] ?? e.zIndex]));
+  expect(z.blue).toBeGreaterThan(z.text);
+  expect(z.text).toBeGreaterThan(z["old-title"]);
+  expect(Math.min(...Object.values(z))).toBeGreaterThanOrEqual(0);
 });

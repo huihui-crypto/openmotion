@@ -622,8 +622,8 @@ describe("commitDraggedClipMove", () => {
       expectZLiftedToSix(onStackingPatches);
     });
 
-    it("a multi-selection lane move restacks only the dragged clip", async () => {
-      // a moves up from row 2 to row 1 over c; the selected scene keeps its row, so it keeps its z.
+    it("a multi-selection lane move realizes conflicting legacy paint ranks in its scope", async () => {
+      // a moves up over c. The selected scene keeps its row and time; conflicting CSS ranks follow the visible lane order.
       const elements = [
         el("scene", 0, 0, 10),
         el("b", 1, 5, 5),
@@ -641,7 +641,7 @@ describe("commitDraggedClipMove", () => {
       });
       await flushMicrotasks();
       expect(onStackingPatches).toHaveBeenCalledTimes(1);
-      expect(onStackingPatches.mock.calls[0][0]).toEqual([{ key: "a", zIndex: 4 }]);
+      expect(onStackingPatches.mock.calls[0][0]).toEqual([{ key: "scene", zIndex: 2 }, { key: "b", zIndex: 1 }, { key: "c", zIndex: 0 }]);
     });
 
     it("partial z-sync deps (no readZIndex) → move persists but no stacking call", async () => {

@@ -73,7 +73,7 @@ export interface DragCommitDeps {
    * returns the clip's current z-index (from the live DOM inline style / computed;
    * "auto" ⇒ 0).
    */
-  readZIndex?: (element: TimelineElement) => number;
+  readZIndex?: (element: TimelineElement, asTarget?: boolean) => number;
   /**
    * Apply the computed z-index patches. Wiring (in the drag hook, which owns the
    * DOM/persist plumbing) forwards these to the SAME atomic style-patch persist
@@ -574,7 +574,7 @@ function syncStackingForEdit(
     start: el.start,
     duration: el.duration,
     track: el.track,
-    zIndex: readZIndex(el),
+    zIndex: readZIndex(el, keyOf(el) === dragKey),
     isAudio: classifyZone(el) === "audio",
     sourceFile: el.sourceFile,
     domIndex,
