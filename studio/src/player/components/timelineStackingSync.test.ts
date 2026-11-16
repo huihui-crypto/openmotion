@@ -241,7 +241,7 @@ describe("computeStackingPatches — realize lane order with minimal changes whe
     // The visible lane order is authoritative even when an older file gave a
     // lower caption a higher CSS rank. The top scene must paint above it.
     const elements = [el("scene", 0, 0, 10, 0, false, 0), el("caption", 2, 0, 10, 1, false, 1)];
-    expect(patchMap(elements, ["caption"], "up")).toEqual({ scene: 1, caption: 0 });
+    expect(patchMap(elements, ["caption"], "up")).toEqual({ scene: 2 });
   });
 
   it("a caption moved to the top row comes in front of the full-frame scene", () => {
@@ -268,12 +268,12 @@ describe("computeStackingPatches — realize lane order with minimal changes whe
       el("v", 1, 0, 10, 2, false, 1),
       el("w", 2, 0, 10, 1, false, 2),
     ];
-    expect(patchMap(elements, ["v"], "down")).toEqual({ r: 2, v: 1, w: 0 });
+    expect(patchMap(elements, ["v"], "down")).toEqual({ r: 3 });
   });
 
   it("moved down sinks only as far as the clips on lower rows allow", () => {
     const elements = [el("s", 0, 0, 10, 5), el("v", 1, 0, 10, 9), el("w", 2, 0, 10, 7)];
-    expect(patchMap(elements, ["v"], "down")).toEqual({ s: 2, v: 1, w: 0 });
+    expect(patchMap(elements, ["v"], "down")).toEqual({ s: 9, v: 8 });
   });
 
   it("moved down with equal z: the clip above, later in the file, already paints over it", () => {
@@ -316,4 +316,35 @@ it("realizes a middle text lane when legacy CSS ranks leave no rank between its 
   expect(z.blue).toBeGreaterThan(z.text);
   expect(z.text).toBeGreaterThan(z["old-title"]);
   expect(Math.min(...Object.values(z))).toBeGreaterThanOrEqual(0);
+});
+
+
+it("repairs a conflicting middle lane without compressing later scenes or lower authored ranks", () => {
+  const elements = [el("blue", 0, 0, 10, 1), el("text", 1, 2, 4, 11),
+    el("old-title", 2, 0, 10, 10), el("later", 3, 20, 10, 500)];
+  expect(patchMap(elements, ["text"], "down")).toEqual({ blue: 12 });
+});
+
+it("preserves distinct same-lane sibling ranks when repairing a conflicting middle lane", () => {
+  const elements = [el("upper-a", 0, 0, 10, 1), el("upper-b", 0, 0, 10, 9),
+    el("text", 1, 2, 4, 11), el("lower", 2, 0, 10, 10)];
+  expect(patchMap(elements, ["text"], "down")).toEqual({ "upper-a": 12, "upper-b": 20 });
+});
+
+
+it("preserves same-lane sibling order after the edited text window ends", () => {
+  const elements = [el("upper-a", 0, 0, 10, 1), el("upper-b", 0, 8, 4, 9),
+    el("text", 1, 2, 4, 11), el("lower", 2, 0, 10, 10), el("later", 0, 20, 4, 500)];
+  expect(patchMap(elements, ["text"], "down")).toEqual({ "upper-a": 12, "upper-b": 20 });
+});
+
+
+it("does not raise the text over a later lower sibling outside its time window", () => {
+  const elements = [el("blue", 0, 0, 10, 1), el("text", 1, 2, 4, 11),
+    el("lower", 2, 0, 10, 10), el("later-lower", 2, 8, 4, 500)];
+  const patches = patchMap(elements, ["text"], "down");
+  expect(patches.text).toBeUndefined();
+  expect(patches.lower).toBeUndefined();
+  expect(patches["later-lower"]).toBeUndefined();
+  expect(patches.blue).toBe(12);
 });

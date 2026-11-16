@@ -133,8 +133,13 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     expect(between.insertRow).toBe(1);
     const inside = computeDragPreview(between, clientX, 150, context);
     expect(inside.insertRow).toBe(1);
-    const below = computeDragPreview(inside, clientX, 202, { ...context, elements: [moodboard] });
-    expect(below.insertRow).toBeNull();
+    const below = computeDragPreview(inside, clientX, 202, context);
+    // Leaving the opened seam now aims at the occupied lower video row.
+    // Returning to the vacated origin would cancel the user's layer move.
+    expect(below.desiredTrack).toBe(1);
+    expect(below.previewTrack).toBe(1);
+    expect(below.insertRow).toBe(1);
+    expect(below.previewStart).toBe(21);
   });
 
   it("dragging v-moodboard +2s while grabbing its clip body keeps it a pure time move", () => {

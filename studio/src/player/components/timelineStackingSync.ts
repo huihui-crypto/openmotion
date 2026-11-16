@@ -4,8 +4,8 @@
  * A row move restacks the moved clip: moved up, it rises above every clip
  * it overlaps in time on the rows now below it; moved down, it sinks below every
  * such clip on the rows now above it. At the zero floor a bottom move rebases
- * the other scope members uniformly, preserving their order. Conflicting legacy CSS ranks are normalized within the edited paint scope so
- * the visible lane order remains authoritative.
+ * the other scope members uniformly, preserving their order. Conflicting legacy CSS ranks are repaired among the edited clip and its
+ * overlapping neighbours, retaining authored ranks when there is room.
  *
  * Lane → screen mapping (see Timeline.tsx trackOrder / TimelineCanvas rows):
  * tracks are sorted ASCENDING and rendered top → bottom, so a LOWER `track`
@@ -201,14 +201,34 @@ export function computeStackingPatches(
       other.track === clip.track || (laneIsAbove(clip, other)
         ? paintsAbove(clip, other) : paintsAbove(other, clip)));
     if (!matchesLaneOrder) {
-      // Legacy lane order may contradict the current CSS ranks. No change to
-      // the moved clip alone can put it between an upper z=1 and lower z=10.
-      // Realize the user's lane order for this paint scope, including later
-      // scenes, so the edit remains correct at every time and never uses z<0.
-      const scope = live.filter(other => samePaintScope(clip, other));
+      // No rank can put the moved clip between an upper z=1 and lower z=10.
+      // Make room upward only among this clip's overlapping neighbours. Keep
+      // authored baselines and each lane's internal z order; a later scene or
+      // an untracked decorative layer must not be affected by rank compression.
+      const affected = [clip, ...overlapping];
+      const scope = [...affected];
+      const included = new Set(scope.map(other => other.key));
+      // A neighbour may meet a same-lane sibling after the edited text ends.
+      // Shift that overlap chain together so their authored order stays intact.
+      for (let index = 0; index < scope.length; index++) {
+        const member = scope[index];
+        for (const other of live) {
+          if (!included.has(other.key) && other.track === member.track &&
+              samePaintScope(member, other) && overlapsInTime(member, other)) {
+            scope.push(other);
+            included.add(other.key);
+          }
+        }
+      }
       const lanes = [...new Set(scope.map(other => other.track))].sort((a, b) => b - a);
-      const rank = new Map(lanes.map((lane, index) => [lane, index]));
-      for (const other of scope) other.zIndex = rank.get(other.track)!;
+      for (const lane of lanes) {
+        const members = scope.filter(other => other.track === lane);
+        const below = affected.filter(other => other.track > lane);
+        const shift = Math.max(0, ...affected.filter(member => member.track === lane).flatMap(member => below
+          .filter(other => overlapsInTime(member, other))
+          .map(other => other.zIndex + 1 - member.zIndex)));
+        for (const member of members) member.zIndex += shift;
+      }
     }
   }
   return live.filter((element) => element.zIndex !== originalZ.get(element.key))

@@ -225,11 +225,14 @@ describe("useTimelineAssetDropOps handleTimelineAssetDrop", () => {
       start: 1,
       track: 0,
     });
-    // The first moves past a [0,4); the second is too long for [7,8) and goes after b.
-    expect(landed).toEqual([
-      ["4", "0"],
-      ["10", "0"],
-    ]);
+    // Magnetic main-track import appends both files after the existing end.
+    expect(landed).toEqual([["10", "0"], ["13", "0"]]);
+  });
+
+  it("uses free row slots when main-track magnet is disabled", async () => {
+    usePlayerStore.setState({ rippleEditEnabled: false });
+    expect(await twoFileDrop([rowClip("a", 0, 4), rowClip("b", 8, 2)], { start: 1, track: 0 }))
+      .toEqual([["4", "0"], ["10", "0"]]);
   });
 
   it("puts a multi-file drop that opens a track back to back on that new track", async () => {

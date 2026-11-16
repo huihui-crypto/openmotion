@@ -331,6 +331,22 @@ describe("vertical visual drops preserve scene timing", () => {
     expect(resolveZoneDropPlacement({ ...base, origin: { track: 0, start: 2 } }))
       .toEqual({ track: 1, insertRow: 1, start: 2 });
   });
+  it("does not fall back to a vacated origin when the aimed lower lane is occupied", () => {
+    const moving = el("moving", 0, 2, 5);
+    expect(resolveZoneDropPlacement({
+      ...base,
+      elements: [moving, el("b", 1, 0, 10)],
+      origin: { track: 0, start: 2 },
+    })).toEqual({ track: 1, insertRow: 1, start: 2 });
+  });
+  it("keeps snapped pointer time while opening below the vacated origin", () => {
+    expect(resolveZoneDropPlacement({
+      ...base,
+      elements: [el("moving", 0, 2, 5), el("b", 1, 0, 10)],
+      origin: { track: 0, start: 2 },
+      start: 2.15,
+    })).toEqual({ track: 1, insertRow: 1, start: 2.15 });
+  });
   it("preserves pointer time for both horizontal visual and audio moves", () => {
     expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 1 } }).start).toBe(2);
     expect(resolveZoneDropPlacement({ ...base, isAudio: true, desiredTrack: 3,

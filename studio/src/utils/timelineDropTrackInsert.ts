@@ -99,6 +99,12 @@ function resolveRowDrop(
   };
 }
 
+/** The shared magnetic import position, usable before media metadata resolves. */
+export function mainTrackAppendStart(elements: readonly TimelineElement[], track: number): number {
+  return elements.filter(element => !isAudioTimelineElement(element) && element.track === track)
+    .reduce((end, element) => Math.max(end, element.start + element.duration), 0);
+}
+
 /** Where a dropped clip is written: the aimed row's file track at its nearest free time, or a new track. */
 export function resolveDropTrack(input: {
   source: string;
@@ -139,9 +145,7 @@ export function resolveDropTrack(input: {
   }
   if (placement.insertRow == null) {
     if (input.magneticMainTrack && !isAudioTimelineElement(dropped)) {
-      const end = [...elements, ...(input.placed ?? [])]
-        .filter(element => !isAudioTimelineElement(element) && element.track === placement.track)
-        .reduce((end, element) => Math.max(end, element.start + element.duration), 0);
+      const end = mainTrackAppendStart([...elements, ...(input.placed ?? [])], placement.track);
       const peers = planTimelineLanePersistence(elements, { ...dropped, track: placement.track, sourceFile: elements[0]?.sourceFile });
       const persisted = withPersistedTimelineLanes(elements, peers);
       const track = authoredTrackForLane(placement.track, persisted, { ...dropped, track: placement.track });

@@ -74,7 +74,7 @@ describe("timeline asset drop feedback", () => {
     expect(view.placeholders()).toHaveLength(0);
   });
 
-  it("keeps the spill-row placeholder in place through delayed metadata, save and discovery", async () => {
+  it("reserves the magnetic main-track end before delayed metadata, save and discovery", async () => {
     let metadata!: (duration: number) => void;
     vi.spyOn(studioHelpers, "resolveDroppedAssetDuration").mockImplementation(() => new Promise(resolve => { metadata = resolve; }));
     vi.spyOn(studioHelpers, "resolveDroppedAssetHasAudio").mockResolvedValue(false);
@@ -85,6 +85,7 @@ describe("timeline asset drop feedback", () => {
     const view = mountDropEditor(peers);
     let task!: Promise<void>;
     act(() => { task = view.drop("assets/brand.svg", { start: 9, track: 1 }); });
+    expect(usePlayerStore.getState().pendingAssetDrops[0].placement.start).toBe(7.8);
     const original = view.placeholders()[0];
     const position = [original.style.left, original.style.top];
     expect(view.write).not.toHaveBeenCalled();
@@ -92,7 +93,7 @@ describe("timeline asset drop feedback", () => {
     expect(view.placeholders()[0]).toBe(original);
     expect([original.style.left, original.style.top]).toEqual(position);
     const pending = usePlayerStore.getState().pendingAssetDrops[0].element!;
-    expect(pending).toMatchObject({ start: 9, track: 1, authoredTrack: 1 });
+    expect(pending).toMatchObject({ start: 7.8, track: 1, authoredTrack: 1 });
     act(() => usePlayerStore.setState({ elements: [...peers.map(e => ({ ...e, authoredTrack: e.track })), pending] }));
     expect(view.placeholders()).toHaveLength(0);
     expect(view.host.querySelectorAll('[role="row"]')).toHaveLength(2);

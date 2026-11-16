@@ -641,7 +641,7 @@ describe("commitDraggedClipMove", () => {
       });
       await flushMicrotasks();
       expect(onStackingPatches).toHaveBeenCalledTimes(1);
-      expect(onStackingPatches.mock.calls[0][0]).toEqual([{ key: "scene", zIndex: 2 }, { key: "b", zIndex: 1 }, { key: "c", zIndex: 0 }]);
+      expect(onStackingPatches.mock.calls[0][0]).toEqual([{ key: "scene", zIndex: 5 }, { key: "a", zIndex: 4 }]);
     });
 
     it("partial z-sync deps (no readZIndex) → move persists but no stacking call", async () => {

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, type MutableRefObject, type RefObject }
 import { compositionInsertionFailureMessage } from "../i18n/editorErrors";
 import type { TimelineElement } from "../player";
 import type { TimelineDropPlacement } from "../player/components/timelineCallbacks";
-import { resolveDropTrack, topTrackZIndex } from "../utils/timelineDropTrackInsert";
+import { mainTrackAppendStart, resolveDropTrack, topTrackZIndex } from "../utils/timelineDropTrackInsert";
 import {
   buildTimelineAssetId,
   buildTimelineAssetInsertHtml,
@@ -141,6 +141,15 @@ export function useTimelineAssetDropOps({
         if (existingPendingId) finishPendingAssetDrop(existingPendingId);
         showToast("Only image, video, and audio assets can be dropped onto the timeline.");
         return undefined;
+      }
+
+      const fileElements = elementsRef.current.filter(element =>
+        (element.sourceFile || activeCompPath || "index.html") === targetPath);
+      if (kind !== "audio" && placement.insertRow == null && !placement.newTrack &&
+          usePlayerStore.getState().rippleEditEnabled && placement.track === mainVisualTrack(fileElements)) {
+        const awaitingPreview = usePlayerStore.getState().pendingAssetDrops.flatMap(drop => drop.element ? [drop.element] : []);
+        placement = { ...placement, start: mainTrackAppendStart([...fileElements, ...gesture.placed, ...awaitingPreview], placement.track) };
+        if (existingPendingId) updatePendingAssetDrop(existingPendingId, { placement });
       }
 
       const pendingId = existingPendingId ?? beginPendingAssetDrop(assetPath, placement, durationOverride);
