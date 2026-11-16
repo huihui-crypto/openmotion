@@ -5,6 +5,9 @@ import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
 import { aspectRatios, durations, motionSkills, skillCategories, skillPrompt, type MotionSkill, type SkillCategory, type SkillMotif, type SkillParameters } from './skillCatalog';
 import { GitHubMark } from '../../../packages/design-system/react/GitHubMark';
+import { MotionIcon } from './icons';
+import styles from './TemplateLibraryDialog.module.css';
+import higgsfieldLogo from './template-brands/higgsfield.png';
 import './skills.css';
 
 /** Short source shown on cards: owner/repo (plus skill folder) or OpenMotion. */
@@ -20,7 +23,11 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState('');
-  const instruction = useRef<HTMLPreElement>(null);
+  const instruction = useRef<HTMLPreElement>(null), search = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const focus = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); search.current?.focus(); } };
+    window.addEventListener('keydown', focus); return () => window.removeEventListener('keydown', focus);
+  }, []);
   // When the clipboard is unavailable, select the whole instruction so one ⌘C copies it.
   useEffect(() => { if (manualCopy && instruction.current) { instruction.current.focus(); window.getSelection()?.selectAllChildren(instruction.current); } }, [manualCopy]);
   const selected = motionSkills.find(skill => skill.id === skillId) ?? null;
@@ -39,28 +46,33 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
     try { await navigator.clipboard.writeText(prompt); setManualCopy(''); toast.showToast(t('Copied. Paste into your Agent.'), 'info'); }
     catch { setManualCopy(prompt); toast.showToast(t('Copy failed. Select and copy the instruction below.'), 'error', 'feedback'); }
   }
-  return <div className="om-skills-page" data-detail={Boolean(selected)}>
+  return <div className={`${styles.library} om-skills-page om-skills-library`} data-detail={Boolean(selected)}>
     <StudioToastViewport {...toast} />
-    <main className="om-skills-main">
-      <header className="om-skills-heading">
-        <div><h1 className="om-title">{t('Skills')}</h1><p className="om-muted">{t('Open-source motion techniques. Fill in the brief, copy the instruction and your Agent builds an editable project through OpenMotion MCP.')}</p></div>
-        <label className="om-field om-skills-search"><RemixIcon name="search-line" size={16} /><input type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search skills...')} aria-label={t('Search skills')} /></label>
-      </header>
-      <div className="om-skills-categories" role="group" aria-label={t('Skill category')}>
-        <button className="om-nav-item" aria-pressed={!category} onClick={() => setCategory(null)}>{t('All')}</button>
-        {skillCategories.map(value => <button key={value} className="om-nav-item" aria-pressed={category === value} onClick={() => setCategory(value)}>{t(value)}</button>)}
+    <div className="om-skills-main">
+      <div className={styles.stickyHeader}>
+        <header className={styles.header}>
+          <h1 className="om-title om-skills-title">{t('Skills')}</h1>
+          <label className={styles.search}><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search skills...')} aria-label={t('Search skills')} /><kbd>⌘ K</kbd></label>
+        </header>
+        <div className={styles.toolbar}>
+          <div className={styles.categories} role="group" aria-label={t('Skill category')}>
+            <button aria-pressed={!category} onClick={() => setCategory(null)}>{t('All')}</button>
+            {skillCategories.map(value => <button key={value} aria-pressed={category === value} onClick={() => setCategory(value)}>{t(value)}</button>)}
+          </div>
+        </div>
       </div>
-      {visible.length ? <ul className="om-skills-grid" aria-label={t('Skills')}>
-        {visible.map(skill => <li key={skill.id}><button className="om-card om-skill-card" aria-pressed={skill.id === skillId} onClick={() => open(skill)}>
-          <SkillCover motif={skill.motif} name={skill.name} />
-          <span className="om-skill-card-caption"><strong>{displayName(skill)}</strong><span className="om-muted">{t(skill.tagline)}</span><span className="om-skill-meta"><span className="om-badge">{t(skill.category)}</span><span>{sourceLabel(skill)}</span></span></span>
-        </button></li>)}
-      </ul> : <p className="om-empty">{t('No matching skills.')}</p>}
-      <p className="om-muted om-skills-note">{t('Open-source skills link to their upstream repository and license. OpenMotion borrows the workflow or technique; it does not bundle upstream code.')}</p>
-    </main>
+      <main className={styles.results}>
+        <div className={`${styles.grid} om-skills-grid`}>
+          <section className={styles.intro}><span className={styles.eyebrow}>{t('Teach your Agent new moves.')}</span><h1>{t('Pick a skill. Let your Agent make it.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project through OpenMotion MCP.')}</p><small>{t('{count} skills', { count: visible.length })}</small></section>
+          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} category={t(skill.category)} tagline={t(skill.tagline)} source={sourceLabel(skill)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
+        </div>
+        {!visible.length && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
+        <p className="om-muted om-skills-note">{t('Open-source skills link to their upstream repository and license. OpenMotion borrows the workflow or technique; it does not bundle upstream code.')}</p>
+      </main>
+    </div>
     {selected && <aside className="om-skill-detail om-surface-divider" aria-label={displayName(selected)}>
       <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => onSkillChange(null)}><RemixIcon name="close-line" size={18} /></button></header>
-      <SkillCover motif={selected.motif} name={selected.name} large />
+      <SkillMedia skill={selected} large />
       <p className="om-muted">{t(selected.tagline)}</p>
       {selected.repository ? <a className="om-skill-source" href={selected.repository} target="_blank" rel="noopener noreferrer"><GitHubMark width={14} height={14} /><span>{selected.repository.replace('https://', '')}</span><span className="om-badge">{selected.license}</span><RemixIcon name="external-link-line" size={14} /></a>
         : <p className="om-skill-source"><RemixIcon name="flashlight-line" size={16} /><span>{t('OpenMotion skill')}</span></p>}
@@ -78,6 +90,40 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       <p className="om-muted">{t('Paste it into Codex, Claude Code or another Agent connected to OpenMotion MCP.')}</p>
     </aside>}
   </div>;
+}
+
+/** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
+function SkillCard({ skill, name, category, tagline, source, selected, onSelect }: { skill: MotionSkill; name: string; category: string; tagline: string; source: string; selected: boolean; onSelect: () => void }) {
+  const [active, setActive] = useState(false);
+  return <article className="om-gallery-card om-skill-gallery-card" data-skill-id={skill.id} data-selected={selected}>
+    <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: skill.cover?.aspect ?? coverAspect[skill.motif.length % coverAspect.length] }} onClick={onSelect} aria-pressed={selected} aria-label={name}
+      onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)} onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
+      <SkillMedia skill={skill} playing={active} />
+      <span className="om-gallery-card-shade" />
+      <span className="om-gallery-card-top"><span>{category}</span></span>
+      <span className="om-gallery-card-bottom"><span className="om-gallery-avatar" aria-hidden="true">{source.slice(0, 1).toUpperCase()}{source.startsWith('higgsfield-ai') && <img src={higgsfieldLogo} alt="" loading="lazy" />}</span><span className="om-gallery-card-caption"><strong>{name}</strong><small>{tagline}</small></span><span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={15} /></span></span>
+    </button>
+  </article>;
+}
+const coverAspect = [1.78, 1.35, 1, 1.78];
+
+/** Upstream demo media when available; otherwise the package-token illustration. */
+export function SkillMedia({ skill, playing = false, large = false }: { skill: MotionSkill; playing?: boolean; large?: boolean }) {
+  const video = useRef<HTMLVideoElement>(null);
+  const [failed, setFailed] = useState(false), [ready, setReady] = useState(false);
+  const cover = failed ? undefined : skill.cover;
+  const play = large || playing;
+  useEffect(() => {
+    const element = video.current;
+    if (!element || !cover?.video) return;
+    if (play) void element.play().catch(() => {}); else { element.pause(); }
+  }, [play, cover?.video]);
+  if (!cover) return <SkillCover motif={skill.motif} name={skill.name} large={large} />;
+  return <span className="om-skill-media" data-large={large}>
+    {cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" onError={() => !cover.video && setFailed(true)} />}
+    {cover.video && <video ref={video} src={cover.video} muted playsInline loop preload={large ? 'auto' : 'none'} aria-hidden="true"
+      onPlaying={() => setReady(true)} onError={() => setFailed(true)} style={{ opacity: play && (ready || !cover.poster) ? 1 : 0 }} />}
+  </span>;
 }
 
 /** Package-token illustration: one motif per technique, animated only when motion is allowed. */

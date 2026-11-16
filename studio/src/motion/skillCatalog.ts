@@ -20,6 +20,8 @@ export type MotionSkill = {
   /** Upstream repository; absent for skills authored by OpenMotion. */
   repository?: string;
   license: string;
+  /** Real upstream demo media (hotlinked from the source); the card falls back to an illustration. */
+  cover?: { video?: string; poster?: string; aspect?: number; source: string };
   /** The workflow needs generated images, video or audio from configured providers. */
   media?: boolean;
   /** What the Agent should borrow from the upstream project. */

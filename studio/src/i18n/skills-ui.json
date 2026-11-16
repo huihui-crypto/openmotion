@@ -1,7 +1,6 @@
 {
   "zh-CN": {
     "Skills": "Skills",
-    "Open-source motion techniques. Fill in the brief, copy the instruction and your Agent builds an editable project through OpenMotion MCP.": "精选开源动效技巧。填好需求、复制指令，Agent 会通过 OpenMotion MCP 做出可继续编辑的工程。",
     "Search skills...": "搜索 Skills...",
     "Search skills": "搜索 Skills",
     "Skill category": "Skill 分类",
@@ -101,6 +100,10 @@
     "A 15-second ad with generated product shots and a sound effect on each cut": "一支 15 秒广告：生成产品图，每个切点配音效",
     "Keep the same person across shots.": "多个镜头保持同一个人。",
     "Borrow its identity-consistency approach: use the photos I provide as references for every generated shot so the same person appears throughout. Only use faces I have the right to use.": "借鉴它保持人物一致的做法：每个生成镜头都用我提供的照片作参考，让同一个人贯穿全片。只用我有权使用的人脸。",
-    "A short story video starring me, using my three photos": "用我的三张照片，做一支我当主角的小故事视频"
+    "A short story video starring me, using my three photos": "用我的三张照片，做一支我当主角的小故事视频",
+    "Teach your Agent new moves.": "给 Agent 加点新本事",
+    "Pick a skill. Let your Agent make it.": "挑一个 Skill，让 Agent 动手做",
+    "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project through OpenMotion MCP.": "挑一个 Skill，填好需求、复制指令，Agent 会通过 OpenMotion MCP 做出可继续编辑的项目。",
+    "{count} skills": "{count} 个 Skill"
   }
 }

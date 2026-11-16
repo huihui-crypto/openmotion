@@ -1,21 +1,26 @@
 /* Skills page geometry. Materials, controls and colors come from the design-system package. */
 .om-skills-host { flex: 1; display: flex; min-width: 0; min-height: 0; overflow: hidden; }
 .om-skills-host[hidden] { display: none; }
-.om-skills-page { display: flex; flex: 1; min-width: 0; min-height: 0; }
-.om-skills-main { flex: 1; min-width: 280px; overflow-y: auto; padding: var(--motion-space-24); }
-.om-skills-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--motion-space-16); margin-bottom: var(--motion-space-16); }
-.om-skills-heading p { margin-top: var(--motion-space-6); max-width: 560px; }
-.om-skills-search { width: min(280px, 40%); flex: none; }
-.om-skills-categories, .om-skill-options { display: flex; flex-wrap: wrap; gap: var(--motion-space-6); margin-bottom: var(--motion-space-20); }
-[data-motion-studio] .om-skills-categories .om-nav-item, [data-motion-studio] .om-skill-options .om-nav-item { width: auto; padding-inline: var(--motion-space-12); }
-.om-skills-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); gap: var(--motion-space-16); }
-[data-motion-studio] .om-skill-card { display: flex; flex-direction: column; width: 100%; height: 100%; padding: var(--motion-space-4); text-align: left; cursor: pointer; color: inherit; font: inherit; transition: border-color .15s, box-shadow .15s; }
-[data-motion-studio] .om-skill-card:hover { border-color: var(--motion-border); box-shadow: var(--motion-shadow-xs); }
-[data-motion-studio] .om-skill-card[aria-pressed="true"] { border-color: var(--motion-accent); }
-.om-skill-card-caption { display: grid; gap: var(--motion-space-4); padding: var(--motion-space-12) var(--motion-space-8) var(--motion-space-8); min-width: 0; }
-.om-skill-meta { display: flex; align-items: center; gap: var(--motion-space-8); min-width: 0; margin-top: var(--motion-space-4); color: var(--motion-dim); font-size: var(--motion-text-sm); }
-.om-skill-meta > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The page reuses the template library's header, category pills, masonry grid and intro.
+   Only the fixed full-screen dialog geometry is replaced by in-workspace page geometry. */
+.om-skills-page.om-skills-library { position: relative; inset: auto; height: auto; flex: 1; display: flex; min-width: 0; min-height: 0; overflow: hidden; }
+.om-skills-main { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; container-type: inline-size; }
+/* Column count follows the list's own width, so an open detail panel never crowds the cards. */
+@container (max-width: 1100px) { .om-skills-library .om-skills-grid { columns: 3; } }
+@container (max-width: 760px) { .om-skills-library .om-skills-grid { columns: 2; } }
+@container (max-width: 420px) { .om-skills-library .om-skills-grid { columns: 1; } }
+.om-skills-title { flex-shrink: 0; }
 .om-skills-note { margin-top: var(--motion-space-24); }
+/* Skill names matter more than template titles: keep the caption readable without hover. */
+.om-skills-library .om-gallery-card-shade, .om-skills-library .om-gallery-card-caption { opacity: 1; transform: none; }
+.om-skills-library .om-gallery-cover { border-radius: var(--motion-radius-lg); overflow: hidden; background: var(--motion-inset); }
+.om-skills-library .om-skill-gallery-card[data-selected="true"] .om-gallery-cover { outline: 2px solid var(--motion-accent); outline-offset: 3px; }
+.om-skills-library .om-gallery-cover .om-skill-cover { position: absolute; inset: 0; height: 100%; aspect-ratio: auto; border-radius: 0; }
+.om-skills-library .om-gallery-cover .om-skill-cover svg { width: 100%; height: 100%; }
+.om-skill-media { position: absolute; inset: 0; display: block; overflow: hidden; background: var(--motion-inset); }
+.om-skill-media[data-large="true"] { position: relative; display: block; aspect-ratio: 16 / 9; border-radius: var(--motion-radius-lg); }
+.om-skill-media :is(img, video) { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+@media (prefers-reduced-motion: no-preference) { .om-skill-media video { transition: opacity var(--motion-duration-normal); } }
 
 /* Cover illustrations draw in the accent token over the shared media surface. */
 .om-skill-cover { display: block; aspect-ratio: 16 / 9; width: 100%; overflow: hidden; color: var(--motion-accent); }
@@ -59,13 +64,15 @@
 @keyframes om-skill-orbit { to { transform: rotate(360deg) scaleY(1); } }
 @keyframes om-skill-burst { from { transform: rotate(var(--angle)) translateX(0); opacity: 1; } to { transform: rotate(var(--angle)) translateX(56px); opacity: 0; } }
 
-.om-skill-detail { width: 400px; max-width: 46%; flex: none; display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-20); overflow-y: auto; }
+.om-skill-detail { width: 400px; max-width: 46%; flex: none; border-left: 1px solid var(--library-line); background: var(--library-bg); display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-20); overflow-y: auto; }
 .om-skill-detail > * { flex-shrink: 0; }
 .om-skill-detail-header { display: flex; justify-content: space-between; align-items: center; gap: var(--motion-space-8); }
 .om-skill-cover[data-large="true"] { border-radius: var(--motion-radius-lg); }
 .om-skill-source { display: flex; align-items: center; gap: var(--motion-space-8); min-width: 0; color: var(--motion-text); font-size: var(--motion-text-sm); text-decoration: none; }
 .om-skill-source > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .om-skill-source:hover > span:first-of-type { text-decoration: underline; }
+.om-skill-options { display: flex; flex-wrap: wrap; gap: var(--motion-space-6); }
+[data-motion-studio] .om-skill-options .om-nav-item { width: auto; padding-inline: var(--motion-space-12); }
 .om-skill-form { display: grid; gap: var(--motion-space-12); }
 .om-skill-form label, .om-skill-form fieldset { display: grid; gap: var(--motion-space-6); margin: 0; padding: 0; border: 0; min-width: 0; }
 .om-skill-form :is(label > span:first-child, legend) { padding: 0; color: var(--motion-muted); font-size: var(--motion-text-sm); }
@@ -75,14 +82,7 @@
 .om-skill-prompt pre[data-manual="true"] { outline: 2px solid var(--motion-selected); }
 [data-motion-studio] .om-skill-detail > .om-button { width: 100%; justify-content: center; }
 
-.om-application[data-navigation-collapsed="true"] .om-skills-main { padding-inline: var(--motion-space-24); }
 @media (max-width: 999px) {
   .om-skills-page[data-detail="true"] .om-skills-main { display: none; }
   .om-skill-detail { width: 100%; max-width: none; }
-}
-@media (max-width: 700px) {
-  .om-skills-main { padding: var(--motion-space-16); }
-  .om-skills-heading { flex-direction: column; }
-  .om-skills-search { width: 100%; }
-  .om-skills-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--motion-space-12); }
 }

@@ -21,7 +21,7 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
-  expect(container.querySelectorAll('.om-skill-card')).toHaveLength(motionSkills.length);
+  expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
   expect(motionSkills).toHaveLength(26);
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
   expect(motionSkills.every(skill => skill.repository)).toBe(true);
@@ -31,11 +31,11 @@ it('lists every curated skill with its upstream repository', () => {
 it('filters by category and search', () => {
   act(() => root.render(<Host />));
   act(() => button('Explainers').click());
-  expect(container.querySelectorAll('.om-skill-card').length).toBe(motionSkills.filter(skill => skill.category === 'Explainers').length);
+  expect(container.querySelectorAll('.om-skill-gallery-card').length).toBe(motionSkills.filter(skill => skill.category === 'Explainers').length);
   act(() => button('All').click());
   const input = container.querySelector<HTMLInputElement>('input[type="search"]')!;
   act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'particle'); input.dispatchEvent(new Event('input', { bubbles: true })); });
-  expect([...container.querySelectorAll('.om-skill-card strong')].map(node => node.textContent)).toEqual(['Proton']);
+  expect([...container.querySelectorAll('.om-skill-gallery-card strong')].map(node => node.textContent)).toEqual(['Proton']);
 });
 
 it('fills the brief and copies an MCP instruction for the Agent', async () => {
