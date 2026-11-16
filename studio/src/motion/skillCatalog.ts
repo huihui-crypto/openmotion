@@ -7,8 +7,8 @@
  */
 export type SkillMotif = 'agent' | 'scene' | 'layout' | 'curve' | 'stagger' | 'math' | 'vector' | 'playback' | 'depth' | 'frames' | 'canvas' | 'particles'
   | 'icon' | 'sequence' | 'character' | 'globe' | 'levelup' | 'orbit' | 'promo'
-  | 'photo' | 'polish' | 'listing' | 'narration' | 'brand' | 'thumbnail' | 'generate' | 'identity';
-export type SkillCategory = 'Product promos' | 'Explainers' | 'Brand & covers' | 'People & AI media' | 'Motion techniques';
+  | 'photo' | 'polish' | 'listing' | 'narration' | 'brand' | 'thumbnail';
+export type SkillCategory = 'Product promos' | 'Explainers' | 'Brand & covers' | 'Motion techniques';
 
 export type MotionSkill = {
   id: string;
@@ -35,7 +35,7 @@ export type MotionSkill = {
   example: string;
 };
 
-export const skillCategories: SkillCategory[] = ['Product promos', 'Explainers', 'Brand & covers', 'People & AI media', 'Motion techniques'];
+export const skillCategories: SkillCategory[] = ['Product promos', 'Explainers', 'Brand & covers', 'Motion techniques'];
 
 export const motionSkills: MotionSkill[] = [
   { id: 'motionmaxxing', title: 'Remove the AI look', name: 'motionmaxxing', output: 'A motion film that reads as designer-made: no slide layouts, color wipes, fake glow or invented numbers', tagline: 'Make AI motion look designer-made.', category: 'Motion techniques', motif: 'polish', repository: 'https://github.com/Tejashmakwana/motionmaxxing', license: 'Apache-2.0', cover: { video: 'https://raw.githubusercontent.com/Tejashmakwana/motionmaxxing/main/docs/media/spotify-comparison.mp4', poster: 'https://raw.githubusercontent.com/Tejashmakwana/motionmaxxing/main/docs/media/spotify-poster.jpg', aspect: 1.78, source: 'https://github.com/Tejashmakwana/motionmaxxing#readme' },
@@ -50,10 +50,6 @@ export const motionSkills: MotionSkill[] = [
     technique: 'Follow its brand-system approach: treat supplied logos and colors as fixed, define palette, typography and logo mark, then apply them consistently. Deliver a brand intro with logo animation and reusable branded title cards.', example: 'A brand intro for a coffee shop called North Bean' },
   { id: 'higgsfield-youtube-thumbnail', title: 'Video cover', name: 'YouTube Thumbnail', output: 'A video cover image plus a 3-second animated version for the intro', tagline: 'High-click covers for videos.', category: 'Brand & covers', motif: 'thumbnail', repository: 'https://github.com/higgsfield-ai/skills/tree/main/higgsfield-youtube-thumbnail', license: 'MIT', cover: { poster: 'https://a.storyblok.com/f/291136904311624/d49dc637e5/hero.webp', aspect: 1.78, source: 'https://higgsfield.ai/ai-thumbnail-generator' }, media: true,
     technique: 'Follow its thumbnail method: a truthful information-gap concept, one dominant subject, at most three words of large text and strong contrast. Make the cover and a 3-second animated version for the video intro.', example: 'Cover for my video “I rebuilt my app in 7 days”' },
-  { id: 'higgsfield-generate', title: 'AI-generated clip', name: 'AI Media Generation', output: 'A short video built around AI-generated images, clips and sound effects', tagline: 'Images, video and audio for your scenes.', category: 'People & AI media', motif: 'generate', repository: 'https://github.com/higgsfield-ai/skills/tree/main/higgsfield-generate', license: 'MIT', cover: { video: 'https://static.higgsfield.ai/ai-video-v2/main-mini.mp4', poster: 'https://static.higgsfield.ai/ai-video-v2/main-mini-thumbnail.webp', aspect: 1.78, source: 'https://higgsfield.ai/create/video' }, media: true,
-    technique: 'Follow its routing: pick the right model per asset (image, image-to-video, sound effect, music), generate only the assets the storyboard needs, then place them on the timeline with motion and captions.', example: 'A 15-second ad with generated product shots and a sound effect on each cut' },
-  { id: 'higgsfield-soul-id', title: 'Star in it from your photos', name: 'Consistent Character', output: 'A short story video where the same person, from your photos, appears in every shot', tagline: 'Keep the same person across shots.', category: 'People & AI media', motif: 'identity', repository: 'https://github.com/higgsfield-ai/skills/tree/main/higgsfield-soul-id', license: 'MIT', cover: { video: 'https://cdn.higgsfield.ai/application_main/32eb6e01-7cdc-4e0e-b181-9a81672235b8.mp4', poster: 'https://cdn.higgsfield.ai/application_main/f4d5bd00-a028-4ca0-9a99-7536ff404619.webp', aspect: 1.78, source: 'https://higgsfield.ai/apps/ai-headshot-generator' }, media: true,
-    technique: 'Borrow its identity-consistency approach: use the photos I provide as references for every generated shot so the same person appears throughout. Only use faces I have the right to use.', example: 'A short story video starring me, using my three photos' },
   { id: 'video-shotcraft', title: 'Product promo', name: 'video-shotcraft', output: 'A product promo cut from your real page screenshots, with beat-synced shots and sound effects', tagline: 'Product promos from shot recipes.', category: 'Product promos', motif: 'promo', repository: 'https://github.com/Vincentwei1021/video-shotcraft', license: 'Apache-2.0', cover: { video: 'https://vincentwei1021.github.io/video-shotcraft/media/assemble-then-type-flyin.mp4#t=2', aspect: 1.78, source: 'https://vincentwei1021.github.io/video-shotcraft/' },
     technique: 'Follow its product-promo workflow: capture real product pages, pick shot recipe cards, storyboard, cut to the beat with sound design and check every frame. Build it as native OpenMotion HTML instead of Remotion.', example: 'A promo for my product built from real page screenshots' },
   { id: 'motion-canvas', title: 'Diagram explainer', name: 'Motion Canvas', output: 'An explainer that walks through a diagram step by step with synced captions', tagline: 'Animated explainers.', category: 'Explainers', motif: 'scene', repository: 'https://github.com/motion-canvas/motion-canvas', license: 'MIT',
