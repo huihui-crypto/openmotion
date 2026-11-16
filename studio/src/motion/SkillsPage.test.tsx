@@ -142,3 +142,19 @@ it('does not select a failed command after its popover has closed', async () => 
   expect(document.activeElement).toBe(focus);
   expect(container.querySelector('.om-skill-prompt pre')!.getAttribute('data-manual')).toBe('false');
 });
+
+it('localizes every Skills string and instruction in all supported languages', async () => {
+  const { default: skillsUi } = await import('../i18n/skills-ui.json');
+  const { default: prompts } = await import('./skill-prompts.json');
+  const { languages } = await import('../i18n/messages');
+  const placeholders = (text: string) => [...text.matchAll(/\{\w+\}/g)].map(match => match[0]).sort();
+  const sources = Object.keys(skillsUi['zh-CN']);
+  for (const { locale } of languages.filter(language => language.locale !== 'en')) {
+    const ui = (skillsUi as Record<string, Record<string, string>>)[locale];
+    const instructions = (prompts as Record<string, Record<string, string>>)[locale];
+    expect(Object.keys(ui).sort(), locale).toEqual([...sources].sort());
+    for (const source of sources) expect(placeholders(ui[source]), `${locale}: ${source}`).toEqual(placeholders(source));
+    for (const [key, english] of Object.entries(prompts.en)) expect(placeholders(instructions[key]), `${locale}: ${key}`).toEqual(placeholders(english));
+  }
+  expect(skillPrompt(motionSkills[0], { subject: 'x', duration: 10, aspect: '16:9', style: '' }, 'ja', 'https://example.test/install.md')).toContain('openmotion_create_project');
+});
