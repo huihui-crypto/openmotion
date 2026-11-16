@@ -8,6 +8,8 @@ import { readWorkspacePage, workspacePageHref } from './workspacePageRouting';
 import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
 
 vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ locale: 'en', t: (text: string, values?: { count: number }) => text.replace('{count}', String(values?.count)) }) }));
+// Keep integration discovery offline; the page uses its built-in guide fallback.
+vi.mock('./useWorkspace', () => ({ motionApi: vi.fn().mockRejectedValue(new Error('Offline test')) }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root, container: HTMLDivElement;
 beforeEach(() => { container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
@@ -87,4 +89,56 @@ it('routes the skills page and selected skill through the query', () => {
   expect(readWorkspacePage('?page=skills&skill=manim')).toMatchObject({ skills: true, skill: 'manim', assets: false, settings: null });
   expect(readWorkspacePage(workspacePageHref('http://local' + href, { assets: true }).slice(1))).toMatchObject({ assets: true, skills: false, skill: null });
   expect(isWorkspaceSettingsPage('?page=skills')).toBe(true);
+});
+
+it.each(['instruction', 'command'] as const)('selects the failed %s in its own surface and supports retry', async surface => {
+  const write = vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('Clipboard unavailable'));
+  act(() => root.render(<Host />));
+  act(() => button('Staggered entrance').click());
+  const instruction = container.querySelector<HTMLPreElement>('.om-skill-prompt pre')!;
+  const originalInstruction = instruction.textContent;
+  if (surface === 'command') await act(async () => button('Connect Agent').click());
+  // The real popover renders in a portal outside the component container.
+  const command = document.querySelector<HTMLPreElement>('.om-skill-shortcut pre');
+  const target = surface === 'command' ? command! : instruction;
+  const expected = target.textContent;
+  const copyButton = surface === 'command'
+    ? [...document.querySelectorAll<HTMLButtonElement>('.om-skill-shortcut button')].find(node => node.textContent?.includes('Copy command'))!
+    : button('Copy for Agent');
+  expect(expected).toBeTruthy();
+  if (surface === 'command') expect(expected).not.toBe(originalInstruction);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await act(async () => copyButton.click());
+    expect(write).toHaveBeenLastCalledWith(expected);
+    expect(target.textContent).toBe(expected);
+    expect(target.dataset.manual).toBe('true');
+    expect(document.activeElement).toBe(target);
+    expect(window.getSelection()?.toString()).toBe(expected);
+    expect(instruction.textContent).toBe(originalInstruction);
+    if (surface === 'command') {
+      expect(instruction.dataset.manual).toBe('false');
+      expect(document.body.textContent).toContain('Copy failed. Select and copy the command below.');
+    }
+  }
+  write.mockResolvedValue(undefined);
+  await act(async () => copyButton.click());
+  expect(write).toHaveBeenLastCalledWith(expected);
+  expect(target.dataset.manual).toBe('false');
+});
+
+it('does not select a failed command after its popover has closed', async () => {
+  let rejectCopy!: (error: Error) => void;
+  vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(() => new Promise<void>((_resolve, reject) => { rejectCopy = reject; }));
+  act(() => root.render(<Host />));
+  act(() => button('Staggered entrance').click());
+  await act(async () => button('Connect Agent').click());
+  const copyButton = [...document.querySelectorAll<HTMLButtonElement>('.om-skill-shortcut button')].find(node => node.textContent?.includes('Copy command'))!;
+  await act(async () => copyButton.click());
+  await act(async () => button('Connect Agent').click());
+  const focus = document.activeElement;
+  const select = vi.spyOn(window.getSelection()!, 'selectAllChildren');
+  await act(async () => rejectCopy(new Error('Clipboard unavailable')));
+  expect(select).not.toHaveBeenCalled();
+  expect(document.activeElement).toBe(focus);
+  expect(container.querySelector('.om-skill-prompt pre')!.getAttribute('data-manual')).toBe('false');
 });

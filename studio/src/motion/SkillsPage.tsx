@@ -21,7 +21,8 @@ const defaults: SkillParameters = { subject: '', duration: 10, aspect: '16:9', s
 export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null; onSkillChange: (id: string | null) => void }) {
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
-  const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState('');
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState<{ text: string; surface: 'instruction' | 'command' } | null>(null);
   // Same install guide as template instructions; the repository guide is the fallback until the service answers.
   const [installUrl, setInstallUrl] = useState(() => setupGuideUrl(null));
   useEffect(() => {
@@ -29,13 +30,17 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
     motionApi<IntegrationInfo>('/integration').then(info => { if (!cancelled) setInstallUrl(setupGuideUrl(info)); }).catch(() => {});
     return () => { cancelled = true; };
   }, []);
-  const instruction = useRef<HTMLPreElement>(null), search = useRef<HTMLInputElement>(null);
+  const instruction = useRef<HTMLPreElement>(null), command = useRef<HTMLPreElement>(null), search = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const focus = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); search.current?.focus(); } };
     window.addEventListener('keydown', focus); return () => window.removeEventListener('keydown', focus);
   }, []);
-  // When the clipboard is unavailable, select the whole instruction so one ⌘C copies it.
-  useEffect(() => { if (manualCopy && instruction.current) { instruction.current.focus(); window.getSelection()?.selectAllChildren(instruction.current); } }, [manualCopy]);
+  // Select the failed text in its own visible surface so one ⌘C copies the requested content.
+  useEffect(() => {
+    if (!manualCopy || (manualCopy.surface === 'command' && !commandOpen)) return;
+    const element = manualCopy.surface === 'command' ? command.current : instruction.current;
+    if (element?.isConnected) { element.focus(); window.getSelection()?.selectAllChildren(element); }
+  }, [manualCopy, commandOpen]);
   const selected = motionSkills.find(skill => skill.id === skillId) ?? null;
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -47,11 +52,12 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   const shortcut = selected ? skillShortcut({ ...selected, title: displayName(selected), example: t(selected.example) }, parameters, locale, installUrl) : '';
   const open = (skill: MotionSkill) => onSkillChange(skill.id);
   // The brief belongs to one skill; any route change (card, history, link) starts a fresh brief.
-  useEffect(() => { setParameters(defaults); setManualCopy(''); }, [skillId]);
-  async function copy(text = prompt) {
+  useEffect(() => { setParameters(defaults); setManualCopy(null); setCommandOpen(false); }, [skillId]);
+  async function copy(surface: 'instruction' | 'command' = 'instruction') {
     if (!selected) return;
-    try { await navigator.clipboard.writeText(text); setManualCopy(''); toast.showToast(t('Copied. Paste into your Agent.'), 'info'); }
-    catch { setManualCopy(text); toast.showToast(t('Copy failed. Select and copy the instruction below.'), 'error', 'feedback'); }
+    const text = surface === 'command' ? shortcut : prompt;
+    try { await navigator.clipboard.writeText(text); setManualCopy(null); toast.showToast(t('Copied. Paste into your Agent.'), 'info'); }
+    catch { setManualCopy({ text, surface }); toast.showToast(t(surface === 'command' ? 'Copy failed. Select and copy the command below.' : 'Copy failed. Select and copy the instruction below.'), 'error', 'feedback'); }
   }
   return <div className={`${styles.library} om-skills-page om-skills-library`} data-detail={Boolean(selected)}>
     <StudioToastViewport {...toast} />
@@ -88,17 +94,17 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       </section>
       <section className="om-skill-prompt" aria-label={t('Agent instruction')}>
         <span className="om-subtitle">{t('Agent instruction')}</span>
-        <pre ref={instruction} data-manual={Boolean(manualCopy)} tabIndex={0}>{prompt}</pre>
+        <pre ref={instruction} data-manual={manualCopy?.surface === 'instruction'} tabIndex={0}>{manualCopy?.surface === 'instruction' ? manualCopy.text : prompt}</pre>
       </section>
       <footer className="om-skill-footer">
         <div className="om-skill-actions">
           <button className="om-button" data-primary onClick={() => void copy()}><RemixIcon name="file-copy-line" size={16} />{t('Copy for Agent')}</button>
-          <Popover side="top" align="end" aria-label={t('Use in another AI Agent')} className="om-skill-shortcut"
+          <Popover open={commandOpen} onOpenChange={open => { setCommandOpen(open); setManualCopy(null); }} side="top" align="end" aria-label={t('Use in another AI Agent')} className="om-skill-shortcut"
             trigger={<button className="om-button"><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</button>}>
             <strong>{t('Use in another AI Agent')}</strong>
             <p className="om-muted">{t('Copy this command into a chat with Codex, Claude or another AI Agent to run this skill.')}</p>
-            <pre tabIndex={0}>{shortcut}</pre>
-            <button className="om-button" data-primary onClick={() => void copy(shortcut)}><RemixIcon name="file-copy-line" size={16} />{t('Copy command')}</button>
+            <pre ref={command} data-manual={manualCopy?.surface === 'command'} tabIndex={0}>{manualCopy?.surface === 'command' ? manualCopy.text : shortcut}</pre>
+            <button className="om-button" data-primary onClick={() => void copy('command')}><RemixIcon name="file-copy-line" size={16} />{t('Copy command')}</button>
           </Popover>
         </div>
       </footer>
