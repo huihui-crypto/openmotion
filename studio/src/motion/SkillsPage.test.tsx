@@ -75,6 +75,7 @@ it('starts a fresh brief when the selected skill changes from outside, such as h
 it('localizes the instruction and keeps the user brief', () => {
   const text = skillPrompt(motionSkills[0], { subject: '新品发布', duration: 10, aspect: '1:1', style: '' }, 'zh-CN', 'https://example.test/install.md');
   expect(text).toContain('内容：新品发布');
+  expect(text).toContain('交付：');
   expect(text.split('\n')[0]).toBe('使用说明：请使用 OpenMotion 插件。如未安装，请按 https://example.test/install.md 安装并接入后继续。');
   expect(text).not.toContain('风格');
 });

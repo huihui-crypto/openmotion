@@ -7,7 +7,6 @@ import { aspectRatios, durations, motionSkills, skillCategories, skillPrompt, ty
 import { GitHubMark } from '../../../packages/design-system/react/GitHubMark';
 import { MotionIcon } from './icons';
 import styles from './TemplateLibraryDialog.module.css';
-import higgsfieldLogo from './template-brands/higgsfield.png';
 import { motionApi } from './useWorkspace';
 import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration';
 import './skills.css';
@@ -43,10 +42,10 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return motionSkills.filter(skill => (!category || skill.category === category)
-      && (!needle || [skill.name, displayName(skill), skill.tagline, t(skill.tagline), skill.repository ?? 'OpenMotion'].some(value => value.toLocaleLowerCase().includes(needle))));
+      && (!needle || [skill.name, displayName(skill), skill.tagline, t(skill.tagline), t(skill.output), skill.repository ?? 'OpenMotion'].some(value => value.toLocaleLowerCase().includes(needle))));
   }, [query, category, t]);
   // The instruction follows the interface language, including the example brief and borrowed technique.
-  const prompt = selected ? skillPrompt({ ...selected, name: displayName(selected), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
+  const prompt = selected ? skillPrompt({ ...selected, name: displayName(selected), output: t(selected.output), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
   const open = (skill: MotionSkill) => onSkillChange(skill.id);
   // The brief belongs to one skill; any route change (card, history, link) starts a fresh brief.
   useEffect(() => { setParameters(defaults); setManualCopy(''); }, [skillId]);
@@ -73,7 +72,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       <main className={styles.results}>
         <div className={`${styles.grid} om-skills-grid`}>
           <section className={styles.intro}><span className={styles.eyebrow}>{t('Teach your Agent new moves.')}</span><h1>{t('Pick a skill. Let your Agent make it.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project through OpenMotion MCP.')}</p><small>{t('{count} skills', { count: visible.length })}</small></section>
-          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} category={t(skill.category)} tagline={t(skill.tagline)} source={sourceLabel(skill)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
+          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} category={t(skill.category)} tagline={t(skill.output)} source={sourceLabel(skill)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
         </div>
         {!visible.length && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
       </main>
@@ -81,7 +80,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
     {selected && <aside className="om-skill-detail om-surface-divider" aria-label={displayName(selected)}>
       <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => onSkillChange(null)}><RemixIcon name="close-line" size={18} /></button></header>
       <SkillMedia skill={selected} large />
-      <p className="om-muted">{t(selected.tagline)}</p>
+      <p className="om-skill-output"><span>{t('You get')}</span>{t(selected.output)}</p>
       {selected.repository ? <a className="om-skill-source" href={selected.repository} target="_blank" rel="noopener noreferrer"><GitHubMark width={14} height={14} /><span>{selected.repository.replace('https://', '')}</span><span className="om-badge">{selected.license}</span><RemixIcon name="external-link-line" size={14} /></a>
         : <p className="om-skill-source"><RemixIcon name="flashlight-line" size={16} /><span>{t('OpenMotion skill')}</span></p>}
       <section className="om-skill-form" aria-label={t('Brief')}>
@@ -109,7 +108,7 @@ function SkillCard({ skill, name, category, tagline, source, selected, onSelect 
       <SkillMedia skill={skill} playing={active} />
       <span className="om-gallery-card-shade" />
       <span className="om-gallery-card-top"><span>{category}</span></span>
-      <span className="om-gallery-card-bottom"><span className="om-gallery-avatar" aria-hidden="true">{source.slice(0, 1).toUpperCase()}{source.startsWith('higgsfield-ai') && <img src={higgsfieldLogo} alt="" loading="lazy" />}</span><span className="om-gallery-card-caption"><strong>{name}</strong><small>{tagline}</small></span><span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={15} /></span></span>
+      <span className="om-gallery-card-bottom"><span className="om-gallery-card-caption"><strong>{name}</strong><small>{tagline}</small></span><span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={15} /></span></span>
     </button>
   </article>;
 }
