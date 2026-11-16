@@ -184,7 +184,7 @@ function CoverMedia({ cover, play, near, large, onFail }: { cover: NonNullable<M
     preload={large || near || play ? 'auto' : cover.poster ? 'none' : 'metadata'} aria-hidden="true" onError={onFail} />;
   const still = cover.poster ?? cover.gif;
   return <>{cover.gif && <img src={play ? cover.gif : still} alt="" loading="lazy" decoding="async" onError={onFail} />}
-    {!cover.gif && cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" />}</>;
+    {!cover.gif && cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" onError={onFail} />}</>;
 }
 
 /** Package-token illustration: one motif per technique, animated only when motion is allowed. */
