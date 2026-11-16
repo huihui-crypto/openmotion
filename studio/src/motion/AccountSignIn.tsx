@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
 import type { AccountSummary } from '../../../shared/provider-directory';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';
@@ -16,6 +16,14 @@ type SignInArea = 'asset_generation' | 'asset_model_hint' | 'media_generator';
  */
 function useAccountSignIn(area: SignInArea, openAccount: () => void) {
   const { account, setAccount } = useAccountSummary(), [busy, setBusy] = useState(false);
+  const lastState = useRef<AccountSummary['state'] | undefined>(undefined);
+  useEffect(() => {
+    const previous = lastState.current;
+    lastState.current = account?.state;
+    if (previous === 'authorizing' && account?.state === 'signed-in') {
+      notifyProvidersChanged(); window.dispatchEvent(new Event('motion:account-changed'));
+    }
+  }, [account?.state]);
   const visible = Boolean(account && account.state !== 'signed-in'), pending = account?.state === 'authorizing';
   const signIn = async (event: MouseEvent<HTMLButtonElement>) => {
     void trackMotion('ui_click', { page_name: 'studio', area, element: 'sign_in', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });

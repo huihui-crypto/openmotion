@@ -34,6 +34,12 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
   const selectedTask = history.tasks.find(task => task.key === history.selectedKey);
   const switching = busy || agentSending || selectingTask;
   useEffect(() => {
+    if (!active) return;
+    const refresh = () => setRetry(value => value + 1);
+    window.addEventListener('motion:gateway-changed', refresh);
+    return () => window.removeEventListener('motion:gateway-changed', refresh);
+  }, [active]);
+  useEffect(() => {
     if (!active) return; let current = true; setFailed(false);
     void loadGateway().then(data => { if (current) setGateway(data); }).catch(() => { if (current) setFailed(true); });
     return () => { current = false; };

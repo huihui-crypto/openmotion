@@ -2,7 +2,7 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { AccountSignInButton } from './AccountSignIn';
+import { AccountSignInButton, AccountSignInHint } from './AccountSignIn';
 const { gatewayRequest, trackMotion, notifyProvidersChanged } = vi.hoisted(() => ({ gatewayRequest: vi.fn(), trackMotion: vi.fn(), notifyProvidersChanged: vi.fn() }));
 vi.mock('./gatewayClient', () => ({ gatewayRequest }));
 vi.mock('./tracking', () => ({ trackMotion }));
@@ -12,12 +12,36 @@ let root: Root, container: HTMLDivElement;
 const openAccount = vi.fn();
 const respond = (state: string) => gatewayRequest.mockImplementation(async (path: string) => path === 'settings/account/login' ? { state: 'authorizing' } : { state });
 beforeEach(() => { vi.clearAllMocks(); container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
 
 it('stays out of the way once the OpenDesign account is connected', async () => {
   respond('signed-in');
   await act(async () => root.render(<AccountSignInButton area="asset_generation" openAccount={openAccount} />));
   expect(container.querySelector('button')).toBeNull();
+  expect(notifyProvidersChanged).not.toHaveBeenCalled();
+});
+it.each(['button', 'hint'] as const)('refreshes providers and account once when the %s observes authorization completion', async surface => {
+  vi.useFakeTimers();
+  respond('authorizing');
+  await act(async () => root.render(surface === 'button'
+    ? <AccountSignInButton area="asset_generation" openAccount={openAccount} />
+    : <AccountSignInHint openAccount={openAccount} />));
+  expect(notifyProvidersChanged).not.toHaveBeenCalled();
+  const accountChanged = vi.fn();
+  window.addEventListener('motion:account-changed', accountChanged);
+  try {
+    respond('signed-in');
+    await act(async () => vi.advanceTimersByTimeAsync(1500));
+    expect(container.querySelector('button')).toBeNull();
+    expect(notifyProvidersChanged).toHaveBeenCalledOnce();
+    expect(accountChanged).toHaveBeenCalledOnce();
+    await act(async () => {
+      window.dispatchEvent(new Event('motion:account-changed'));
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+    expect(notifyProvidersChanged).toHaveBeenCalledOnce();
+    expect(accountChanged).toHaveBeenCalledTimes(2);
+  } finally { window.removeEventListener('motion:account-changed', accountChanged); }
 });
 it('starts OpenDesign sign-in, reports the click and opens the account page', async () => {
   respond('signed-out');

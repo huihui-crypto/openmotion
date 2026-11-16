@@ -4,9 +4,10 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AssetComposer, type AssetDraft } from './AssetComposer';
 import type { Model } from '../../../shared/gateway';
-const { generate, loadGateway } = vi.hoisted(() => ({ generate: vi.fn(), loadGateway: vi.fn() }));
+const { generate, loadGateway, gatewayRequest } = vi.hoisted(() => ({ generate: vi.fn(), loadGateway: vi.fn(), gatewayRequest: vi.fn() }));
 vi.mock('./assetClient', () => ({ assetRequest: generate }));
-vi.mock('./gatewayClient', () => ({ loadGateway }));
+vi.mock('./gatewayClient', () => ({ loadGateway, gatewayRequest }));
+vi.mock('./tracking', () => ({ trackMotion: vi.fn() }));
 vi.mock('./AssetConversation', () => ({ AssetConversation: () => null }));
 vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ t: (text: string) => text }) }));
 vi.mock('./WorkspaceFrame', () => ({ useWorkspaceChrome: () => ({ openModelSettings: vi.fn() }) }));
@@ -19,8 +20,43 @@ const props: ComponentProps<typeof AssetComposer> = {
   history: { tasks: [], loading: false, onRetry: vi.fn(), onSelect: vi.fn() }, selectingTask: false,
   onNew: vi.fn(), onChatChanged: vi.fn(), onChatStarted: vi.fn(), onCancel: vi.fn(), onView: vi.fn(), onReference: vi.fn(), onCreated: created, onError: vi.fn(), onClose: vi.fn(),
 };
-beforeEach(() => { vi.clearAllMocks(); loadGateway.mockResolvedValue({ models: [model], status: { providers: [{ id: 'codex', available: true }], routes: {} } }); container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
+beforeEach(() => { vi.clearAllMocks(); gatewayRequest.mockResolvedValue({ state: 'signed-out' }); loadGateway.mockResolvedValue({ models: [model], status: { providers: [{ id: 'codex', available: true }], routes: {} } }); container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.useRealTimers(); });
+it('loads newly available account models when authorization completes without leaving the composer', async () => {
+  vi.useFakeTimers();
+  gatewayRequest.mockResolvedValue({ state: 'authorizing' });
+  loadGateway.mockResolvedValue({ models: [], status: { providers: [], routes: {} } });
+  await act(async () => root.render(<AssetComposer {...props} draft={{ ...props.draft, model: undefined }} />));
+  expect(container.textContent).toContain('Waiting for browser authorization…');
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(true);
+  const accountModel = { ...model, id: 'account:image', provider: 'account', label: 'OpenDesign Image' };
+  loadGateway.mockResolvedValue({ models: [accountModel], status: { providers: [{ id: 'account', available: true }], routes: {} } });
+  gatewayRequest.mockResolvedValue({ state: 'signed-in' });
+  await act(async () => vi.advanceTimersByTimeAsync(1500));
+  expect(loadGateway).toHaveBeenCalledTimes(2);
+  expect(container.textContent).toContain('OpenDesign Image');
+  expect(container.textContent).not.toContain('Waiting for browser authorization…');
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(false);
+  await act(async () => vi.advanceTimersByTimeAsync(3000));
+  expect(loadGateway).toHaveBeenCalledTimes(2);
+});
+it('only reloads models for gateway changes while active and removes the listener on unmount', async () => {
+  await act(async () => root.render(<AssetComposer {...props} />));
+  await act(async () => window.dispatchEvent(new Event('motion:gateway-changed')));
+  expect(loadGateway).toHaveBeenCalledTimes(2);
+  await act(async () => root.render(<AssetComposer {...props} active={false} />));
+  await act(async () => window.dispatchEvent(new Event('motion:gateway-changed')));
+  expect(loadGateway).toHaveBeenCalledTimes(2);
+  await act(async () => root.render(<AssetComposer {...props} />));
+  expect(loadGateway).toHaveBeenCalledTimes(3);
+  const removeListener = vi.spyOn(window, 'removeEventListener');
+  try {
+    await act(async () => root.render(null));
+    expect(removeListener).toHaveBeenCalledWith('motion:gateway-changed', expect.any(Function));
+    await act(async () => window.dispatchEvent(new Event('motion:gateway-changed')));
+    expect(loadGateway).toHaveBeenCalledTimes(3);
+  } finally { removeListener.mockRestore(); }
+});
 it('restores native and custom parameters without submitting until explicitly requested', async () => {
   generate.mockResolvedValue({ job: { id: 'new-job' } });
   await act(async () => root.render(<AssetComposer {...props} />));
