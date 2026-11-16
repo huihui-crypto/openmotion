@@ -1,7 +1,29 @@
 import type { TimelineElement } from "../player/store/playerStore";
-import { resolveDropTrack } from "./timelineDropTrackInsert";
 import { parseSavedSource } from "./authoredSource";
 import { isTextBearingTag } from "../components/editor/domEditingDom";
+
+/** Allocate above saved and live lanes without renumbering existing (possibly locked)
+ * clips. Authored negative track indices are valid and sort before the visual lanes. */
+function placeTextOnTop(copy: Element, source: string, elements: readonly TimelineElement[] = []): void {
+  let top = 0;
+  const visit = (root: ParentNode) => {
+    for (const node of root.querySelectorAll("[data-track-index]")) {
+      const track = Number(node.getAttribute("data-track-index"));
+      if (Number.isFinite(track)) top = Math.min(top, track);
+    }
+    for (const template of root.querySelectorAll("template")) visit(template.content);
+  };
+  visit(new DOMParser().parseFromString(source, "text/html"));
+  for (const element of elements) {
+    for (const track of [element.track, element.authoredTrack])
+      if (track !== undefined && Number.isFinite(track)) top = Math.min(top, track);
+  }
+  copy.setAttribute("data-track-index", String(top - 1));
+  let zIndex = 0;
+  for (const match of source.matchAll(/z-index\s*:\s*(-?\d+)/gi)) zIndex = Math.max(zIndex, Number(match[1]));
+  for (const element of elements) zIndex = Math.max(zIndex, element.zIndex ?? 0);
+  (copy as HTMLElement).style.zIndex = String(zIndex + 1);
+}
 
 /** Materialize a pasted text layer as an authored runtime clip. Timing is local
  * to the containing composition; wrappers retain their original coordinate space. */
@@ -26,11 +48,10 @@ export function timedTextPaste(
     hostStart += Number(parent.getAttribute("data-start")) || 0;
   const start = Math.max(0, Math.min(playhead - hostStart, Math.max(0, duration - 1 / 30)));
   const remaining = Math.max(1 / 30, duration - start);
-  const tracks = Array.from(doc.querySelectorAll("[data-track-index]")).map(el => Number(el.getAttribute("data-track-index")) || 0);
   node.classList.add("clip");
   node.setAttribute("data-start", String(Math.round(start * 1000) / 1000));
   node.setAttribute("data-duration", String(Math.round(remaining * 1000) / 1000));
-  node.setAttribute("data-track-index", String(Math.max(-1, ...tracks) + 1));
+  placeTextOnTop(node, source);
   node.setAttribute("data-timeline-label", node.textContent.trim().slice(0, 80));
   return node.outerHTML;
 }
@@ -38,16 +59,8 @@ export function timedTextPaste(
 /** Both canvas paste and timeline duplicate open the same top text lane. */
 export function openPastedTextTrack(source: string, html: string, elements: readonly TimelineElement[]): { source: string; html: string } {
   const copy = new DOMParser().parseFromString(html, "text/html").body.firstElementChild;
-  if (!copy || !elements.length || !isTextBearingTag(copy.localName) || !copy.textContent?.trim() ||
+  if (!copy || !isTextBearingTag(copy.localName) || !copy.textContent?.trim() ||
     !Array.from(copy.children).every(child => child.localName === "br")) return { source, html };
-  const start = Number(copy.getAttribute("data-start")) || 0;
-  const duration = Number(copy.getAttribute("data-duration")) || 5;
-  const opened = resolveDropTrack({ source, elements: [...elements],
-    placement: { start, track: 0, newTrack: "top" },
-    dropped: { id: copy.id || copy.getAttribute("data-hf-id")!, tag: copy.localName, start, duration },
-  });
-  copy.setAttribute("data-track-index", String(opened.track));
-  const values = [...opened.source.matchAll(/z-index\s*:\s*(-?\d+)/gi)].map(match => Number(match[1]));
-  (copy as HTMLElement).style.zIndex = String(Math.max(0, ...values) + 1);
-  return { source: opened.source, html: copy.outerHTML };
+  placeTextOnTop(copy, source, elements);
+  return { source, html: copy.outerHTML };
 }

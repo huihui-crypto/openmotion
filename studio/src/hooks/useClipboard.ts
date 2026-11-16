@@ -188,7 +188,7 @@ export function pasteElementHtml(
   const html = timedTextPaste(payload.html, content, playhead, payload.originSelector, payload.originSelectorIndex);
   const reminted = remintHfIds(html, new DOMParser(), hfIdsInFile(ensureHfIds(content)));
   const deduped = deduplicateIds(reminted, collectHtmlIds(content));
-  const opened = fromThisFile ? openPastedTextTrack(content, deduped, liveElements) : {source: content, html: deduped};
+  const opened = openPastedTextTrack(content, deduped, liveElements);
   const pastedRoot = new DOMParser().parseFromString(deduped, "text/html").body.firstElementChild;
   const hfId = pastedRoot?.getAttribute("data-hf-id");
   if (hfId) onInserted?.(hfId);
@@ -244,7 +244,7 @@ export function pasteTimelineClips(
     copy.setAttribute("data-start", formatTimelineAttributeNumber(newStart));
     copy.setAttribute("data-duration", formatTimelineAttributeNumber(clip.duration));
     copy.setAttribute("data-track-index", String(newTrack));
-    const opened = clips.length === 1 && fromThisFile
+    const opened = clips.length === 1
       ? openPastedTextTrack(result, copy.outerHTML, liveElements) : {source: result, html: copy.outerHTML};
     result = opened.source;
     const withPatched = opened.html;
