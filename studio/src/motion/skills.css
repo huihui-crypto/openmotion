@@ -96,3 +96,9 @@
 .om-skill-shortcut p { margin: 0; }
 .om-skill-shortcut pre { margin: 0; padding: var(--motion-space-12); max-height: 200px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--motion-font-mono); font-size: var(--motion-text-sm); line-height: 1.6; color: var(--motion-text); background: var(--motion-inset); border-radius: var(--motion-radius-md); user-select: text; }
 [data-motion-studio] .om-skill-shortcut .om-button { justify-content: center; }
+/* Before/after demos are shown whole so both halves stay readable, each half labelled. */
+.om-skill-media[data-compare] { background: var(--color-template-preview-bg); }
+.om-skill-media[data-compare] :is(img, video) { object-fit: contain; }
+.om-skill-compare { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; pointer-events: none; }
+.om-skill-compare > span { align-self: start; justify-self: center; margin-top: 12%; padding: var(--motion-space-4) var(--motion-space-10); border-radius: var(--motion-radius-full); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-semibold); color: var(--motion-overlay-ink); background: var(--motion-video-overlay); backdrop-filter: blur(8px); white-space: nowrap; }
+.om-skill-compare > span[data-after] { color: var(--motion-video-ink); background: var(--motion-overlay-ink); }
