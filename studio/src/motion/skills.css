@@ -107,6 +107,8 @@
 .om-skill-split-half[data-side="after"] :is(img, video) { transform: translateX(-75%); }
 .om-skill-split { background: var(--motion-video-ink); }
 .om-skill-split-divider { position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-50%); background: var(--motion-overlay-ink); }
+/* The skill's action sits on the divider, like an upscale preview. */
+.om-skill-split-label { position: absolute; top: 50%; left: 50%; z-index: 1; display: inline-flex; align-items: center; gap: var(--motion-space-6); transform: translate(-50%, -50%); padding: var(--motion-space-6) var(--motion-space-12); border-radius: var(--motion-radius-md); font-size: var(--motion-text-sm); font-weight: var(--motion-weight-semibold); white-space: nowrap; color: var(--motion-overlay-ink); background: var(--motion-video-overlay); backdrop-filter: blur(10px); box-shadow: 0 0 0 1px var(--motion-gallery-border); }
 /* Before / After are written on the footage: plain white type over a light bottom shade. */
 .om-skill-split-half::after { content: ""; position: absolute; inset: 55% 0 0; background: linear-gradient(transparent, var(--motion-video-overlay)); pointer-events: none; }
 .om-skill-split-caption { position: absolute; bottom: var(--motion-space-12); z-index: 1; font-size: var(--motion-text-md); font-weight: var(--motion-weight-semibold); color: var(--motion-overlay-ink); text-shadow: 0 1px 3px var(--motion-video-overlay); }

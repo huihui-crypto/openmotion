@@ -136,6 +136,7 @@ export function SkillMedia({ skill, playing = false, large = false }: { skill: M
       <CoverMedia cover={cover} play={play} large={large} onFail={() => setFailed(true)} />
     </span>)}
     <span className="om-skill-split-divider" aria-hidden="true" />
+    <span className="om-skill-split-label" aria-hidden="true"><RemixIcon name="sparkling-line" size={14} />{t('Remove the AI look')}</span>
     <span className="om-skill-split-caption" data-side="before" aria-hidden="true">{t('Before')}</span>
     <span className="om-skill-split-caption" data-side="after" aria-hidden="true">{t('After')}</span>
   </span>;
