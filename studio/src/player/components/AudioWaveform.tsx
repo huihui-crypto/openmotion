@@ -125,9 +125,16 @@ async function loadWaveform(
 ): Promise<number[]> {
   // Failures propagate: authors trim and beat-align against this, so made-up peaks beat no gap.
   // The scheduler caches the failure (metadataFailureTtlMs): no refetch loop, no stuck state.
-  return waveformUrl
-    ? await fetchWaveformPeaks(waveformUrl, signal)
-    : await decodeWaveformPeaks(audioUrl, signal);
+  if (!waveformUrl) return await decodeWaveformPeaks(audioUrl, signal);
+  try {
+    return await fetchWaveformPeaks(waveformUrl, signal);
+  } catch (error) {
+    // Missing media stays missing; a cancelled lease stays cancelled.
+    if (error instanceof UnavailableAudioError || signal.aborted) throw error;
+    // The server decodes with FFmpeg, which a first run may still be downloading (409) or lack
+    // entirely (500). The browser can decode the same file, so real peaks still appear.
+    return await decodeWaveformPeaks(audioUrl, signal);
+  }
 }
 
 async function fetchWaveformPeaks(url: string, signal: AbortSignal): Promise<number[]> {

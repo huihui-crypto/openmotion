@@ -172,6 +172,45 @@ describe("AudioWaveform", () => {
     expect(host.querySelector('[role="img"]')).toBeNull();
   });
 
+  it.each([409, 500])("decodes the audio in the browser when the peaks endpoint fails (%s)", async (status) => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) =>
+      String(input).includes("/waveform/")
+        ? new Response(null, { status })
+        : new Response(new ArrayBuffer(8), { status: 200 }));
+    const channel = new Float32Array(8000).map((_, index) => (index % 2 ? 0.5 : -1));
+    const close = vi.fn(async () => {});
+    vi.stubGlobal("AudioContext", class {
+      decodeAudioData = async () => ({ getChannelData: () => channel });
+      close = close;
+    });
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    mounted.push(root);
+    act(() => root.render(
+      <I18nProvider initialLocale="zh-CN">
+        <AudioWaveform
+          audioUrl="/media/voice.wav"
+          waveformUrl="/waveform/voice.wav"
+          label=""
+          labelColor="#fff"
+          projectId="project-a"
+          sessionEpoch={1}
+          priority="visible"
+        />
+      </I18nProvider>,
+    ));
+    const request = leaseSpy.mock.calls.at(-1)?.[0] as ThumbnailRequest;
+    const result = await request.load(new AbortController().signal);
+    expect(result.value).toMatchObject({ kind: "waveform" });
+    expect((result.value as { peaks: number[] }).peaks).toHaveLength(4000);
+    expect(fetchSpy.mock.calls.map(([input]) => String(input))).toEqual(
+      expect.arrayContaining([expect.stringContaining("/waveform/voice.wav"), expect.stringContaining("/media/voice.wav")]),
+    );
+    expect(close).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it("paints a baseline and peak bar for every mapped waveform bin", () => {
     const { canvas, fills } = recordingCanvas();
     drawWaveformCanvas(canvas, [0.25, 1], false, 0, 1);
