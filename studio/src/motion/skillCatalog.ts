@@ -4,7 +4,7 @@
  * technique: the Agent builds an editable HTML composition through MCP.
  */
 export type SkillMotif = 'agent' | 'scene' | 'layout' | 'curve' | 'stagger' | 'math' | 'vector' | 'playback' | 'depth' | 'frames' | 'canvas' | 'particles'
-  | 'icon' | 'sequence' | 'character' | 'globe' | 'levelup' | 'orbit';
+  | 'icon' | 'sequence' | 'character' | 'globe' | 'levelup' | 'orbit' | 'promo';
 export type SkillCategory = 'Agent guidance' | '2D animation' | '3D scenes' | 'Easing & timing' | 'Playback & export';
 
 export type MotionSkill = {
@@ -27,6 +27,8 @@ export const skillCategories: SkillCategory[] = ['Agent guidance', '2D animation
 export const motionSkills: MotionSkill[] = [
   { id: 'remotion-skills', name: 'Remotion Skills', tagline: 'Agent guidance for video.', category: 'Agent guidance', motif: 'agent', repository: 'https://github.com/remotion-dev/skills', license: 'See repository',
     technique: 'Follow its Agent guidance for structuring a video as scenes, timing with frames, and reusing typed components.', example: 'A 3-scene product launch with a logo reveal' },
+  { id: 'video-shotcraft', name: 'video-shotcraft', tagline: 'Product promos from shot recipes.', category: 'Agent guidance', motif: 'promo', repository: 'https://github.com/Vincentwei1021/video-shotcraft', license: 'Apache-2.0',
+    technique: 'Follow its product-promo workflow: capture real product pages, pick shot recipe cards, storyboard, cut to the beat with sound design and check every frame. Build it as native OpenMotion HTML instead of Remotion.', example: 'A promo for my product built from real page screenshots' },
   { id: 'motion-canvas', name: 'Motion Canvas', tagline: 'Animated explainers.', category: '2D animation', motif: 'scene', repository: 'https://github.com/motion-canvas/motion-canvas', license: 'MIT',
     technique: 'Use its explainer style: sequential scenes, code-driven tweens, highlighted diagrams and synchronized captions.', example: 'Explain how an API request travels through a system' },
   { id: 'motion', name: 'Motion', tagline: 'Layout transitions.', category: '2D animation', motif: 'layout', repository: 'https://github.com/motiondivision/motion', license: 'MIT',

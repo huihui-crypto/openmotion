@@ -22,7 +22,7 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(18);
+  expect(motionSkills).toHaveLength(19);
   for (const skill of motionSkills) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/);
   expect(new Set(motionSkills.map(skill => skill.id)).size).toBe(motionSkills.length);
 });

@@ -76,6 +76,9 @@
     "Render a WebGL 3D scene with camera moves, materials and lighting, driven by the composition timeline.": "渲染 WebGL 3D 场景，镜头运动、材质和光照都由合成时间线驱动。",
     "Borrow game-animation patterns: state transitions, tweens and camera shake. Recreate them in HTML; do not install Godot.": "借鉴游戏动画套路：状态切换、补间、镜头震动，用 HTML 还原；不要安装 Godot。",
     "Render a physically lit 3D scene with animation groups and smooth camera paths.": "渲染物理光照的 3D 场景，用动画组和平滑镜头路径。",
-    "Add particle emitters with gravity, attraction and fading for celebrations or ambient backgrounds.": "加粒子发射器：重力、吸引、渐隐，用于庆祝效果或氛围背景。"
+    "Add particle emitters with gravity, attraction and fading for celebrations or ambient backgrounds.": "加粒子发射器：重力、吸引、渐隐，用于庆祝效果或氛围背景。",
+    "Product promos from shot recipes.": "用镜头配方做产品宣传片。",
+    "Follow its product-promo workflow: capture real product pages, pick shot recipe cards, storyboard, cut to the beat with sound design and check every frame. Build it as native OpenMotion HTML instead of Remotion.": "照它的产品宣传片流程：截取真实产品页面、挑选镜头配方卡、分镜、按节拍剪辑并配音效、逐帧检查。用 OpenMotion 原生 HTML 实现，不用 Remotion。",
+    "A promo for my product built from real page screenshots": "用真实页面截图做一支产品宣传片"
   }
 }
