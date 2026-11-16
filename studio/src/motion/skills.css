@@ -100,7 +100,8 @@
 [data-motion-studio] .om-skill-shortcut .om-button { justify-content: center; }
 /* Split before/after cover: the source video holds both versions side by side.
    Each half shows the centre of its own version, filling one side of the card. */
-.om-skill-split { display: grid; grid-template-columns: 1fr 1fr; }
+/* Doubled class beats the large-media display rule so the detail panel keeps both halves. */
+.om-skill-media.om-skill-split { display: grid; grid-template-columns: 1fr 1fr; }
 .om-skill-split-half { position: relative; overflow: hidden; }
 .om-skill-split-half :is(img, video) { position: absolute; top: 0; left: 50%; width: auto; height: 100%; max-width: none; object-fit: cover; }
 .om-skill-split-half[data-side="before"] :is(img, video) { transform: translateX(-25%); }
