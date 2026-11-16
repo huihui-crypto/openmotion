@@ -9,6 +9,7 @@ import { MotionIcon } from './icons';
 import styles from './TemplateLibraryDialog.module.css';
 import { motionApi } from './useWorkspace';
 import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration';
+import { useOptionalWorkspaceChrome } from './WorkspaceChromeContext';
 import './skills.css';
 
 /** Short source shown on cards: owner/repo (plus skill folder) or OpenMotion. */
@@ -22,6 +23,8 @@ const defaults: SkillParameters = { subject: '', duration: 10, aspect: '16:9', s
 /** Open-source motion techniques the user can hand to an Agent through OpenMotion MCP. */
 export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null; onSkillChange: (id: string | null) => void }) {
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
+  // Connecting an Agent reuses the workspace MCP page; standalone renders (tests) omit the button.
+  const chrome = useOptionalWorkspaceChrome();
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState('');
   // Same install guide as template instructions; the repository guide is the fallback until the service answers.
@@ -93,8 +96,13 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
         <span className="om-subtitle">{t('Agent instruction')}</span>
         <pre ref={instruction} data-manual={Boolean(manualCopy)} tabIndex={0}>{prompt}</pre>
       </section>
-      <button className="om-button" data-primary onClick={() => void copy()}><RemixIcon name="file-copy-line" size={16} />{t('Copy for Agent')}</button>
-      <p className="om-muted">{t('Paste it into Codex, Claude Code or another Agent connected to OpenMotion MCP.')}</p>
+      <footer className="om-skill-footer">
+        <div className="om-skill-actions">
+          <button className="om-button" data-primary onClick={() => void copy()}><RemixIcon name="file-copy-line" size={16} />{t('Copy for Agent')}</button>
+          {chrome && <button className="om-button" onClick={chrome.openConnections}><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</button>}
+        </div>
+        <p className="om-muted">{t('Paste it into Codex, Claude Code or another Agent connected to OpenMotion MCP. Not connected yet? Use Connect Agent first.')}</p>
+      </footer>
     </aside>}
   </div>;
 }
