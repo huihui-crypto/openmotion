@@ -20,6 +20,18 @@ The [Discord badge](badges/discord.svg), text-only [Feishu badge](badges/feishu.
 
 The local agent gallery and setup buttons use client marks from the [source icon collection](https://github.com/nexu-io/open-design/tree/07a86b1041531bfa0bec1006d9c0993985fee560/apps/web/public/agent-icons) and the [individual client artwork credits](models/README.md). Each mark identifies its respective client.
 
+## Skills page covers
+
+The Skills page bundles short screen recordings from `studio/src/motion/skill-covers/` (MP4 plus a JPEG poster each). The skill detail shows each cover's source next to the upstream repository. Other covers are hotlinked from the upstream pages named in `studio/src/motion/skillCatalog.ts`.
+
+| Cover | Source and license |
+| --- | --- |
+| three-js | Recording of the [Three.js keyframes example](https://threejs.org/examples/#webgl_animation_keyframes) (Three.js, MIT). Model *Littlest Tokyo* by Glen Fox, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). |
+| babylon-js | Rendered with [Babylon.js](https://github.com/BabylonJS/Babylon.js) (Apache-2.0). Model *AntiqueCamera* by UX3D, CC0, from [KhronosGroup/glTF-Sample-Assets](https://github.com/KhronosGroup/glTF-Sample-Assets). |
+| lume | Recording of the [LUME](https://lume.io/) demo (LUME, MIT). |
+| proton | Recording of the [Proton fireworks example](https://drawcall.github.io/Proton/examples/sparks/firework/fireworks.html) (Proton, MIT). |
+| gifenc, motion-canvas, ola, shifty, two-js, tween-js, konva, blender | OpenMotion samples made for this page with each library; no third-party footage. |
+
 ## Asset inventory
 
 | Asset | Source and use |

@@ -769,6 +769,6 @@ OpenMotion is licensed under [Apache-2.0](LICENSE). Third-party code, templates,
 | [OpusClip](https://www.opus.pro/calendar) | Product reference for distribution and [external scheduling](https://www.opus.pro/tools/instagram-reels-scheduler); no built-in connector |
 | [GSAP](https://github.com/greensock/GSAP) / [FFmpeg](https://ffmpeg.org/) | Animation and media dependencies with versions retained in [package.json](package.json) and the [runtime lock](scripts/runtime-lock.json) |
 
-[Asset sources](docs/readme/ASSETS.md) · [Additional showcase sources](docs/readme/brand-showcase/README.md) · [Font notices](web/design-system/fonts/NOTICES.txt) · [Studio license](studio/LICENSE)
+[Asset sources](docs/readme/ASSETS.md) · [Skills page covers](docs/readme/ASSETS.md#skills-page-covers) · [Additional showcase sources](docs/readme/brand-showcase/README.md) · [Font notices](web/design-system/fonts/NOTICES.txt) · [Studio license](studio/LICENSE)
 
 The former HTML Anything application is preserved on the [`legacy` branch](https://github.com/nexu-io/openmotion/tree/legacy). See the [repository migration guide](docs/repository-migration.md) for the active branch and distribution boundaries.

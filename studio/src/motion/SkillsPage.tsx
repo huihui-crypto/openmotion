@@ -93,6 +93,9 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       <p className="om-skill-output"><span>{t('You get')}</span>{t(selected.output)}</p>
       {selected.repository ? <a className="om-skill-source" href={selected.repository} target="_blank" rel="noopener noreferrer"><GitHubMark width={14} height={14} /><span>{selected.repository.replace('https://', '')}</span><span className="om-badge">{selected.license}</span><RemixIcon name="external-link-line" size={14} /></a>
         : <p className="om-skill-source"><RemixIcon name="flashlight-line" size={16} /><span>{t('OpenMotion skill')}</span></p>}
+      {selected.cover?.source && <p className="om-skill-credit"><span>{t('Cover source')}</span>{/^https?:\/\//.test(selected.cover.source)
+        ? <a href={selected.cover.source} target="_blank" rel="noopener noreferrer">{selected.cover.source.replace(/^https?:\/\//, '')}</a>
+        : selected.cover.source}</p>}
       <section className="om-skill-form" aria-label={t('Brief')}>
         <label><span>{t('What to make')}</span><span className="om-field"><textarea rows={2} maxLength={500} value={parameters.subject} placeholder={t(selected.example)} onChange={event => setParameters({ ...parameters, subject: event.target.value })} /></span></label>
         <fieldset><legend>{t('Duration')}</legend><div className="om-skill-options">{durations.map(value => <button key={value} className="om-nav-item" aria-pressed={parameters.duration === value} onClick={() => setParameters({ ...parameters, duration: value })}>{t('{count}s', { count: value })}</button>)}</div></fieldset>

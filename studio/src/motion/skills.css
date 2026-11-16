@@ -75,6 +75,9 @@
 .om-skill-source { display: flex; align-items: center; gap: var(--motion-space-8); min-width: 0; color: var(--motion-text); font-size: var(--motion-text-sm); text-decoration: none; }
 .om-skill-source > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .om-skill-source:hover > span:first-of-type { text-decoration: underline; }
+.om-skill-credit { margin: 0; color: var(--motion-muted); font-size: var(--motion-text-xs); overflow-wrap: anywhere; }
+.om-skill-credit > span { margin-inline-end: var(--motion-space-8); }
+.om-skill-credit a { color: inherit; }
 .om-skill-options { display: flex; flex-wrap: wrap; gap: var(--motion-space-6); }
 [data-motion-studio] .om-skill-options .om-nav-item { width: auto; padding-inline: var(--motion-space-12); }
 .om-skill-form { display: grid; gap: var(--motion-space-12); }
