@@ -11,6 +11,8 @@ export type WorkspaceChrome = {
   openHome: () => void;
   openAssets: () => void;
   assetsOpen: boolean;
+  openSkills: () => void;
+  skillsOpen: boolean;
   toggleSidebar: () => void;
   sidebarOpen: boolean;
   navigationCollapsed: boolean;

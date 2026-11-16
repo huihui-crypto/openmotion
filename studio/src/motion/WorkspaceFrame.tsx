@@ -1,4 +1,5 @@
 import { AssetsPage } from './AssetsPage';
+import { SkillsPage } from './SkillsPage';
 import { FeedbackLayer } from "../components/FeedbackLayer";
 import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18n';
@@ -35,7 +36,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
 }) {
   const { t } = useI18n();
   const [page, setPage] = useState(() => readWorkspacePage(location.search));
-  const { settings, assets: assetsOpen, templates: connectionsOpen } = page;
+  const { settings, assets: assetsOpen, skills: skillsOpen, templates: connectionsOpen } = page;
+  // Skills is a full page like Assets: it covers the editor without unmounting it.
+  const pageOpen = assetsOpen || skillsOpen;
   const libraryOpen = useRef(connectionsOpen);
   const libraryClosed = useRef(onLibraryClose); libraryClosed.current = onLibraryClose;
   useEffect(() => {
@@ -93,13 +96,14 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   }, [navigationCollapsed]);
   const [assetsVisited, setAssetsVisited] = useState(assetsOpen);
   useEffect(() => { if (assetsOpen) setAssetsVisited(true); }, [assetsOpen]);
-  const openAssets = useCallback(() => { navigatePage({ assets: true, settings: null, templates: false }); }, [navigatePage]);
+  const openAssets = useCallback(() => { navigatePage({ assets: true, skills: false, settings: null, templates: false }); }, [navigatePage]);
+  const openSkills = useCallback(() => { navigatePage({ skills: true, assets: false, settings: null, templates: false }); }, [navigatePage]);
   const openSettings = useCallback((section: SettingsSection) => {
-    navigatePage({ settings: section, assets: false, templates: false }); if (narrow) setSidebarOpen(false);
+    navigatePage({ settings: section, assets: false, skills: false, templates: false }); if (narrow) setSidebarOpen(false);
   }, [narrow, navigatePage]);
   const homeRef = useRef<HTMLDivElement>(null);
   const openHome = useCallback(() => {
-    navigatePage({ settings: null, assets: false, templates: false });
+    navigatePage({ settings: null, assets: false, skills: false, templates: false });
     setNavigationCollapsed(false);
     setSidebarOpen(true);
     // Returning home keeps the current editor mounted. The mobile drawer owns
@@ -107,9 +111,9 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     if (!narrow) requestAnimationFrame(() => homeRef.current?.querySelector<HTMLButtonElement>('.om-app-rail [aria-pressed="true"]')?.focus());
   }, [narrow, navigatePage]);
   const toggleHome = useCallback(() => {
-    if (settings || assetsOpen) openHome();
+    if (settings || pageOpen) openHome();
     else toggleSidebar();
-  }, [settings, assetsOpen, openHome, toggleSidebar]);
+  }, [settings, pageOpen, openHome, toggleSidebar]);
   useEffect(() => {
     const open = () => openSettings('local');
     window.addEventListener('motion:agents-open', open);
@@ -123,7 +127,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key === ',') { event.preventDefault(); openSettings('general'); }
-      if (event.altKey && event.key.toLowerCase() === 'b') { event.preventDefault(); navigatePage({ settings: null, assets: false, templates: false }); toggleSidebar(); }
+      if (event.altKey && event.key.toLowerCase() === 'b') { event.preventDefault(); navigatePage({ settings: null, assets: false, skills: false, templates: false }); toggleSidebar(); }
     };
     window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
   }, [openSettings, toggleSidebar, navigatePage]);
@@ -139,17 +143,17 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     openLibrary: (trigger, templateId) => { libraryTrigger.current = trigger ?? null; workspace.clearError(); navigatePage({ templates: true, template: templateId ?? null }); },
     openConnections: () => openSettings('mcp'),
     openModelSettings: () => openSettings('providers'),
-    openHome, openAssets, assetsOpen: assetsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
-    toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) || assetsOpen };
+    openHome, openAssets, assetsOpen: assetsOpen && !settings, openSkills, skillsOpen: skillsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
+    toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) || pageOpen };
   return <WorkspaceChromeContext.Provider value={value}>
     <StudioToastViewport {...navigationToast} />
-    <Dialog.Root open={sidebarOpen && narrow && !settings && !assetsOpen && !navigationCollapsed} onOpenChange={setSidebarOpen}>
+    <Dialog.Root open={sidebarOpen && narrow && !settings && !pageOpen && !navigationCollapsed} onOpenChange={setSidebarOpen}>
     <div ref={homeRef} className="om-application" data-embedded={presentation.embedded} data-navigation-collapsed={navigationCollapsed}>
       <ApplicationHeader settings={settings} />
       <ApplicationRail settings={settings} openSettings={openSettings} home={<WorkspaceHomeButton
         applicationRef={homeRef}
-        active={!settings && !assetsOpen} expanded={sidebarOpen && !settings && !assetsOpen && !navigationCollapsed}
-        previewEnabled={!narrow && !sidebarOpen && !settings && !assetsOpen && !navigationCollapsed && !connectionsOpen}
+        active={!settings && !pageOpen} expanded={sidebarOpen && !settings && !pageOpen && !navigationCollapsed}
+        previewEnabled={!narrow && !sidebarOpen && !settings && !pageOpen && !navigationCollapsed && !connectionsOpen}
         onToggle={toggleHome}>
         {close => <WorkspaceSidebar currentId={projectId} close={close} expand={() => { close(); toggleSidebar(); }} onNavigate={close} query={projectQuery} setQuery={setProjectQuery} />}
       </WorkspaceHomeButton>} />
@@ -160,10 +164,10 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
           <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
         </Dialog.Popup>
       </Dialog.Portal>
-      {!narrow && !settings && !assetsOpen && <div id="om-project-navigation" className="om-project-navigation om-collapsible" data-collapsed={!sidebarOpen || navigationCollapsed} aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
+      {!narrow && !settings && !pageOpen && <div id="om-project-navigation" className="om-project-navigation om-collapsible" data-collapsed={!sidebarOpen || navigationCollapsed} aria-hidden={!sidebarOpen || navigationCollapsed} inert={!sidebarOpen || navigationCollapsed}>
         <WorkspaceSidebar currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
       </div>}
-      <div className="motion-workspace-content" hidden={Boolean(settings) || assetsOpen} inert={Boolean(settings) || assetsOpen}>
+      <div className="motion-workspace-content" hidden={Boolean(settings) || pageOpen} inert={Boolean(settings) || pageOpen}>
         {visibleNotice && (workspace.error && workspace.errorSource === 'connection' && isConnectionFailure(notice)
           ? <FeedbackLayer><div data-testid="motion-connection-toast" className="pointer-events-none absolute top-16 left-1/2 z-91 flex max-w-[calc(100%-32px)] -translate-x-1/2 justify-center">
               <StudioToast message="Connection lost." tone="error" presentation="feedback" singleLine
@@ -174,6 +178,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         {children}
       </div>
       {(assetsVisited || assetsOpen) && <div className="om-assets-host" hidden={!assetsOpen || Boolean(settings)} inert={!assetsOpen || Boolean(settings)}><AssetsPage active={assetsOpen && !settings} /></div>}
+      {skillsOpen && !settings && <div className="om-skills-host"><SkillsPage skillId={page.skill} onSkillChange={skill => navigatePage({ skill })} /></div>}
       {settings && <SettingsSurfaceBoundary key={settings}>{settings === 'mcp'
         ? <McpConnectionPage previewsEnabled={!connectionsOpen} openLibrary={value.openLibrary} openProviders={value.openModelSettings} route={page} onRouteChange={navigatePage} />
         : <SettingsCenter navigationCollapsed={navigationCollapsed} section={settings} onSection={openSettings} openConnections={value.openConnections} providerId={page.provider} onProviderChange={provider => navigatePage({ provider })} />}</SettingsSurfaceBoundary>}
