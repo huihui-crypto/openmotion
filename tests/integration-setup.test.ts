@@ -95,7 +95,7 @@ test('project handoff checks returned identity fields and supplies retry-safe wr
       assert.match(write, /openmotion_open_preview.*requestId=beginRequestId/);
       assert.match(write, /openmotion_edit_project.*requestId=saveRequestId/);
       assert.match(write, /expectedRevision.*expectedVersionId/);
-      assert.match(write, locale === 'en' ? /distinct.*each round.*stable.*retrying/ : /每轮生成不同.*重试时保持对应值不变/);
+      assert.match(write, locale === 'en' ? /new requestId for each distinct write call.*every save.*byte-identical retry/ : /每次不同的写入调用.*每次保存.*生成新的 requestId.*完全相同的重试才复用/);
       if (integration) {
         assert.match(check, locale === 'en' ? /Data directory lines above/ : /上面的 projectId 和数据目录/);
       } else {
