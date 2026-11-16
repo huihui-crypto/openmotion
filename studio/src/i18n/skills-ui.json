@@ -74,7 +74,6 @@
     "Product promos from shot recipes.": "用镜头配方做产品宣传片。",
     "Follow its product-promo workflow: capture real product pages, pick shot recipe cards, storyboard, cut to the beat with sound design and check every frame. Build it as native OpenMotion HTML instead of Remotion.": "照它的产品宣传片流程：截取真实产品页面、挑选镜头配方卡、分镜、按节拍剪辑并配音效、逐帧检查。用 OpenMotion 原生 HTML 实现，不用 Remotion。",
     "A promo for my product built from real page screenshots": "用真实页面截图做一支产品宣传片",
-    "Campaigns": "大促活动",
     "Product promos": "产品宣传",
     "Explainers": "讲解视频",
     "Brand & covers": "品牌与封面",
@@ -82,9 +81,6 @@
     "Motion techniques": "动效技巧（开源库）",
     "OpenMotion skill": "OpenMotion 自有 Skill",
     "Open-source skills link to their upstream repository and license. OpenMotion borrows the workflow or technique; it does not bundle upstream code.": "开源 Skill 都标明上游仓库和许可证。OpenMotion 只借鉴流程和做法，不打包上游代码。",
-    "Countdown, price drop and offer reveal.": "倒计时、价格直降、优惠揭晓。",
-    "Build a sale promo in four beats: hook with the event name, slam the discount number, show the offer or product grid, end with a countdown and a clear call to action. Use only prices, dates and terms I give you; never invent discounts. Keep text large enough for mobile.": "按四个节拍做大促视频：开头点出活动名，折扣数字重重砸出，展示优惠或商品宫格，结尾倒计时加明确的行动按钮。价格、日期和条款只用我给的，不编造折扣；文字要大到手机上看得清。",
-    "Black Friday: 50% off the annual plan, ends Nov 30": "黑五：年付 5 折，11 月 30 日截止",
     "Studio and lifestyle product shots.": "棚拍和生活场景产品图。",
     "Follow its product-photoshoot modes (studio, lifestyle, hero banner, floating/splash, seasonal variation) to generate product stills, then animate them into a short product reel with camera moves and captions.": "照它的产品拍摄模式（棚拍、生活场景、首屏横幅、悬浮/飞溅、季节变体）生成产品图，再加镜头运动和字幕做成一段产品短片。",
     "A 10-second reel of my headphones: studio shot, lifestyle shot, hero banner": "我的耳机 10 秒短片：棚拍、生活场景、首屏横幅",
@@ -105,7 +101,6 @@
     "A 15-second ad with generated product shots and a sound effect on each cut": "一支 15 秒广告：生成产品图，每个切点配音效",
     "Keep the same person across shots.": "多个镜头保持同一个人。",
     "Borrow its identity-consistency approach: use the photos I provide as references for every generated shot so the same person appears throughout. Only use faces I have the right to use.": "借鉴它保持人物一致的做法：每个生成镜头都用我提供的照片作参考，让同一个人贯穿全片。只用我有权使用的人脸。",
-    "A short story video starring me, using my three photos": "用我的三张照片，做一支我当主角的小故事视频",
-    "Black Friday Sale": "黑五大促"
+    "A short story video starring me, using my three photos": "用我的三张照片，做一支我当主角的小故事视频"
   }
 }

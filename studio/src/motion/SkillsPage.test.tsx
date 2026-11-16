@@ -22,9 +22,9 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(27);
+  expect(motionSkills).toHaveLength(26);
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
-  expect(motionSkills.filter(skill => !skill.repository).map(skill => skill.id)).toEqual(['black-friday']);
+  expect(motionSkills.every(skill => skill.repository)).toBe(true);
   expect(new Set(motionSkills.map(skill => skill.id)).size).toBe(motionSkills.length);
 });
 
@@ -55,10 +55,9 @@ it('fills the brief and copies an MCP instruction for the Agent', async () => {
   expect(text).not.toMatch(/openmotion_(create_session|write_files|create_artifact)/);
 });
 
-it('routes generated media through OpenMotion and labels OpenMotion skills', () => {
-  const sale = skillPrompt(motionSkills.find(skill => skill.id === 'black-friday')!, { subject: '', duration: 15, aspect: '9:16', style: '' }, 'en');
-  expect(sale).toContain('Source: OpenMotion skill');
-  expect(sale).not.toContain('openmotion_media_use');
+it('routes generated media through OpenMotion only for media skills', () => {
+  const library = skillPrompt(motionSkills.find(skill => skill.id === 'anime-js')!, { subject: '', duration: 15, aspect: '9:16', style: '' }, 'en');
+  expect(library).not.toContain('openmotion_media_use');
   const photo = skillPrompt(motionSkills.find(skill => skill.id === 'higgsfield-product-photoshoot')!, { subject: '', duration: 10, aspect: '1:1', style: '' }, 'en');
   expect(photo).toContain('openmotion_media_use');
   expect(photo).toContain('https://github.com/higgsfield-ai/skills/tree/main/higgsfield-product-photoshoot');

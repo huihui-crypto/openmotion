@@ -1,14 +1,14 @@
 /**
  * Skills shown on the Skills page, grouped by the video the user wants to make.
- * Scenario skills (campaigns, promos, explainers…) come first; open-source motion
+ * Scenario skills (promos, explainers, covers…) come first; open-source motion
  * libraries are kept as techniques. Open-source entries link to their upstream
  * repository. OpenMotion only borrows the workflow or technique: the Agent builds
  * an editable native project through MCP.
  */
 export type SkillMotif = 'agent' | 'scene' | 'layout' | 'curve' | 'stagger' | 'math' | 'vector' | 'playback' | 'depth' | 'frames' | 'canvas' | 'particles'
   | 'icon' | 'sequence' | 'character' | 'globe' | 'levelup' | 'orbit' | 'promo'
-  | 'sale' | 'photo' | 'listing' | 'narration' | 'brand' | 'thumbnail' | 'generate' | 'identity';
-export type SkillCategory = 'Campaigns' | 'Product promos' | 'Explainers' | 'Brand & covers' | 'People & AI media' | 'Motion techniques';
+  | 'photo' | 'listing' | 'narration' | 'brand' | 'thumbnail' | 'generate' | 'identity';
+export type SkillCategory = 'Product promos' | 'Explainers' | 'Brand & covers' | 'People & AI media' | 'Motion techniques';
 
 export type MotionSkill = {
   id: string;
@@ -28,11 +28,9 @@ export type MotionSkill = {
   example: string;
 };
 
-export const skillCategories: SkillCategory[] = ['Campaigns', 'Product promos', 'Explainers', 'Brand & covers', 'People & AI media', 'Motion techniques'];
+export const skillCategories: SkillCategory[] = ['Product promos', 'Explainers', 'Brand & covers', 'People & AI media', 'Motion techniques'];
 
 export const motionSkills: MotionSkill[] = [
-  { id: 'black-friday', name: 'Black Friday Sale', tagline: 'Countdown, price drop and offer reveal.', category: 'Campaigns', motif: 'sale', license: 'OpenMotion',
-    technique: 'Build a sale promo in four beats: hook with the event name, slam the discount number, show the offer or product grid, end with a countdown and a clear call to action. Use only prices, dates and terms I give you; never invent discounts. Keep text large enough for mobile.', example: 'Black Friday: 50% off the annual plan, ends Nov 30' },
   { id: 'higgsfield-product-photoshoot', name: 'Product Photoshoot', tagline: 'Studio and lifestyle product shots.', category: 'Product promos', motif: 'photo', repository: 'https://github.com/higgsfield-ai/skills/tree/main/higgsfield-product-photoshoot', license: 'MIT', media: true,
     technique: 'Follow its product-photoshoot modes (studio, lifestyle, hero banner, floating/splash, seasonal variation) to generate product stills, then animate them into a short product reel with camera moves and captions.', example: 'A 10-second reel of my headphones: studio shot, lifestyle shot, hero banner' },
   { id: 'higgsfield-marketplace-cards', name: 'Marketplace Cards', tagline: 'Listing images and A+ modules.', category: 'Product promos', motif: 'listing', repository: 'https://github.com/higgsfield-ai/skills/tree/main/higgsfield-marketplace-cards', license: 'MIT', media: true,
