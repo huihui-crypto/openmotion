@@ -1,13 +1,19 @@
+import { validHostContext } from './tracking/host.ts';
 import type { HostContext } from './tracking/host.ts';
+import type { OmTracking } from './shared/tracking.ts';
+import { TaskLedger } from './tracking/task-ledger.ts';
+import { uuid } from './tracking/core.ts';
+import { recordDiagnostic } from './scripts/diagnostics.mjs';
 import { renderFilenameStem } from './shared/render-name.ts';
 import { createHash } from 'node:crypto';
+import { withProcessLock } from './shared/process-lock.ts';
 import { isAssetFileWithinLimit } from './shared/asset-limits.ts';
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import { constants, createReadStream, existsSync, readFileSync } from 'node:fs';
 import os from 'node:os';
-import { copyFile, cp, lstat, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, cp, lstat, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { delay, nativeProjectConfig, pluginRoot } from './hyperframes.ts';
+import { nativeProjectConfig, pluginRoot } from './hyperframes.ts';
 import { validateProject, duration } from './shared/legacy.ts';
 import type { Project as LegacyProject } from './shared/legacy.ts';
 import { exportExpectation } from './shared/export-expectation.ts';
@@ -28,10 +34,10 @@ const textExtensions = new Set(['.html', '.css', '.js', '.mjs', '.json', '.svg',
 const studioManifests = ['.hyperframes/studio-manual-edits.json', '.hyperframes/studio-motion.json'];
 export type SourceFile = { path: string; size: number; hash: string };
 export type FileEdit = { path: string; content: string };
-export type SavedProject = { id: string; title: string; templateId?: string; createdAt?: number; openedAt?: number };
+export type SavedProject = { id: string; title: string; titleKey?: 'OpenMotion Sample Video' | null; templateId?: string; createdAt?: number; openedAt?: number };
 export type ProjectCatalog = { activeId: string; projects: SavedProject[]; sessions?: CreativeSession[]; activeSessionId?: string };
-export type ExportJob = { id: string; projectId?: string; versionId?: string; requestId?: string; phase1?: boolean; stage?: string; verification?: unknown; trackingHost?: HostContext; revision: string; state: 'pending' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
-  createdAt: number; expiresAt: number; token?: string; workerPid?: number; file?: string; outputName?: string; error?: string; expected?: ExportExpectation };
+export type ExportJob = { id: string; projectId?: string; versionId?: string; requestId?: string; workId?: string; phase1?: boolean; stage?: string; verification?: unknown; trackingHost?: HostContext; revision: string; state: 'pending' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
+  createdAt: number; acceptedAt?: number; deadlineAt?: number; terminalAt?: number; observedOutcome?: 'success' | 'failure' | 'unknown' | 'cancelled'; expiresAt: number; token?: string; workerPid?: number; file?: string; outputName?: string; error?: string; expected?: ExportExpectation };
 export class Conflict extends Error { constructor() { super('工程已经被 Studio 或 Agent 更新，请重新读取 revision 后再修改。'); } }
 
 export function projectPath(name: string): string {
@@ -41,6 +47,10 @@ export function projectPath(name: string): string {
   return name;
 }
 function alive(pid?: number) { try { if (!pid) return false; process.kill(pid, 0); return true; } catch { return false; } }
+// A queued job expires at its deadline; a claimed job also needs a live worker.
+export function interruptedExport(job: ExportJob) {
+  return ['pending', 'running', 'cancelling'].includes(job.state) && (job.expiresAt < Date.now() || (job.state !== 'pending' && !alive(job.workerPid)));
+}
 async function atomic(filename: string, content: string | Buffer) {
   await mkdir(path.dirname(filename), { recursive: true });
   const temporary = path.join(path.dirname(filename), '.motion-write-' + crypto.randomUUID());
@@ -50,16 +60,20 @@ async function atomic(filename: string, content: string | Buffer) {
 
 export class WorkspaceStore {
   directory: string;
-  hashes = new Map<string, { signature: string; hash: string }>();
+  hashes = new Map<string, { signature: string; hash: Promise<string> }>();
   selectedProjectId?: string;
   workspaceStore?: WorkspaceStore;
+  // Read paths can close an interrupted export too, so they state the same terminal evidence.
+  tracking?: OmTracking;
   constructor(directory = defaultDataDir, projectId?: string) { this.directory = path.resolve(directory); this.selectedProjectId = projectId; }
   get projectId() { return this.selectedProjectId ?? this.projectCatalog().activeId; }
   forProject(id: string) {
     if (!this.projectCatalog().projects.some(project => project.id === id)) throw new Error('PROJECT_NOT_FOUND: 工程不存在');
     this.projectDirectoryFor(id);
     const scoped = new WorkspaceStore(this.directory, id);
+    scoped.hashes = this.hashes;
     scoped.workspaceStore = this.workspaceStore ?? this;
+    scoped.tracking = this.tracking;
     return scoped;
   }
   projectDirectoryFor(id: string) {
@@ -71,11 +85,18 @@ export class WorkspaceStore {
     let catalog: ProjectCatalog;
     try { catalog = JSON.parse(readFileSync(path.join(this.directory, 'projects.json'), 'utf8')); }
     catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') catalog = { activeId: 'project', projects: [{ id: 'project', title: '初始工程' }] };
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') catalog = { activeId: 'project', projects: [{ id: 'project', title: 'OpenMotion 示例短片', titleKey: 'OpenMotion Sample Video' }] };
       else throw error;
     }
     if (!Array.isArray(catalog.projects) || !catalog.projects.some(item => item.id === catalog.activeId)) throw new Error('工程目录记录损坏');
     for (const item of catalog.projects) { this.projectDirectoryFor(item.id); if (typeof item.title !== 'string') throw new Error('工程名称无效'); }
+    // Older workspaces did not distinguish the built-in label from a saved name.
+    // An explicit rename records null so even a matching title remains user-owned.
+    const initial = catalog.projects.find(item => item.id === 'project');
+    if (initial && initial.titleKey === undefined && ['初始工程', 'OpenMotion 示例短片'].includes(initial.title)) {
+      initial.title = 'OpenMotion 示例短片';
+      initial.titleKey = 'OpenMotion Sample Video';
+    }
     // Legacy conversations keep their IDs and files; all new sessions own artifact IDs.
     catalog.sessions ??= catalog.projects.map(project => ({ ...project, mode: 'motion', artifacts: [{ id: project.id, kind: 'motion-project', projectId: project.id, title: project.title, templateId: project.templateId }] }));
     catalog.activeSessionId ??= catalog.sessions.find(session => session.artifacts.some(artifact => artifact.projectId === catalog.activeId))?.id;
@@ -210,6 +231,7 @@ export class WorkspaceStore {
       const project = catalog.projects.find(item => item.id === id);
       if (!project) throw new Error('工程不存在');
       project.title = title;
+      project.titleKey = null;
       await atomic(path.join(this.directory, 'projects.json'), JSON.stringify(catalog));
       return catalog;
     });
@@ -217,19 +239,26 @@ export class WorkspaceStore {
   get jobFilename() { return path.join(this.directory, 'export.json'); }
 
   async lock<T>(change: () => Promise<T>): Promise<T> {
-    await mkdir(this.directory, { recursive: true });
-    const lockPath = path.join(this.directory, 'workspace.lock');
-    let lock; const end = Date.now() + 30_000;
-    while (!lock) {
-      try { lock = await open(lockPath, 'wx', 0o600); }
-      catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-        if (Date.now() > end) throw new Error('工程正在被另一进程使用，请检查 workspace.lock');
-        await delay(25);
-      }
+    return withProcessLock(path.join(this.directory, 'workspace.lock'), change);
+  }
+  async fileInfo(filename: string) {
+    const info = await stat(filename);
+    if (!info.isFile()) throw new Error('工程源文件类型无效：' + filename);
+    const signature = `${info.dev}:${info.ino}:${info.mtimeMs}:${info.ctimeMs}:${info.size}:${info.mode}`;
+    let cached = this.hashes.get(filename);
+    if (!cached || cached.signature !== signature) {
+      const hash = (async () => {
+        const hash = createHash('sha256');
+        for await (const chunk of createReadStream(filename)) hash.update(chunk);
+        const after = await stat(filename);
+        if (`${after.dev}:${after.ino}:${after.mtimeMs}:${after.ctimeMs}:${after.size}:${after.mode}` !== signature) throw new Conflict();
+        return hash.digest('hex');
+      })();
+      cached = { signature, hash }; this.hashes.set(filename, cached);
+      if (this.hashes.size > 10_000) this.hashes.delete(this.hashes.keys().next().value!);
+      void hash.catch(() => { if (this.hashes.get(filename)?.hash === hash) this.hashes.delete(filename); });
     }
-    try { return await change(); }
-    finally { await lock.close(); await rm(lockPath, { force: true }); }
+    return { size: info.size, hash: await cached.hash };
   }
 
   async safePath(name: string, directory = this.projectDirectory) {
@@ -245,16 +274,8 @@ export class WorkspaceStore {
   async files(directory = this.projectDirectory): Promise<SourceFile[]> {
     const files: SourceFile[] = [];
     const collect = async (name: string) => {
-      const filename = await this.safePath(name, directory), info = await stat(filename);
-      if (!info.isFile()) throw new Error('工程源文件类型无效：' + name);
-      const signature = `${info.ino}:${info.mtimeMs}:${info.ctimeMs}:${info.size}`;
-      let cached = this.hashes.get(filename);
-      if (!cached || cached.signature !== signature) {
-        const hash = createHash('sha256');
-        for await (const chunk of createReadStream(filename)) hash.update(chunk);
-        cached = { signature, hash: hash.digest('hex') }; this.hashes.set(filename, cached);
-      }
-      files.push({ path: name, size: info.size, hash: cached.hash });
+      const filename = await this.safePath(name, directory);
+      files.push({ path: name, ...await this.fileInfo(filename) });
       if (files.length > 5000) throw new Error('工程文件数超过 5000');
     };
     const walk = async (folder: string) => {
@@ -382,10 +403,7 @@ export class WorkspaceStore {
     const current = await this.get();
     let job = await this.job(jobId);
     if (this.selectedProjectId !== undefined && job?.projectId && job.projectId !== this.projectId) job = null;
-    if (job && ['pending', 'running', 'cancelling'].includes(job.state) && (job.expiresAt < Date.now() || (job.state !== 'pending' && !alive(job.workerPid)))) {
-      job.state = 'failed'; job.error = '后台渲染已中断或超时，请重新导出';
-      await this.saveJob(job);
-    }
+    if (job && interruptedExport(job)) job = (await this.reconcileInterruptedExport(job, this.tracking)).job;
     if (job?.state === 'completed') {
       try { if (!(await stat(this.exportPath(job))).size) throw new Error('empty'); }
       catch { job.state = 'failed'; job.error = '导出文件已不存在，请重新导出'; delete job.file; await this.saveJob(job); }
@@ -397,7 +415,7 @@ export class WorkspaceStore {
     return { revision: current.revision, hasProject: Boolean(current.project), projectId: this.projectId, projectTitle: catalog.projects.find(item => item.id === this.projectId)!.title, sessionId, activeSessionId: catalog.activeSessionId, exportJob: job };
   }
   snapshotDirectory(id: string) { return path.join(this.directory, 'jobs', id, 'project'); }
-  async requestExport(expectedRevision: string, options: Partial<Pick<ExportJob, 'phase1' | 'versionId' | 'requestId' | 'trackingHost'>> & { audio?: ExportExpectation['audio'] } = {}) {
+  async requestExport(expectedRevision: string, options: Partial<Pick<ExportJob, 'phase1' | 'versionId' | 'requestId' | 'workId' | 'trackingHost'>> & { audio?: ExportExpectation['audio'] } = {}) {
     return this.lock(async () => {
       const current = await this.get();
       if (current.revision !== expectedRevision) throw new Conflict();
@@ -405,25 +423,68 @@ export class WorkspaceStore {
       const previous = await this.job();
       if (previous && ['pending', 'running', 'cancelling'].includes(previous.state) && previous.expiresAt > Date.now() && (previous.state === 'pending' || alive(previous.workerPid))) throw new Error('EXPORT_BUSY: 已有导出任务正在等待或运行');
       const { audio, ...identity } = options;
-      const job: ExportJob = { ...identity, id: crypto.randomUUID(), projectId: this.projectId, revision: expectedRevision, state: 'pending', stage: 'queued', createdAt: Date.now(), expiresAt: Date.now() + 30 * 60_000 };
+      const acceptedAt = Date.now(), deadlineAt = acceptedAt + 30 * 60_000;
+      const job: ExportJob = { ...identity, id: crypto.randomUUID(), projectId: this.projectId, revision: expectedRevision, state: 'pending', stage: 'queued', createdAt: acceptedAt, acceptedAt, deadlineAt, expiresAt: deadlineAt };
       job.outputName = renderFilenameStem(this.projectCatalog().projects.find(project => project.id === this.projectId)?.title) + '.mp4';
       const snapshot = this.snapshotDirectory(job.id);
       try {
         for (const file of current.project.files) {
           const source = await this.safePath(file.path);
           const destination = path.join(snapshot, file.path);
-          await mkdir(path.dirname(destination), { recursive: true }); await copyFile(source, destination);
+          await mkdir(path.dirname(destination), { recursive: true }); await copyFile(source, destination, constants.COPYFILE_FICLONE);
         }
         if (this.revision(await this.files(snapshot)) !== expectedRevision || (await this.get()).revision !== expectedRevision) throw new Conflict();
         job.expected = await exportExpectation(this.directory, snapshot);
         if (audio) job.expected.audio = audio;
         await atomic(path.join(this.directory, 'jobs', job.id, 'job.json'), JSON.stringify(job));
         await atomic(this.jobFilename, JSON.stringify(job));
-        return job;
       } catch (error) { await rm(path.dirname(snapshot), { recursive: true, force: true }); throw error; }
+      await this.acceptTask(job);
+      return job;
     });
   }
+  // Every accepted export is ledgered here so the shared worker can close the same record.
+  // Auxiliary evidence must never turn an already-created export into a failed request.
+  private async acceptTask(job: ExportJob) {
+    try {
+      await new TaskLedger(this.directory).accept({ task_id: job.id, task_type: 'export', project_id: this.projectId,
+        ...(job.workId ? { run_id: job.workId } : {}), ...(job.requestId && uuid.test(job.requestId) ? { operation_id: job.requestId } : {}),
+        accepted_at: new Date(job.acceptedAt ?? job.createdAt).toISOString(), deadline_at: new Date(job.deadlineAt ?? job.expiresAt).toISOString() });
+    } catch (error) {
+      await recordDiagnostic(this.directory, { kind: 'task_ledger_failed', jobId: job.id, projectId: this.projectId,
+        message: error instanceof Error ? error.message : 'task ledger write failed' }).catch(() => {});
+    }
+  }
+  /** Close an export whose worker vanished or whose deadline passed; exactly one caller owns the transition. */
+  async reconcileInterruptedExport(seen: ExportJob, tracking = this.tracking): Promise<{ job: ExportJob | null; reconciled: boolean }> {
+    return this.lock(async () => {
+      const job = await this.job(seen.id);
+      if (!job || !interruptedExport(job)) return { job, reconciled: false };
+      job.state = 'failed'; job.error = '后台渲染已中断或超时，请重新导出'; job.terminalAt = Date.now(); job.observedOutcome = 'unknown';
+      await this.saveJob(job);
+      const ledger = await this.reconcileTask(job);
+      // Whichever caller owns this transition states the terminal evidence once, so a read never closes a task silently.
+      tracking?.track('task_terminal', { task_id: job.id, task_type: 'export', ...(job.projectId ? { project_id: job.projectId } : {}),
+        ...(job.workId ? { run_id: job.workId } : {}), outcome: 'unknown', applied: 'unknown',
+        terminal_at: ledger?.terminal_at ?? new Date(job.terminalAt ?? Date.now()).toISOString() }, undefined, 'worker',
+        validHostContext(job.trackingHost) ? job.trackingHost : undefined);
+      return { job, reconciled: true };
+    });
+  }
+  // An interrupted export is reconciled here, so its accepted task still gets a terminal outcome.
+  private async reconcileTask(job: ExportJob) {
+    try { return await new TaskLedger(this.directory).terminal(job.id, 'unknown', 'unknown'); }
+    catch (error) {
+      // A degraded acceptance leaves no record to close, which is not an error of its own.
+      if (error instanceof Error && error.message === 'TASK_LEDGER_NOT_FOUND') return null;
+      await recordDiagnostic(this.directory, { kind: 'task_ledger_failed', jobId: job.id, projectId: job.projectId,
+        message: error instanceof Error ? error.message : 'task ledger reconcile failed' }).catch(() => {});
+      return null;
+    }
+  }
   async claimExport() {
+    const pending = await this.job();
+    if (!pending || pending.state !== 'pending' || pending.expiresAt < Date.now()) return null;
     return this.lock(async () => {
       const job = await this.job();
       if (!job || job.state !== 'pending' || job.expiresAt < Date.now()) return null;
@@ -436,11 +497,11 @@ export class WorkspaceStore {
       const job = await this.job(id) ?? await this.job();
       if (!job || job.id !== id || job.token !== token || !['running', 'cancelling'].includes(job.state)) throw new Error('无效的导出任务凭据');
       if (job.state === 'cancelling') {
-        job.state = 'cancelled'; job.stage = 'cancelled'; delete job.token; delete job.workerPid;
+        job.state = 'cancelled'; job.stage = 'cancelled'; job.terminalAt = Date.now(); job.observedOutcome = 'cancelled'; delete job.token; delete job.workerPid;
         await this.saveJob(job); return job;
       }
       if (!error && !(await stat(this.exportPath(job))).size) throw new Error('Hyperframes 未生成视频');
-      job.state = error ? 'failed' : 'completed'; job.stage = job.state;
+      job.state = error ? 'failed' : 'completed'; job.stage = job.state; job.terminalAt = Date.now(); job.observedOutcome = error ? 'failure' : 'success';
       if (error) job.error = error.slice(-2000); else job.file = path.relative(this.directory, this.exportPath(job)).split(path.sep).join('/');
       delete job.token; delete job.workerPid;
       await this.saveJob(job); return job;

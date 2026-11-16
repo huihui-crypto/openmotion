@@ -9,6 +9,7 @@ export function publicToolName(name) {
 }
 
 export function legacyToolName(name) {
+  if (name === 'openmotion_assets_use' || name === 'motion_assets_use') return 'motion_assets';
   if (typeof name !== 'string' || !name.startsWith('openmotion_')) return name;
   const suffix = name.slice(11);
   return (sessionTools.has(suffix) ? 'design_' : 'motion_') + suffix;

@@ -28,6 +28,10 @@
 
 当委托强调酷炫与鲜明记忆点时，指出实际片段中最值得观看的视觉事件，以及它如何区别于普通内容展示。再查整片其他段落是在铺垫、展开或形成有效对比，还是只有这一处精彩、其余仍等待翻页。中后段若以主体表演承担看点，原型应覆盖该表演及落点；若承担阅读或收尾，检查它在整片中的对比职责。不因开头通过就默认其余成立，也不强制每段另造高潮。若记忆点只能用“顺滑、粒子多、有3D”概括，回查材料与创意；不要求所有段落同强度，也不按视觉事件数量打分。
 
+## Typography complaints
+
+For a font or typesetting complaint, follow [Typography](../../openmotion-production/references/typography.md#diagnose-a-typography-complaint): resource → hierarchy/reading → content fit. Check the affected frame and its actual reading window. Name the observed impact and compare the relevant correction in the existing issue record.
+
 ## PPT 感的诊断路径
 
 看到逐页展示感时，按最可能的层级定位，不必每次全部走完：

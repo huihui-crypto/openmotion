@@ -66,6 +66,7 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
     handleDuplicateFile,
     handleMoveFile,
     handleImportFiles,
+    refreshFileTree,
     handleContentChange,
   } = useFileManagerContext();
 
@@ -117,6 +118,7 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
             projectId={projectId}
             assets={assets}
             onImport={importFiles}
+            onLibraryImport={refreshFileTree}
             onDelete={handleDeleteFile}
             onRename={handleRenameFile}
             onAddAssetToTimeline={onAddAssetToTimeline}

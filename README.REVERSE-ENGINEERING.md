@@ -3,7 +3,11 @@
 <p align="center"><strong>Reverse engineering for any video</strong></p>
 
 <p align="center">
-  <a href="docs/readme/media/presenter-caption-remake.mp4"><picture><source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg"><img src="https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg" width="100%" alt="Dan Martell’s original beside an OpenMotion remake with Riya. A handwritten keyword sits between two lines of bold captions, with the editable Studio timeline below."></picture></a>
+  <a href="docs/readme/media/presenter-caption-remake.mp4"><picture>
+    <source type="image/webp" srcset="docs/readme/capcut-claude-motion-cover.webp">
+    <source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg">
+    <img src="https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg" width="100%" alt="Dan Martell’s original beside an OpenMotion remake with Riya. A handwritten keyword sits between two lines of bold captions, with the editable Studio timeline below.">
+  </picture></a>
 </p>
 
 <p align="center">
@@ -32,12 +36,12 @@
 
 # OpenMotion
 
-OpenMotion is **the first full-stack agentic video generator**. Upload a reference video or paste a social video link to **recreate it with your own footage, logo and copy**.
+OpenMotion is a **full-stack agentic video** studio and an **open-source alternative to Claude Motion and CapCut**. Upload a reference video or paste a social video link to **recreate it with your own footage, logo and copy**.
 
 - 🎬 **Full-stack video recreation.** Code video with HTML. Your agent breaks down the reference, rebuilds its shots and transitions, and generates missing assets. Edit the timing in Studio and render an MP4 from the same project.
 - 🔑 **BYOA — Bring Your Own Agent. BYOK — Bring Your Own Keys.** OpenMotion is free and open source. Recreate videos in [your local agent](#agent-wall) and use your own API keys at every layer.
 - 🧩 OpenMotion introduces **Motion.md**, a Markdown format for shot order, timing and transitions. Use it to share how a brand film works, shot by shot.
-- 🎛️ **Images, video, music and voice.** Generate artwork with Nano Banana 2, add a shot with Seedance 2.0, score it with Suno v4 and narrate it with Kokoro. [Explore all seven built-in models](#model-wall).
+- 🎛️ **Images, video, music and voice.** Create artwork with GPT Image 2.6, add a shot with Seedance 2.5, score it with Suno and narrate it with Eleven v4. [Explore the models and providers](#model-wall).
 
 <a id="agent-wall"></a>
 
@@ -334,7 +338,7 @@ The rotating field becomes a vinyl record; the title lands on its sleeve.<br>
 
 <a id="video-is-code"></a>
 
-### 1. The first full-stack agentic video generator
+### 1. A full-stack agentic video studio
 
 **Code video with HTML.** OpenMotion uses HTML, CSS and JavaScript to describe scenes, typography, layout, transitions and timing. Recorded footage, generated clips, images, music and voice-over become media inside the composition. The same project opens in Studio and renders to MP4.
 
@@ -412,7 +416,7 @@ Provider credentials stay in your workspace, separate from the video project. Yo
 
 <a id="make-your-motion-language-reusable"></a> <a id="motion-design-community"></a>
 
-### 3. 100+ Motion.md brand film studies + 890+ creative resources
+### 3. 300+ Motion.md brand film studies + 890+ creative resources
 
 OpenMotion introduces **Motion.md**. The first open-source collection breaks down brand films shot by shot, recording timing, transitions and the assets you can replace. In the [Stripe example](examples/brand-studies/stripe/MOTION.md), the flip stays on the same beat while a payment card becomes a film frame.
 
@@ -517,6 +521,8 @@ Select a preview to watch the clip. Entries marked “View component” also lin
 ### 4. Multimodal generation: images, video, music and speech
 
 **BYOK makes your multimodal accounts part of the video workflow.** Add your supported provider keys in **Model Settings**, choose your models, and generate images, video, music and speech through the Studio's **Model Gateway**. Preview candidates and adopt the results into the same project your agent and Studio edit. The supported local image path can reuse your existing agent login.
+
+Connect fal.ai in **Model Settings** and refresh its catalog to find GPT Image 2.6, Nano Banana 2.1, FLUX.3, Seedance 2.5, Kling 4.0, Wan 3.0 and Eleven v4. The presets below also appear before you refresh.
 
 <p><img src="docs/readme/models/codex.svg" width="133" alt="Codex Image">
 <img src="docs/readme/models/nano-banana.svg" width="133" alt="Nano Banana 2">

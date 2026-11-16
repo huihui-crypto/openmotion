@@ -23,10 +23,12 @@ afterEach(() => {
 });
 
 function mountDropEditor(elements: TimelineElement[] = [], uploadProjectFiles: (files: Iterable<File>) => Promise<string[]> = vi.fn()) {
-  let source = '<main data-composition-id="scene" data-duration="30"></main>';
+  let source = '<main data-composition-id="scene" data-duration="30">' + elements.map(e =>
+    `<${e.tag} id="${e.domId ?? e.id}" data-start="${e.start}" data-duration="${e.duration}" data-track-index="${e.authoredTrack ?? e.track}"></${e.tag}>`).join("") + '</main>';
   const write = vi.fn(async (_path: string, content: string) => { source = content; });
   const recordEdit = vi.fn(async () => {});
   const showToast = vi.fn();
+  const reloadPreview = vi.fn();
   const projectIdRef = { current: "project" };
   usePlayerStore.setState({ elements, timelineReady: true, duration: 30 });
   vi.stubGlobal("fetch", vi.fn(async () => Response.json({ content: source })));
@@ -35,7 +37,7 @@ function mountDropEditor(elements: TimelineElement[] = [], uploadProjectFiles: (
     const timelineElements = usePlayerStore((state) => state.elements);
     handlers = useTimelineAssetDropOps({
       projectIdRef, activeCompPath: path, timelineElements, showToast,
-      writeProjectFile: write, recordEdit, reloadPreview: vi.fn(), uploadProjectFiles,
+      writeProjectFile: write, recordEdit, reloadPreview, uploadProjectFiles,
     });
     return <I18nProvider initialLocale="zh-CN"><Timeline onAssetDrop={handlers.handleTimelineAssetDrop} /></I18nProvider>;
   }
@@ -45,7 +47,7 @@ function mountDropEditor(elements: TimelineElement[] = [], uploadProjectFiles: (
   roots.push(root);
   act(() => root.render(<Editor path="index.html" />));
   return {
-    host, write, recordEdit, showToast,
+    host, write, recordEdit, showToast, reloadPreview,
     drop: (...args: Parameters<typeof handlers.handleTimelineAssetDrop>) => handlers.handleTimelineAssetDrop(...args),
     files: (...args: Parameters<typeof handlers.handleTimelineFileDrop>) => handlers.handleTimelineFileDrop(...args),
     switchComposition: () => act(() => root.render(<Editor path="other.html" />)),
@@ -72,16 +74,59 @@ describe("timeline asset drop feedback", () => {
     expect(view.placeholders()).toHaveLength(0);
   });
 
+  it("keeps the spill-row placeholder in place through delayed metadata, save and discovery", async () => {
+    let metadata!: (duration: number) => void;
+    vi.spyOn(studioHelpers, "resolveDroppedAssetDuration").mockImplementation(() => new Promise(resolve => { metadata = resolve; }));
+    vi.spyOn(studioHelpers, "resolveDroppedAssetHasAudio").mockResolvedValue(false);
+    const peers: TimelineElement[] = [
+      { id: "main", domId: "main", tag: "div", start: 0, duration: 37.3, track: 0, authoredTrack: 0 },
+      { id: "spill", domId: "spill", tag: "div", start: 7.2, duration: 0.6, track: 1, authoredTrack: 0 },
+    ];
+    const view = mountDropEditor(peers);
+    let task!: Promise<void>;
+    act(() => { task = view.drop("assets/brand.svg", { start: 9, track: 1 }); });
+    const original = view.placeholders()[0];
+    const position = [original.style.left, original.style.top];
+    expect(view.write).not.toHaveBeenCalled();
+    await act(async () => { metadata(3); await task; });
+    expect(view.placeholders()[0]).toBe(original);
+    expect([original.style.left, original.style.top]).toEqual(position);
+    const pending = usePlayerStore.getState().pendingAssetDrops[0].element!;
+    expect(pending).toMatchObject({ start: 9, track: 1, authoredTrack: 1 });
+    act(() => usePlayerStore.setState({ elements: [...peers.map(e => ({ ...e, authoredTrack: e.track })), pending] }));
+    expect(view.placeholders()).toHaveLength(0);
+    expect(view.host.querySelectorAll('[role="row"]')).toHaveLength(2);
+  });
+
+  it("reserves a new visual row ahead of audio before metadata resolves", async () => {
+    let metadata!: (duration: number) => void;
+    vi.spyOn(studioHelpers, "resolveDroppedAssetDuration").mockImplementation(() => new Promise(resolve => { metadata = resolve; }));
+    const view = mountDropEditor([
+      { id: "visual", domId: "visual", tag: "div", start: 0, duration: 20, track: 0 },
+      { id: "music", domId: "music", tag: "audio", start: 0, duration: 20, track: 1, authoredTrack: 0 },
+    ]);
+    let task!: Promise<void>;
+    act(() => { task = view.drop("assets/image.png", { start: 9, track: 0, insertRow: 0, trackOrder: [0, 1] }); });
+    expect(view.host.querySelectorAll('[role="row"]')).toHaveLength(3);
+    const placeholder = view.placeholders()[0];
+    const position = [placeholder.style.left, placeholder.style.top];
+    await act(async () => { metadata(3); await task; });
+    expect([placeholder.style.left, placeholder.style.top]).toEqual(position);
+    expect(view.host.querySelectorAll('[role="row"]')).toHaveLength(3);
+  });
+
   it("shows upload feedback immediately, then keeps every accepted file visible through queued saves", async () => {
     let upload!: (paths: string[]) => void;
     const view = mountDropEditor([], () => new Promise(resolve => { upload = resolve; }));
     let task!: Promise<void>;
     act(() => { task = view.files([new File(["x"], "one.png"), new File(["x"], "two.png")], { start: 0, track: 0 }); });
-    expect(view.placeholders()).toHaveLength(1);
-    expect(view.placeholders()[0].getAttribute("aria-label")).toContain("one.png · two.png");
+    expect(view.placeholders()).toHaveLength(2);
+    expect(view.placeholders()[0].getAttribute("aria-label")).toContain("one.png");
+    expect(view.placeholders()[1].getAttribute("aria-label")).toContain("two.png");
     expect(view.write).not.toHaveBeenCalled();
     await act(async () => { upload(["one.png", "two.png"]); await task; });
     expect(view.placeholders()).toHaveLength(2);
+    expect(view.reloadPreview).toHaveBeenCalledTimes(1);
     const elements = usePlayerStore.getState().pendingAssetDrops.map(drop => drop.element!);
     expect(elements.every(Boolean)).toBe(true);
     expect(new Set(elements.map(element => element.key)).size).toBe(2);
@@ -96,6 +141,24 @@ describe("timeline asset drop feedback", () => {
     view.switchComposition();
     expect(view.placeholders()).toHaveLength(0);
     expect(view.write).not.toHaveBeenCalled();
+  });
+
+  it("opens the requested row for the first successful file after an earlier file fails", async () => {
+    vi.spyOn(studioHelpers, "resolveDroppedAssetDuration")
+      .mockRejectedValueOnce(new Error("Invalid image"))
+      .mockResolvedValue(3);
+    const view = mountDropEditor([
+      { id: "existing", domId: "existing", tag: "div", start: 0, duration: 30, track: 0 },
+    ], async () => ["bad.png", "good.png", "last.png"]);
+    await act(async () => view.files(
+      ["bad.png", "good.png", "last.png"].map(name => new File(["x"], name)),
+      { start: 9, track: 0, insertRow: 0, trackOrder: [0] },
+    ));
+    const drops = usePlayerStore.getState().pendingAssetDrops;
+    expect(drops[0].failed).toBe("add");
+    expect(drops.slice(1).map(drop => [drop.element?.start, drop.element?.authoredTrack])).toEqual([[9, 0], [12, 0]]);
+    expect(view.source()).toContain('id="existing" data-start="0" data-duration="30" data-track-index="1"');
+    expect(view.reloadPreview).toHaveBeenCalledTimes(1);
   });
 
   it("shows each repeated audio drop immediately, shares probing, and replaces each only when its clip appears", async () => {

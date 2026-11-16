@@ -23,11 +23,55 @@ function reported(event: string) {
 }
 
 describe('WebMCP registration and invocation tracking', () => {
-  it('covers exactly the 17 public descriptors through the real registrar, preserving schema, signals and replies', async () => {
+  it.each(['success', 'service_failure', 'transport_failure', 'invalid_arguments', 'cancelled'])(
+    'measures read action, outcome and exact elapsed time for %s without media or arguments', async mode => {
+      let now = 10;
+      vi.spyOn(performance, 'now').mockImplementation(() => now);
+      const request = vi.fn(async () => {
+        now = 52.4;
+        if (mode === 'transport_failure') throw new Error('PRIVATE_TRANSPORT');
+        return mode === 'service_failure' ? Response.json({ error: 'PRIVATE_ERROR', applied: false }, { status: 400 })
+          : Response.json({ assetId: crypto.randomUUID(), versionId: crypto.randomUUID(), modality: 'image', version: {}, previews: [],
+            content: [{ type: 'image', mimeType: 'image/png', data: 'PRIVATE_BASE64' }] });
+      });
+      const original = buildOpenMotionWebMcpTools(request).find(tool => tool.name === 'openmotion_assets_use')!;
+      const tool = withWebMcpTracking(original);
+      const controller = new AbortController();
+      if (mode === 'cancelled') controller.abort();
+      const args = { action: 'read', assetId: crypto.randomUUID(), ...(mode === 'invalid_arguments' ? {} : { versionId: crypto.randomUUID() }) };
+      await tool.execute(args, { signal: controller.signal });
+      await vi.dynamicImportSettled();
+      const [start] = reported('webmcp_tool_started'), [finish] = reported('webmcp_tool_finished');
+      expect(reported('webmcp_tool_started')).toHaveLength(1);
+      expect(reported('webmcp_tool_finished')).toHaveLength(1);
+      expect(start).toMatchObject({ tool_name: 'openmotion_assets_use', action: 'read' });
+      expect(finish).toMatchObject({ ...start, outcome: mode === 'success' ? 'success' : mode === 'cancelled' ? 'cancelled' : 'failure',
+        duration_ms: ['invalid_arguments', 'cancelled'].includes(mode) ? 0 : 42 });
+      expect(request).toHaveBeenCalledTimes(['invalid_arguments', 'cancelled'].includes(mode) ? 0 : 1);
+      expect(validProperties(studioEvents, 'webmcp_tool_finished', finish)).toBe(true);
+      expect(JSON.stringify(track.mock.calls)).not.toMatch(/PRIVATE|assetId|versionId|mimeType/);
+    });
+
+  it('keeps action from the start and omits unknown actions and actions on other tools', async () => {
+    const input = { action: 'get' };
+    const tool = withWebMcpTracking({ name: 'openmotion_assets', description: 'Compatibility tool', execute: async () => {
+      input.action = 'read'; return { ok: true };
+    } });
+    await tool.execute(input);
+    for (const [name, action] of [['openmotion_assets_use', 'PRIVATE_ACTION'], ['openmotion_get_project', 'read']])
+      await withWebMcpTracking({ name, description: 'Tool', execute: async () => ({ ok: true }) }).execute({ action });
+    await vi.dynamicImportSettled();
+    expect(reported('webmcp_tool_started')[0].action).toBe('get');
+    expect(reported('webmcp_tool_finished')[0].action).toBe('get');
+    expect(reported('webmcp_tool_finished').slice(1).every(call => !('action' in call))).toBe(true);
+    expect(JSON.stringify(track.mock.calls)).not.toContain('PRIVATE_ACTION');
+  });
+
+  it('covers exactly the 19 public descriptors through the real registrar, preserving schema, signals and replies', async () => {
     const original = [...buildOpenMotionWebMcpTools(vi.fn()), ...buildStudioTools({ current: {} as never })];
     expect([...webMcpToolNames].sort()).toEqual(original.map(tool => tool.name).sort());
-    expect(webMcpToolNames).toHaveLength(17);
-    expect(original.slice(0, 12).map(tool => tool.inputSchema)).toEqual(phase1Tools.map(tool => tool.inputSchema));
+    expect(webMcpToolNames).toHaveLength(19);
+    expect(original.slice(0, phase1Tools.length).map(tool => tool.inputSchema)).toEqual(phase1Tools.map(tool => tool.inputSchema));
     const reply = { ok: true, privateResult: 'PRIVATE_CONTENT' };
     const handlers = original.map(() => vi.fn(async () => reply));
     const tools = original.map((tool, i) => ({ ...tool, execute: handlers[i] }));
@@ -38,7 +82,7 @@ describe('WebMCP registration and invocation tracking', () => {
       registered.push(tool);
     } }, tools, controller.signal);
     await vi.dynamicImportSettled();
-    expect(reported('webmcp_registration_result')).toHaveLength(17);
+    expect(reported('webmcp_registration_result')).toHaveLength(19);
     const input = { prompt: 'PRIVATE_PROMPT', path: '/PRIVATE_PATH', token: 'PRIVATE_TOKEN' };
     for (const [i, tool] of registered.entries()) {
       expect(tool.inputSchema).toBe(tools[i].inputSchema);
@@ -49,8 +93,8 @@ describe('WebMCP registration and invocation tracking', () => {
     }
     await vi.dynamicImportSettled();
     const starts = reported('webmcp_tool_started'), finishes = reported('webmcp_tool_finished');
-    expect(starts).toHaveLength(17); expect(finishes).toHaveLength(17);
-    expect(new Set(starts.map(call => call.call_id)).size).toBe(17);
+    expect(starts).toHaveLength(19); expect(finishes).toHaveLength(19);
+    expect(new Set(starts.map(call => call.call_id)).size).toBe(19);
     for (const [i, call] of finishes.entries()) {
       expect(call).toMatchObject({ ...starts[i], outcome: 'success' });
       expect(call.duration_ms).toBeGreaterThanOrEqual(0);

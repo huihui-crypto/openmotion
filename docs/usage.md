@@ -75,7 +75,7 @@ openmotion 围绕已有 Agent 用户的产品演示、参考复刻、动态图�
 
 ### 安装完成后的引导（Codex / Agent）
 
-All Agent installation entries share the [installation-success reply rules](install.md#installation-success-reply). Briefly confirm installation and open the template library with `openmotion_open_preview({target:"templates"})`, or setup's `onboarding.preview.previewUrl` before native discovery. Report the actual presentation result; do not create a placeholder project. Keep technical verification internal. Missing or stale native tools can use `onboarding.directAccess` under its installed transport and policy checks, without requesting a restart or a new chat by default.
+All Agent installation entries share the [installation-success reply rules](install-onboarding.md#installation-success-reply). Briefly confirm installation and open the template library with `openmotion_open_preview({target:"templates"})`, or setup's `onboarding.preview.previewUrl` before native discovery. Report the actual presentation result; do not create a placeholder project. Keep technical verification internal. Missing or stale native tools can use `onboarding.directAccess` under its installed transport and policy checks, without requesting a restart or a new chat by default.
 
 ### 首次体验默认规则
 
@@ -114,6 +114,8 @@ macOS 同一数据目录中的多个 MCP 会话现在共用一个后台，每个
 需要 Node.js 22.18+ 和 npm。依赖固定为 Hyperframes **0.9.7**、GSAP **3.15.0**，并提交 lockfile。开发目录运行 `npm ci`；安装包首次启动时自动在 `MOTION_DATA_DIR/runtime/<lock-hash>/` 安装同一套依赖，不修改插件缓存或全局 npm 包。首次安装需要联网；Hyperframes 首次渲染可能下载浏览器、字体等资源。
 
 视频渲染需要 FFmpeg 和 Chrome/Chromium，成片技术校验还需要 ffprobe。可用 `HYPERFRAMES_BROWSER_PATH`、`HYPERFRAMES_FFMPEG_PATH`、`HYPERFRAMES_FFPROBE_PATH` 指定本机程序；旧的 `FFMPEG_PATH` / `FFPROBE_PATH` 也会传给 Hyperframes，原生变量优先。渲染失败返回上游错误，未生成 MP4 不会报告完成。
+
+Source startup also reuses completed native tools from the default OpenMotion installation caches (`~/.local/share/openmotion` on macOS, `%LOCALAPPDATA%/openmotion` on Windows, followed by `openmotion-dev`). It checks `cache/native` before the legacy `cache` layout and accepts only the current platform and hashes pinned in `scripts/runtime-lock.json`, with matching completion markers and executable files. Explicit paths above, including `MOTION_BROWSER_PATH`, take priority. Discovery completes before Studio starts, so waveform decoding and rendering inherit the same paths. It does not download tools or change installation/workspace configuration; when no matching cache exists, normal system-tool discovery remains available. Custom installation homes still require explicit executable paths. After changing paths or updating startup code, stop an idle existing service using the [shared-editor procedure](shared-editor.md) before restarting, since `npm start` can reuse a running backend.
 
 开发调试：
 

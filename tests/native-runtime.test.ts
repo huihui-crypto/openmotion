@@ -5,6 +5,7 @@ import os, { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { ensureNativeRuntime, nativeConfiguration, nativeRuntimeStatus, requireNativeRuntime, startNativePreparation } from '../scripts/npm-runtime.mjs';
 import { download, runFile, sha256, writeJSON, withCacheLock } from '../scripts/runtime-assets.mjs';
@@ -14,12 +15,37 @@ import { WorkspaceStore } from '../workspace.ts';
 
 async function fixture(t: any) {
   const directory = await mkdtemp(path.join(tmpdir(), 'motion-native-'));
-  t.after(() => rm(directory, { recursive: true, force: true }));
+  const completed = path.join(directory, 'preparation-completed');
+  const waitForPreparation = async () => {
+    const deadline = Date.now() + 10_000;
+    while (true) {
+      try { await readFile(completed); return; }
+      catch (error) { if (error.code !== 'ENOENT') throw error; }
+      assert(Date.now() < deadline, 'Detached native preparation did not finish');
+      await delay(20);
+    }
+  };
+  t.after(async () => {
+    // Readiness can precede the detached worker's last status/lock writes.
+    const launched = await readFile(path.join(directory, 'cache/fixture/preparation.log')).then(() => true, error => {
+      if (error.code === 'ENOENT') return false;
+      throw error;
+    });
+    if (launched) await waitForPreparation();
+    await rm(directory, { recursive: true, force: true });
+  });
   const keys = ['HYPERFRAMES_BROWSER_PATH', 'HYPERFRAMES_FFMPEG_PATH', 'HYPERFRAMES_FFPROBE_PATH', 'MOTION_BROWSER_PATH', 'FFMPEG_PATH', 'FFPROBE_PATH'];
   const previous = keys.map(key => process.env[key]); keys.forEach(key => delete process.env[key]);
   t.after(() => keys.forEach((key, i) => previous[i] === undefined ? delete process.env[key] : process.env[key] = previous[i]));
   const root = path.join(directory, 'app'); await mkdir(path.join(root, 'scripts'), { recursive: true });
-  for (const file of ['npm-runtime.mjs', 'runtime-assets.mjs']) await cp(new URL('../scripts/' + file, import.meta.url), path.join(root, 'scripts', file));
+  await cp(new URL('../scripts/npm-runtime.mjs', import.meta.url), path.join(root, 'scripts/npm-runtime-worker.mjs'));
+  await cp(new URL('../scripts/runtime-assets.mjs', import.meta.url), path.join(root, 'scripts/runtime-assets.mjs'));
+  await writeFile(path.join(root, 'scripts/npm-runtime.mjs'), `
+    import { writeFile } from 'node:fs/promises';
+    import { ensureNativeRuntime } from './npm-runtime-worker.mjs';
+    try { await ensureNativeRuntime(process.argv[2], process.argv.slice(3)); }
+    finally { await writeFile(${JSON.stringify(completed)}, 'done'); }
+  `);
   const assets: Record<string, any> = {};
   for (const id of ['browser', 'ffmpeg', 'ffprobe']) {
     const source = path.join(directory, id); await mkdir(source);
@@ -32,7 +58,7 @@ async function fixture(t: any) {
   const config = { schemaVersion: 1, cacheDirectory: path.join(directory, 'cache'), allowLocalAssets: true,
     runtime: { targets: { fixture: { platform: process.platform, arch: process.arch, ...assets } } } };
   await writeJSON(configFile, config);
-  return { directory, root, assets, config, configFile };
+  return { directory, root, assets, config, configFile, waitForPreparation };
 }
 
 test('native preparation checks executable tools without rejecting macOS 15 by kernel version', { skip: process.platform === 'win32' }, async t => {
@@ -46,10 +72,10 @@ test('native preparation checks executable tools without rejecting macOS 15 by k
 });
 
 test('cold status is readable without downloading, and runtime guards do not create export jobs', { skip: process.platform === 'win32' }, async t => {
-  const { directory, root } = await fixture(t);
+  const { directory, root, waitForPreparation } = await fixture(t);
   const initial = await nativeRuntimeStatus(root);
   assert(initial.components.every(item => item.stage === 'idle')); assert.equal(initial.capabilities.export, false);
-  await assert.rejects(readFile(path.join(directory, 'cache/preparation.log')), { code: 'ENOENT' });
+  await assert.rejects(readFile(path.join(directory, 'cache/fixture/preparation.log')), { code: 'ENOENT' });
   const store = new WorkspaceStore(path.join(directory, 'data'));
   const request = transport(store, { nativeRoot: root, runtimeRoot: root, studio: { alive: () => true } as any });
   const status = await request('/motion-api/runtime'); assert.equal(status.status, 200);
@@ -58,8 +84,8 @@ test('cold status is readable without downloading, and runtime guards do not cre
   const response = await request(`/api/projects/${store.projectId}/render`, { method: 'POST' });
   assert.equal(response.status, 409); assert.equal((await response.json()).applied, false);
   assert.equal(await store.job(), null);
-  // Join the detached preparation before fixture cleanup.
-  await ensureNativeRuntime(root);
+  // Wait for the worker started by the guard, not another concurrent preparer.
+  await waitForPreparation();
   assert.equal((await nativeRuntimeStatus(root)).capabilities.export, true);
 });
 
@@ -87,7 +113,7 @@ test('concurrent processes and app versions share one download per native asset'
 });
 
 test('one failed component remains visible and retry reuses completed components', { skip: process.platform === 'win32' }, async t => {
-  const { root, assets } = await fixture(t);
+  const { root, assets, waitForPreparation } = await fixture(t);
   const original = await readFile(new URL(assets.browser.url)); await writeFile(new URL(assets.browser.url), 'bad browser');
   await assert.rejects(ensureNativeRuntime(root), /SHA256 mismatch/);
   const failed = await nativeRuntimeStatus(root);
@@ -98,7 +124,7 @@ test('one failed component remains visible and retry reuses completed components
   const ready = await readFile(path.join(native.cache, 'ffmpeg-' + assets.ffmpeg.sha256, 'ready.json'), 'utf8');
   await rm(new URL(assets.ffmpeg.url)); await rm(new URL(assets.ffprobe.url));
   await writeFile(new URL(assets.browser.url), original);
-  await startNativePreparation(root, true); await ensureNativeRuntime(root);
+  await startNativePreparation(root, true); await waitForPreparation();
   assert.equal((await nativeRuntimeStatus(root)).capabilities.export, true);
   assert.equal(await readFile(path.join(native.cache, 'ffmpeg-' + assets.ffmpeg.sha256, 'ready.json'), 'utf8'), ready);
 });

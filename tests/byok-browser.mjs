@@ -111,7 +111,12 @@ try {
   await page.waitForSelector('.om-settings-center'); await settings('Model providers');
   await page.waitForFunction(() => document.querySelector('[data-studio-control="playback"]')?.getAttribute('aria-label') === 'Play');
   await page.waitForSelector('.om-provider-item');
-  assert(await page.$$eval('.om-provider-item', nodes => nodes.length) >= 70);
+  const listedProviders = await page.evaluate(async () => {
+    const { providers } = await (await fetch('/motion-api/settings/providers')).json();
+    return providers.filter(provider => provider.kinds.some(kind => kind !== 'text')).map(provider => provider.id);
+  });
+  assert.equal(await page.$$eval('.om-provider-item', nodes => nodes.length), listedProviders.length);
+  assert(listedProviders.includes('fal') && !listedProviders.includes('deepseek'));
   await directoryRecovery('light');
   await page.click('[aria-label="Filter providers"]'); await page.waitForSelector('[role=menu]');
   await shot('provider-filter-light'); await clickText('[role=menuitemradio]', 'Multimodal');
@@ -149,7 +154,9 @@ try {
   await shot('model-picker-light'); await page.keyboard.press('Escape');
   await page.reload({ waitUntil: 'domcontentloaded' }); await page.waitForSelector('.om-app-rail');
   await page.keyboard.down('Control'); await page.keyboard.press(','); await page.keyboard.up('Control');
-  await page.waitForSelector('.om-settings-center'); await settings('Model providers'); await page.waitForSelector('.om-provider-item');
+  // The shortcut replaces the URL-restored section; its old controls can still be mounted until navigation commits.
+  await page.waitForSelector('.om-settings-main[aria-label="General"]', { visible: true });
+  await settings('Model providers'); await page.waitForSelector('.om-provider-item');
   await page.type('[aria-label="Search providers"]', 'Studio fixture'); await page.click('.om-provider-item');
   await page.waitForFunction(() => document.querySelectorAll('.om-model-row').length === 3);
   assert.equal(await page.$eval('[aria-label="Studio fixture API key"]', node => node.value), '');
@@ -162,7 +169,8 @@ try {
   await page.waitForFunction(() => document.querySelector('.om-account-metrics')?.textContent.includes('12.50'));
   await shot('account-connected-light');
   await settings('Model providers');
-  await page.waitForFunction(() => document.querySelectorAll('.om-model-row').length === 5);
+  // The account catalogue holds five media rows (image, video, speech, the plain image model and music) and two language models.
+  await page.waitForFunction(() => document.querySelectorAll('.om-model-row').length === 7);
   await shot('account-models-light');
   await settings('Default Agent & models');
   const chooseImage = async (provider, model) => {

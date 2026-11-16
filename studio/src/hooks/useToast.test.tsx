@@ -59,6 +59,23 @@ it('coalesces repeated feedback and restarts its dismissal window', () => {
   expect(api.toasts).toHaveLength(0);
 });
 
+it('keeps independent undo notices reachable and prevents repeated action execution', async () => {
+  let finish!: () => void;
+  const undo = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
+  act(() => {
+    api.showToast('Asset removed', 'info', undefined, { key: 'a', label: 'Undo A', onClick: undo });
+    api.showToast('Asset removed', 'info', undefined, { key: 'b', label: 'Undo B', onClick: vi.fn() });
+    vi.advanceTimersByTime(10000);
+  });
+  expect(api.toasts).toHaveLength(2);
+  const action = host.querySelector<HTMLButtonElement>('.hf-toast-action')!;
+  await act(async () => { action.click(); action.click(); });
+  expect(undo).toHaveBeenCalledOnce(); expect(action.disabled).toBe(true);
+  await act(async () => finish());
+  act(() => vi.advanceTimersByTime(160));
+  expect(api.toasts).toHaveLength(1); expect(host.textContent).toContain('Undo B');
+});
+
 it('shows one compact notice for repeated errors without diagnostic controls', () => {
   act(() => {
     api.showToast('InternalError: /private/example.html', 'error');

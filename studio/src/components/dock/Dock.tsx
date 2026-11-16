@@ -25,7 +25,8 @@ import { DockTab } from "./DockTab";
 import { installTabFill } from "./dockTabFill";
 import { createSidePanelMotion } from "./dockSidePanelMotion";
 import { createResponsiveDockSides } from "./dockResponsiveSides";
-import { addRegisteredPanel, applySideMinimums, buildEditLayout, defaultSideWidths, isSideCollapsed, COMPACT_DOCK_WIDTH, SIDE_FOCUS_DOCK_WIDTH } from "./dockLayout";
+import { savedSideWidths, type SideWidths } from "./dockSideSizing";
+import { addRegisteredPanel, applySideMinimums, buildEditLayout, defaultSideWidths, isSideCollapsed, COMPACT_DOCK_WIDTH } from "./dockLayout";
 import { DOCK_PANEL_COMPONENT, parseDockLayout } from "./dockLayoutSchema";
 import { useDockLayoutStore, type DockController, type DockSnapshot } from "./dockLayoutStore";
 import {
@@ -102,11 +103,12 @@ interface DockOptions {
   storageKey?: string | undefined;
   dockWidth: () => number;
   fixedLayout?: boolean;
+  preferredWidths?: Partial<SideWidths>;
 }
 
-function createController(api: DockviewApi, options: DockOptions): DockController & { dispose: () => void; finishTransitions: () => void; reflowSides: () => void } {
+function createController(api: DockviewApi, options: DockOptions): DockController & { dispose: () => void; finishTransitions: () => void; reflowSides: () => void; hasResponsiveFit: () => boolean } {
   const motion = createSidePanelMotion();
-  const sides = createResponsiveDockSides(api, options.dockWidth, motion, () => useDockLayoutStore.getState().sync(snapshot(api)));
+  const sides = createResponsiveDockSides(api, options.dockWidth, motion, () => useDockLayoutStore.getState().sync(snapshot(api)), options.preferredWidths, options.fixedLayout);
   const setGroupCollapsed = (id: PanelId, collapsed: boolean, animate = false) => {
     if (options.fixedLayout) sides.setCollapsed(id, collapsed, animate);
   };
@@ -166,21 +168,21 @@ function createController(api: DockviewApi, options: DockOptions): DockControlle
     addRegisteredPanel(api, id, hasAnchor ? position : fallback);
   };
   return {
-    dispose: motion.dispose,
+    dispose: () => { motion.dispose(); sides.dispose(); },
     finishTransitions: motion.finishAll,
     reflowSides: () => { if (options.fixedLayout) sides.reflow(); },
     open,
     setGroupCollapsed,
+    canExpandSide: sides.canExpand,
+    hasResponsiveFit: sides.hasResponsiveFit,
     setPreviewVisible: sides.setPreviewVisible,
     resetSideWidths: sides.resetWidths,
     activate: (id) => {
+      if (options.fixedLayout && !sides.canExpand(id)) return;
       open(id);
       const panel = api.getPanel(id);
       if (!panel?.group.api.isMaximized()) api.exitMaximizedGroup();
       if (options.fixedLayout && id === "preview") sides.setPreviewVisible(true);
-      if (options.fixedLayout && id === "preview" && options.dockWidth() < SIDE_FOCUS_DOCK_WIDTH) {
-        for (const side of options.panels) setGroupCollapsed(side, true);
-      }
       setGroupCollapsed(id, false);
       if (panel && !panel.group.api.isVisible) panel.group.api.setVisible(true);
       panel?.api.setActive();
@@ -192,6 +194,7 @@ function createController(api: DockviewApi, options: DockOptions): DockControlle
     },
     setTitle: (id, title) => api.getPanel(id)?.api.setTitle(title),
     setGroupVisible: (id, visible) => {
+      if (options.fixedLayout && visible && !sides.canExpand(id)) return;
       const group = api.getPanel(id)?.group;
       if ((!options.fixedLayout || visible) && group && group.api.isVisible !== visible) group.api.setVisible(visible);
     },
@@ -204,6 +207,7 @@ function createController(api: DockviewApi, options: DockOptions): DockControlle
         for (const id of options.panels) setGroupCollapsed(id, true);
       }
       applySideMinimums(api, options.dockWidth(), options.fixedLayout);
+      if (options.fixedLayout) sides.resetWidths();
     },
   };
 }
@@ -216,7 +220,7 @@ function restoreOrBuild(api: DockviewApi, projectId: string | null, options: Doc
       // Expanded preview is a temporary viewing mode, not a saved workspace layout.
       api.fromJSON(stored);
       if (options.fixedLayout && api.hasMaximizedGroup()) api.exitMaximizedGroup();
-      return;
+      return stored;
     } catch {
       /* a layout the schema accepted but dockview cannot load: start over */
     }
@@ -264,8 +268,8 @@ function Root({
     ({ api }: DockviewReadyEvent) => {
       disposeRef.current();
       const options = { panels, storageKey, dockWidth, fixedLayout };
-      restoreOrBuild(api, projectId, options);
-      const controller = createController(api, options);
+      const restored = restoreOrBuild(api, projectId, options);
+      const controller = createController(api, { ...options, preferredWidths: savedSideWidths(restored) });
       if (fixedLayout) for (const id of panels) controller.open(id);
       const timeline = api.getPanel("timeline");
       if (fixedLayout && timeline) timeline.group.header.hidden = true;
@@ -303,7 +307,7 @@ function Root({
       const persist = () => {
         clearTimeout(timer);
         timer = setTimeout(() => {
-          if (fixedLayout && (dockWidth() < SIDE_FOCUS_DOCK_WIDTH || api.hasMaximizedGroup() || api.groups.some(group => isSideCollapsed(group) || group.element.hasAttribute("data-side-motion")))) return;
+          if (fixedLayout && (controller.hasResponsiveFit() || api.hasMaximizedGroup() || api.groups.some(group => isSideCollapsed(group) || group.element.hasAttribute("data-side-motion")))) return;
           writeStudioUiPreferences({ dockLayout: api.toJSON() }, undefined, projectId, storageKey);
         }, PERSIST_DEBOUNCE_MS);
       };

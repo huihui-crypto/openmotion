@@ -1,7 +1,8 @@
 import test from 'node:test';
+import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
-import { cp, readFile, stat, writeFile, mkdir, symlink } from 'node:fs/promises';
+import { cp, readFile, stat, writeFile, mkdir, symlink, chmod } from 'node:fs/promises';
 import path from 'node:path';
 import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
@@ -10,8 +11,39 @@ import { classifyModel, discoverModels, normalizeModels } from '../gateway/catal
 import { downloadMedia, mediaType, type Fetcher } from '../gateway/network.ts';
 import { callTool } from '../mcp.ts';
 import type { Agent } from '../shared/gateway.ts';
+import { generateCodexImage } from '../gateway/agents.ts';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
+test('Codex adapter retains service authorization failures, imports a fresh raster and rejects references or symlinks', { skip: process.platform === 'win32' }, () => fixture(async store => {
+  const bin = path.join(store.directory, 'fixture-codex'), previous = process.env.CODEX_BIN;
+  const script = async (body: string) => { await writeFile(bin, `#!${process.execPath}\n${body}\n`); await chmod(bin, 0o700); };
+  const work = path.join(store.directory, 'codex-work'); await mkdir(work);
+  const reference = path.join(work, 'reference.png'); await writeFile(reference, png);
+  process.env.CODEX_BIN = bin;
+  try {
+    await script(`process.stdin.resume(); process.stdin.on('end', () => { process.stdout.write(JSON.stringify({type:'item.completed',item:{type:'agent_message',text:'Image generation failed: 401 Unauthorized, personal engine key required'}})+'\\n'); });`);
+    await assert.rejects(generateCodexImage('Edit sky', work, new AbortController().signal, reference), /CODEX_IMAGE_PROXY_AUTH_REQUIRED.*model_provider/);
+    await script(`process.stdin.resume(); process.stdin.on('end', () => { process.stdout.write(JSON.stringify({type:'turn.failed',error:{message:'401 Unauthorized authentication_error'}})+'\\n'); });`);
+    await assert.rejects(generateCodexImage('Edit sky', work, new AbortController().signal, reference), error => {
+      assert.match(String(error), /CODEX_IMAGE_AUTH_REQUIRED.*active Codex provider/);
+      assert.doesNotMatch(String(error), /PROXY_AUTH_REQUIRED|missing or expired/); return true;
+    });
+    await script(`process.stdin.resume(); process.stdin.on('end', () => { process.stderr.write('image generation failed: 401 Unauthorized, personal engine '); setTimeout(() => process.stderr.write('key required\\n'), 10); });`);
+    await assert.rejects(generateCodexImage('Edit sky', work, new AbortController().signal, reference), /CODEX_IMAGE_PROXY_AUTH_REQUIRED/);
+    await script(`process.stdin.resume(); process.stdin.on('end', () => { console.error('image generation failed: upstream unavailable Bearer test-secret sk-private'); });`);
+    await assert.rejects(generateCodexImage('Edit sky', work, new AbortController().signal, reference), error => {
+      assert.match(String(error), /upstream unavailable/); assert.doesNotMatch(String(error), /test-secret|sk-private/); return true;
+    });
+    await script(`const fs = require('node:fs'); process.stdin.resume(); process.stdin.on('end', () => { fs.writeFileSync('result.webp', Buffer.from('${png.toString('base64')}', 'base64')); });`);
+    assert.deepEqual(await generateCodexImage('Edit sky', work, new AbortController().signal, reference), png);
+    await script(`process.stdin.resume();`);
+    await assert.rejects(generateCodexImage('Edit sky', work, new AbortController().signal, reference), /no generated image/);
+    await script(`require('node:fs').symlinkSync(${JSON.stringify(reference)}, 'image.png'); process.stdin.resume();`);
+    await assert.rejects(generateCodexImage('Edit sky', work, new AbortController().signal, reference));
+    const controller = new AbortController(); controller.abort(new Error('Cancelled fixture'));
+    await assert.rejects(generateCodexImage('Edit sky', work, controller.signal, reference), /Cancelled fixture/);
+  } finally { if (previous === undefined) delete process.env.CODEX_BIN; else process.env.CODEX_BIN = previous; }
+}, false));
 const agents = async (): Promise<Agent[]> => [{ id: 'codex', label: 'Codex', installed: true, authenticated: true, imageGeneration: true, available: true, reason: 'ready' }];
 const fetcher = (callback: (url: string, init: RequestInit) => unknown): Fetcher => (async (url, init = {}) => {
   const body = callback(String(url), init);
@@ -138,7 +170,7 @@ test('fal uses returned queue URLs and provider-native voice input; auth rejecti
   assert.equal(result.state, 'completed', result.error); assert.equal(seen.length, 3);
   assert.equal((await gateway.status()).providers.find(p => p.id === 'fal')!.verification, 'verified');
   gateway.options.fetcher = fetcher((_url, init) => {
-    assert.equal(JSON.parse(init.body as string).text, 'Hello');
+    assert.equal(JSON.parse(init.body as string).prompt, 'Hello');
     return new Response('test-fal-secret private provider diagnostics', { status: 401 });
   });
   const failed = await finish(gateway, (await gateway.submit({ modality: 'audio', prompt: 'Hello', model: 'fal:fal-ai/kokoro/american-english' })).id);
@@ -150,7 +182,7 @@ test('fal uses returned queue URLs and provider-native voice input; auth rejecti
 }));
 
 test('Atlas submits and polls video, maps actual media, and refuses credentials inside arbitrary parameters', () => fixture(async store => {
-  const mp4 = Buffer.concat([Buffer.from('00000018667479706d703432000000006d703432', 'hex'), Buffer.alloc(32)]);
+  const mp4 = await mediaBytes('video');
   const gateway = new ModelGateway(store, { detect: agents, pollMs: 1, download: async () => mp4, fetcher: fetcher((url, init) => {
     assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer atlas-secret');
     if (init.method === 'POST') { assert.ok(url.endsWith('/generateVideo')); assert.equal(JSON.parse(init.body as string).duration, 5); return { code: 200, data: { id: 'video-1' } }; }

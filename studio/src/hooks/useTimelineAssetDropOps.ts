@@ -39,13 +39,14 @@ function fileDropPlacement(
   dropped: TimelineDropPlacement | undefined,
   previous: TimelineElement | undefined,
 ): TimelineDropPlacement {
-  if (index === 0) return { ...dropped, ...next };
+  if (index === 0 || !previous) return { ...dropped, ...next };
   return previous ? { start: previous.start + previous.duration, track: previous.track } : next;
 }
 
 interface DropGesture {
   placed: TimelineElement[];
   onNewTrack: boolean;
+  deferRefresh?: boolean;
 }
 
 function timelineDropTarget(
@@ -235,9 +236,11 @@ export function useTimelineAssetDropOps({
         };
         finishPendingAssetDrop(pendingId, element);
         if (!stillActive()) return element;
-        selectAndRevealTimelineElement(key);
-        forceReloadSdkSession?.();
-        reloadPreview();
+        if (!gesture.deferRefresh) {
+          selectAndRevealTimelineElement(key);
+          forceReloadSdkSession?.();
+          reloadPreview();
+        }
         return element;
       } catch (error) {
         if (!stillActive()) return undefined;
@@ -253,7 +256,6 @@ export function useTimelineAssetDropOps({
       activeCompPath,
       recordEdit,
       showToast,
-      timelineElements,
       writeProjectFile,
       reloadPreview,
       isRecordingRef,
@@ -287,21 +289,39 @@ export function useTimelineAssetDropOps({
       const pid = projectIdRef.current;
       if (!pid) return;
       const scope = dropScopeRef.current;
-      const uploadingId = beginPendingAssetDrop(files.map(file => file.name).join(" · "), initialPlacement);
+      let cursor = initialPlacement.start;
+      const uploading = files.map(file => {
+        const duration = getTimelineAssetKind(file.name) === "image" ? 3 : undefined;
+        const id = beginPendingAssetDrop(file.name, { ...initialPlacement, start: cursor }, duration);
+        cursor += duration ?? 5;
+        return { id, name: file.name };
+      });
+      for (const pending of uploading.slice(1)) {
+        updatePendingAssetDrop(pending.id, { rowOwnerId: uploading[0].id });
+      }
       let uploaded: string[];
       try { uploaded = await uploadProjectFiles(files); }
       catch (error) {
-        if (!isPendingAssetDropActive(uploadingId)) return;
-        finishPendingAssetDrop(uploadingId);
+        if (scope !== dropScopeRef.current) return;
+        uploading.forEach(({ id }) => finishPendingAssetDrop(id));
         showToast(error instanceof Error ? error.message : "Upload failed: network error", "error");
         return;
       }
       if (scope !== dropScopeRef.current) return;
-      if (uploaded.length === 0) { finishPendingAssetDrop(uploadingId); return; }
-      // The upload returns accepted paths only; do not guess which rejected filename they replace.
-      dismissPendingAssetDrop(uploadingId);
-      const pendingIds = uploaded.map(path => beginPendingAssetDrop(path, initialPlacement));
-      const gesture: DropGesture = { placed: [], onNewTrack: false };
+      if (uploaded.length === 0) { uploading.forEach(({ id }) => finishPendingAssetDrop(id)); return; }
+      // Match accepted names; a rejected file must never inherit another file's clip.
+      const remaining = [...uploading];
+      const pendingIds = uploaded.map(path => {
+        const index = remaining.findIndex(file => file.name === path.split("/").pop());
+        const pending = index < 0 ? undefined : remaining.splice(index, 1)[0];
+        if (pending) { updatePendingAssetDrop(pending.id, { assetPath: path }); return pending.id; }
+        return beginPendingAssetDrop(path, initialPlacement);
+      });
+      remaining.forEach(({ id }) => dismissPendingAssetDrop(id));
+      pendingIds.forEach((id, index) => updatePendingAssetDrop(id, {
+        rowOwnerId: index === 0 ? undefined : pendingIds[0],
+      }));
+      const gesture: DropGesture = { placed: [], onNewTrack: false, deferRefresh: true };
       for (const [index, assetPath] of uploaded.entries()) {
         if (scope !== dropScopeRef.current) return;
         const nextPlacement = fileDropPlacement(index, initialPlacement, placement, gesture.placed.at(-1));
@@ -315,7 +335,13 @@ export function useTimelineAssetDropOps({
         );
         if (!clip) continue;
         gesture.placed.push(clip);
-        if (index === 0 && placement?.insertRow != null) gesture.onNewTrack = true;
+        if (nextPlacement.insertRow != null || nextPlacement.newTrack) gesture.onNewTrack = true;
+      }
+      const last = gesture.placed.at(-1);
+      if (last && scope === dropScopeRef.current) {
+        selectAndRevealTimelineElement(last.key ?? last.id);
+        forceReloadSdkSession?.();
+        reloadPreview();
       }
     },
     [
@@ -324,6 +350,8 @@ export function useTimelineAssetDropOps({
       dropAssetAt,
       projectIdRef,
       uploadProjectFiles,
+      forceReloadSdkSession,
+      reloadPreview,
       isRecordingRef,
       showToast,
     ],

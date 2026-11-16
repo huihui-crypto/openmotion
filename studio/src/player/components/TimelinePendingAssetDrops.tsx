@@ -4,6 +4,7 @@ import { usePlayerStore } from "../store/playerStore";
 import { dismissPendingAssetDrop } from "../store/pendingAssetDrops";
 import { CLIP_Y, TRACK_H } from "./timelineLayout";
 import { getTimelineAssetKind } from "../../utils/timelineAssetDrop";
+import { timelinePendingRows } from "./timelinePendingRows";
 
 export function TimelinePendingAssetDrops({
   contentOrigin, pixelsPerSecond, trackOrder, rowTop,
@@ -17,11 +18,12 @@ export function TimelinePendingAssetDrops({
   const drops = usePlayerStore((state) => state.pendingAssetDrops);
   const elements = usePlayerStore((state) => state.elements);
   const timelineReady = usePlayerStore((state) => state.timelineReady);
+  const { pendingRows } = timelinePendingRows(elements, drops);
   return drops.map((drop) => {
     if (timelineReady && drop.element && elements.some((element) => (element.key ?? element.id) === drop.element!.key)) return null;
     const placement = drop.placement;
-    const index = trackOrder.indexOf(drop.element?.track ?? placement.track);
-    const row = placement.insertRow ?? (index < 0 ? trackOrder.length : index);
+    const index = trackOrder.indexOf(pendingRows.get(drop.id) ?? placement.track);
+    const row = index < 0 ? trackOrder.length : index;
     const start = drop.element?.start ?? placement.start;
     const name = drop.assetPath.split("/").pop() ?? drop.assetPath;
     const audio = getTimelineAssetKind(drop.assetPath) === "audio";
@@ -53,7 +55,6 @@ export function TimelinePendingAssetDrops({
       >
         {!drop.failed && <RemixIcon name="loader-4-line" size={14} className="shrink-0 motion-safe:animate-spin" aria-hidden="true" />}
         {!compact && <span className="min-w-0 truncate">{drop.failed ? `${message} · ${name}` : name}</span>}
-        {!drop.failed && <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-0.5 bg-current opacity-20 motion-safe:animate-pulse" />}
         {drop.failed && <button
           type="button"
           className="ml-auto shrink-0 rounded p-1 focus-visible:outline focus-visible:outline-2"

@@ -1,9 +1,13 @@
 <p align="center"><img src="readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-<p align="center"><strong>拆解并复刻任何视频</strong></p>
+<p align="center"><strong>Claude Motion 与 CapCut 的开源替代方案</strong></p>
 
 <p align="center">
-  <picture><source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/45ee17734fb1315decef29c116fdd6794ee275fe83239328526b982a8ebe17ac.jpg"><img src="https://releases.open-design.ai/open-motion/media/sha256/45ee17734fb1315decef29c116fdd6794ee275fe83239328526b982a8ebe17ac.jpg" width="100%" alt="Dan Martell 原片与 OpenMotion 复刻并排展示：Riya 出镜，荧光黄手写关键词叠在两行白色粗体字幕之间。下方是 Studio 字幕时间轴。"></picture>
+  <picture>
+    <source type="image/webp" srcset="readme/capcut-claude-motion-cover.zh-CN.webp">
+    <source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/45ee17734fb1315decef29c116fdd6794ee275fe83239328526b982a8ebe17ac.jpg">
+    <img src="https://releases.open-design.ai/open-motion/media/sha256/45ee17734fb1315decef29c116fdd6794ee275fe83239328526b982a8ebe17ac.jpg" width="100%" alt="Dan Martell 原片与 OpenMotion 复刻并排展示：Riya 出镜，荧光黄手写关键词叠在两行白色粗体字幕之间。下方是 Studio 字幕时间轴。">
+  </picture>
 </p>
 
 <p align="center">
@@ -33,12 +37,12 @@
 
 # OpenMotion
 
-OpenMotion 是 **首个全栈 Agentic 视频生成器**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
+OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **Claude Motion 与 CapCut 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
 
 - 🎬 **全栈视频复刻。** Agent 拆解参考片，用 HTML 重建镜头和转场，并生成缺少的素材。你可以在同一工程里用 Studio 调整剪辑节奏，再渲染导出 MP4。
 - 🔑 **BYOA（自带 Agent）与 BYOK（自带 API 密钥）。** OpenMotion 开源免费。直接在[常用的本地 Agent](#agent-wall) 里复刻视频，每一层都能用自己的 API 密钥。
 - 🧩 OpenMotion 首次定义了 **Motion.md**，用 Markdown 记录镜头顺序、时长和转场。品牌宣传片的拆解可以随工程一起分享。
-- 🎛️ **图片、视频、音乐和语音。** 用 Nano Banana 2 生成图片、Seedance 2.0 补镜头、Suno v4 配乐、Kokoro 加旁白，再放进同一条时间轴。[查看 7 个内置模型](#model-wall)
+- 🎛️ **图片、视频、音乐和语音。** 用 GPT Image 2.6 生成画面、Seedance 2.5 补镜头、Suno 配乐，再用 Eleven v4 生成旁白。[查看模型与接入方式](#model-wall)
 
 <a id="快速开始"></a> <a id="quick-start"></a>
 
@@ -60,12 +64,22 @@ OpenMotion 是 **首个全栈 Agentic 视频生成器**。上传参考视频或�
 
 安装完成后，Agent 会打开本地模板库并推荐一个模板，确认选择后再创建工程。[源码安装指南](../install.md)
 
+### 安装已发布的 npm 应用（可选）
+
+上方源码安装仍是仓库安装的默认方式。如需明确选择包含预构建 Studio 及已配置在线模板库的已发布应用，请复制下面的指令，发给你的本地 Agent：
+
+```text
+阅读 https://github.com/nexu-io/openmotion/blob/main/docs/install.md，按照指南在当前的 Agent 中安装并连接已发布的 npm 应用。
+```
+
+[已发布应用的安装与版本通道选择](install.md)。已发布的版本可能落后于当前检出的源码。
+
 ### 克隆仓库并在本地启动
 
 需要 Git、npm 和 Node.js 26.11.1：
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
@@ -74,17 +88,6 @@ npm start
 
 打开启动时打印的实际 `studioUrl` 或 `previewUrl`，进入 **模板库**。Studio 和 MCP 读取此仓库中的模板。要让 Agent 连接同一份源码，请参阅 [源码接入与 MCP 配置](#agent-setup)。[仓库大小与可选素材](repository-storage.md)
 
-### 在 Agent 中安装已发布版
-
-此方式安装已发布的 npm 应用，使用其配置的在线模板目录。使用或贡献仓库模板，请选择上面的源码启动方式。
-
-复制下面的指令，发给你的本地 Agent，即可开始安装：
-
-```text
-阅读 https://github.com/nexu-io/openmotion/blob/main/docs/install.md，按照指南在当前 Agent 中安装并连接 OpenMotion。
-```
-
-安装完成后，Agent 会推荐一个模板供你体验，确认选择后再创建工程。[安装与首次使用指南](install.md#installation-success-reply)
 
 <a id="agent-wall"></a>
 
@@ -294,7 +297,7 @@ npm start
 
 <a id="what-is-openmotion"></a> <a id="openmotion-是什么"></a> <a id="video-is-code"></a>
 
-### 1. 首个全栈 Agentic 视频生成器
+### 1. 全栈 Agentic 视频创作工作室
 
 **用 HTML 写视频。** OpenMotion 用 HTML、CSS、JavaScript 描述场景、字体、布局、转场和时间。实拍、生成片段、图片、音乐和旁白作为合成素材，同一工程可在 Studio 打开并渲染为 MP4。
 
@@ -378,7 +381,7 @@ npm start
 
 <a id="make-your-motion-language-reusable"></a> <a id="motion-design-community"></a>
 
-### 3. 100 多份 Motion.md，让视频复刻有据可循
+### 3. 300 多份 Motion.md，让视频复刻有据可循
 
 OpenMotion 首次定义了 **Motion.md**：用 Markdown 记录镜头顺序、时长、转场和可替换素材。线上模板库将参考视频与动效说明集中在同一个详情页。
 
@@ -407,6 +410,8 @@ Brand Kit 章节记录品牌身份、语气和已确认的产品信息；Design 
 ### 4. 多模态生成：图片、视频、音乐与语音
 
 **BYOK 将你的多模态账号接入视频工作流。** 在 **Model Settings** 添加受支持的 Key、选择模型，通过 Studio 的 **Model Gateway** 生成图片、视频、音乐和语音。预览候选并采用到同一工程。受支持的本地图片路径可复用已有 Agent 登录。
+
+在**模型设置**中连接 fal.ai 并刷新目录，即可查找 GPT Image 2.6、Nano Banana 2.1、FLUX.3、Seedance 2.5、Kling 4.0、Wan 3.0 和 Eleven v4。下方列出的预设在刷新前也可查看。
 
 <p><img src="readme/models/codex.svg" width="133" alt="Codex Image">
 <img src="readme/models/nano-banana.svg" width="133" alt="Nano Banana 2">
@@ -445,7 +450,7 @@ Agent 安装成功后会直接打开编辑器的模板库，暂不创建项目�
 准备 Git、npm 和 **Node.js 26.11.1**。从源码预览和导出还需要 Chrome/Chromium 和 FFmpeg/FFprobe。[运行环境配置](usage.md)
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git openmotion
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git openmotion
 cd openmotion
 npm ci
 npm run build:studio
@@ -470,7 +475,7 @@ bash scripts/install-motion.command
 
 <a id="claude-setup"></a>
 
-**Claude Code** · 在本机安装器中选择 `--host claude`，然后在 Claude Code 中运行 `/mcp` 检查 OpenMotion 是否已连接。[本地安装器](npm-installation.md)
+**Claude Code** · 按[手动 MCP 配置](#manual-mcp)连接这份源码，再运行 `/mcp` 检查连接。
 
 <a id="deepseek-setup"></a>
 

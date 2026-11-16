@@ -526,6 +526,7 @@ export function resolveTimelineAssetDrop(
     contentOrigin: number;
     pixelsPerSecond: number;
     rowHeights?: readonly number[];
+    rowGeometry?: TimelineRowGeometry;
     trackOrder: number[];
   },
   clientX: number,
@@ -543,7 +544,7 @@ export function resolveTimelineAssetDrop(
   // Row from the shared row→y inverse so the top pad is honoured; a drop in the
   // pad above the first lane floors to row 0, a drop in the bottom pad rounds
   // past the last lane (getDefaultDroppedTrack then appends a new track).
-  const rowIndex = Math.floor(getTimelineRowFromY(contentY, input.rowHeights));
+  const rowIndex = Math.floor(input.rowGeometry?.getRowFromY(contentY) ?? getTimelineRowFromY(contentY, input.rowHeights));
   return {
     start,
     track: getDefaultDroppedTrack(input.trackOrder, rowIndex),

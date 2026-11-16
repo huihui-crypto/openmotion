@@ -43,3 +43,25 @@ it("keeps type filters and search without usage filters", async () => {
   act(() => chip("All 3").click());
   expect(host.querySelectorAll("[data-asset]")).toHaveLength(3);
 });
+
+it("finds a renamed image by its full filename, including extension and case-insensitively", async () => {
+  const host = document.createElement("div");
+  document.body.append(host);
+  root = createRoot(host);
+  await act(async () => root.render(<AssetsTab projectId="test" assets={["assets/original.png", "assets/other.png"]} />));
+  await act(async () => root.render(<AssetsTab projectId="test" assets={["assets/QA.png", "assets/other.png"]} />));
+
+  const search = (value: string) => act(() => {
+    const input = host.querySelector("input")!;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  search("QA.png");
+  expect(host.querySelectorAll("[data-asset]")).toHaveLength(1);
+  expect(host.querySelector("[data-asset]")?.textContent).toBe("assets/QA.png");
+
+  search("qa.PNG");
+  expect(host.querySelectorAll("[data-asset]")).toHaveLength(1);
+  expect(host.querySelector("[data-asset]")?.textContent).toBe("assets/QA.png");
+});

@@ -3,6 +3,11 @@ import type { GenerationJob, Model } from '../shared/gateway.ts';
 import { apiJson, ProviderError, type Fetcher } from './network.ts';
 import { normalizeModels } from './catalog.ts';
 import { opendesign } from './opendesign.ts';
+import { registeredProvider, type MediaProviderId } from '../shared/provider-registry.ts';
+
+const atlasOrigin = registeredProvider('atlascloud')!.baseUrl;
+const falOrigin = registeredProvider('fal')!.baseUrl;
+const waveSpeedOrigin = registeredProvider('wavespeed')!.baseUrl;
 
 export type ProviderContext = { key: string; fetcher: Fetcher; signal: AbortSignal;
   baseUrl?: string;
@@ -21,14 +26,14 @@ const atlas: ProviderAdapter = {
     const auth = { Authorization: `Bearer ${ctx.key}`, 'Content-Type': 'application/json' };
     const payload = { ...job.model.defaults, ...job.parameters, model: job.model.modelId, [job.model.mode === 'text-to-speech' ? 'text' : 'prompt']: job.prompt };
     const endpoint = { image: 'generateImage', video: 'generateVideo', audio: 'generateAudio' }[job.modality];
-    const data = predictionData(await apiJson(ctx.fetcher, `https://api.atlascloud.ai/api/v1/model/${endpoint}`, {
+    const data = predictionData(await apiJson(ctx.fetcher, `${atlasOrigin}/api/v1/model/${endpoint}`, {
       method: 'POST', headers: auth, body: JSON.stringify(payload), signal: ctx.signal,
     }), 'Atlas');
     if (!data.id || !/^[a-zA-Z0-9_-]+$/.test(String(data.id))) throw new Error('Atlas did not return a prediction ID');
     await ctx.progress('submitted', String(data.id));
     for (;;) {
       await delay(ctx.pollMs ?? (job.modality === 'video' ? 5000 : 2000), undefined, { signal: ctx.signal });
-      const result = predictionData(await apiJson(ctx.fetcher, `https://api.atlascloud.ai/api/v1/model/prediction/${data.id}`, { headers: auth, signal: ctx.signal }), 'Atlas');
+      const result = predictionData(await apiJson(ctx.fetcher, `${atlasOrigin}/api/v1/model/prediction/${data.id}`, { headers: auth, signal: ctx.signal }), 'Atlas');
       if (['completed', 'succeeded'].includes(result.status)) {
         const media = outputs(result, job.modality);
         if (!media.length) throw new Error('Atlas completed without media output');
@@ -40,7 +45,7 @@ const atlas: ProviderAdapter = {
   },
 };
 export async function waveSpeedModels(key: string, fetcher: Fetcher): Promise<Model[]> {
-  const rows = predictionData(await apiJson(fetcher, 'https://api.wavespeed.ai/api/v3/models', { headers: { Authorization: `Bearer ${key}` } }), 'WaveSpeed');
+  const rows = predictionData(await apiJson(fetcher, waveSpeedOrigin + '/api/v3/models', { headers: { Authorization: `Bearer ${key}` } }), 'WaveSpeed');
   if (!Array.isArray(rows)) throw new Error('WaveSpeed catalogue format changed');
   return normalizeModels('wavespeed', rows);
 }
@@ -48,7 +53,7 @@ const wavespeed: ProviderAdapter = {
   async generate(job, ctx) {
     const headers = { Authorization: `Bearer ${ctx.key}`, 'Content-Type': 'application/json' };
     const payload = { ...job.model.defaults, ...job.parameters, [job.model.mode === 'text-to-speech' ? 'text' : 'prompt']: job.prompt };
-    let data = predictionData(await apiJson(ctx.fetcher, `https://api.wavespeed.ai/api/v3/${job.model.modelId}`, {
+    let data = predictionData(await apiJson(ctx.fetcher, `${waveSpeedOrigin}/api/v3/${job.model.modelId}`, {
       method: 'POST', headers, body: JSON.stringify(payload), signal: ctx.signal,
     }), 'WaveSpeed');
     if (typeof data.id !== 'string' || !/^[a-zA-Z0-9_-]{1,180}$/.test(data.id)) throw new Error('WaveSpeed did not return a prediction ID');
@@ -62,7 +67,7 @@ const wavespeed: ProviderAdapter = {
       }
       if (['failed', 'cancelled', 'canceled', 'timeout', 'deleted'].includes(data.status)) throw new Error(`WaveSpeed generation ${data.status}`);
       await delay(ctx.pollMs ?? (job.modality === 'video' ? 5000 : 2000), undefined, { signal: ctx.signal });
-      data = predictionData(await apiJson(ctx.fetcher, `https://api.wavespeed.ai/api/v3/predictions/${taskId}/result`, { headers, signal: ctx.signal }), 'WaveSpeed');
+      data = predictionData(await apiJson(ctx.fetcher, `${waveSpeedOrigin}/api/v3/predictions/${taskId}/result`, { headers, signal: ctx.signal }), 'WaveSpeed');
       await ctx.progress('generating');
     }
   },
@@ -70,15 +75,15 @@ const wavespeed: ProviderAdapter = {
 function falUrl(raw: unknown): string {
   if (typeof raw !== 'string') throw new Error('fal did not return a queue URL');
   const url = new URL(raw);
-  if (url.origin !== 'https://queue.fal.run' || url.username || url.password) throw new Error('fal returned an untrusted queue URL');
+  if (url.origin !== falOrigin || url.username || url.password) throw new Error('fal returned an untrusted queue URL');
   return url.href;
 }
 const fal: ProviderAdapter = {
   async generate(job, ctx) {
     const headers = { Authorization: `Key ${ctx.key}`, 'Content-Type': 'application/json' };
-    const promptField = job.model.mode === 'text-to-speech' ? 'text' : 'prompt';
+    const promptField = job.model.mode === 'text-to-speech' && job.model.modelId !== 'fal-ai/kokoro/american-english' ? 'text' : 'prompt';
     const payload = { ...job.model.defaults, ...job.parameters, [promptField]: job.prompt };
-    const submitted = await apiJson(ctx.fetcher, `https://queue.fal.run/${job.model.modelId}`, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctx.signal });
+    const submitted = await apiJson(ctx.fetcher, `${falOrigin}/${job.model.modelId}`, { method: 'POST', headers, body: JSON.stringify(payload), signal: ctx.signal });
     const statusUrl = falUrl(submitted.status_url), resultUrl = falUrl(submitted.response_url);
     const cancelUrl = submitted.cancel_url ? falUrl(submitted.cancel_url) : undefined;
     if (typeof submitted.request_id !== 'string') throw new Error('fal did not return a request ID');
@@ -105,4 +110,4 @@ const fal: ProviderAdapter = {
   },
 };
 /** Add providers here without changing Studio, job persistence or the MCP contract. */
-export const providerAdapters: Record<'atlascloud' | 'fal' | 'opendesign' | 'wavespeed', ProviderAdapter> = { atlascloud: atlas, fal, opendesign, wavespeed };
+export const providerAdapters: Record<MediaProviderId, ProviderAdapter> = { atlascloud: atlas, fal, opendesign, wavespeed };

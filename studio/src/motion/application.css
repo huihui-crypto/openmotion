@@ -35,7 +35,7 @@
 .om-account-menu { width: 258px; max-width: calc(100vw - 24px); }
 .om-application .motion-workspace { min-width: 0; }
 .om-project-navigation { flex: 0 0 var(--om-project-navigation-width); min-width: 0; overflow: hidden; }
-.om-project-navigation[aria-hidden="true"] { flex-basis: 0; }
+.om-project-navigation[data-collapsed="true"] { flex-basis: 0; }
 .om-project-flyout { width: var(--om-project-navigation-width); height: var(--anchor-height); overflow: hidden; }
 .om-project-flyout .motion-sidebar { width: 100%; height: 100%; }
 :is(.om-project-flyout, .motion-sidebar-drawer) .motion-sidebar-brand { justify-content: space-between; margin-bottom: var(--motion-space-16); }
@@ -48,7 +48,7 @@
 .om-application .motion-sidebar-footer { border-top: 1px solid var(--motion-border-subtle); }
 .om-settings-center { --om-settings-nav-width: clamp(216px, 18vw, 248px); display: flex; flex: 1; min-width: 0; min-height: 0; }
 .om-settings-navigation-slot { flex: 0 0 var(--om-settings-nav-width); min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr); }
-.om-settings-navigation-slot[aria-hidden="true"] { flex-basis: 0; }
+.om-settings-navigation-slot[data-collapsed="true"] { flex-basis: 0; }
 .om-settings-navigation-clip { min-width: 0; min-height: 0; overflow: hidden; }
 .om-settings-navigation { width: var(--om-settings-nav-width); height: 100%; min-height: 0; display: flex; flex-direction: column; gap: var(--motion-space-12); padding: var(--motion-space-12) var(--motion-space-8); border-right: 1px solid var(--motion-border-subtle); }
 .om-settings-navigation > h1 { padding: var(--motion-space-4) var(--motion-space-10); }
@@ -143,7 +143,7 @@
 @media (max-width: 900px) {
   .om-settings-center { flex-direction: column; }
   .om-settings-navigation-slot { flex: 0 0 auto; }
-  .om-settings-navigation-slot[aria-hidden="true"] { flex-basis: auto; grid-template-rows: minmax(0, 0fr); }
+  .om-settings-navigation-slot[data-collapsed="true"] { flex-basis: auto; grid-template-rows: minmax(0, 0fr); }
   .om-settings-navigation { width: auto; height: auto; padding: var(--motion-space-6); border-right: 0; border-bottom: 1px solid var(--motion-border-subtle); }
   .om-settings-navigation > h1, .om-settings-navigation > .om-field, .om-settings-sections .om-eyebrow { display: none; }
   .om-settings-sections { display: none; }

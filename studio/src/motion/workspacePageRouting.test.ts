@@ -28,3 +28,16 @@ it('keeps legacy editor and template URLs and safely defaults unknown options', 
   expect(readWorkspacePage('?page=settings&section=unknown').settings).toBe('general');
   expect(readWorkspacePage('?page=mcp&host=unknown&setup=unknown')).toMatchObject({ settings: 'mcp', client: 'codex', setup: 'agent' });
 });
+
+
+it('round-trips Assets with editor context and preserves it underneath the template library', () => {
+  const source = 'http://localhost/?project=project&embed=1#project/project?t=12';
+  const assets = new URL(workspacePageHref(source, { assets: true }), source);
+  expect(readWorkspacePage(assets.search)).toMatchObject({ assets: true, settings: null });
+  expect(assets.hash).toBe(new URL(source).hash);
+  const library = new URL(workspacePageHref(assets.href, { templates: true }), source);
+  expect(workspacePageHref(library.href, { templates: false })).toBe(assets.pathname + assets.search + assets.hash);
+  const settings = new URL(workspacePageHref(assets.href, { settings: 'providers' }), source);
+  expect(readWorkspacePage(settings.search)).toMatchObject({ assets: false, settings: 'providers' });
+  expect(workspacePageHref(assets.href, { assets: false })).toBe(new URL(source).pathname + new URL(source).search + new URL(source).hash);
+});

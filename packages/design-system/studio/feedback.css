@@ -12,3 +12,36 @@
 .motion-error-notice-details pre { box-sizing: border-box; width: 100%; max-height: min(160px, 30dvh); overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 6px; padding: 8px; background: var(--color-bg-2); color: var(--color-text-2); border-radius: 5px; font: 11px/1.6 var(--font-mono); user-select: text; }
 .motion-error-notice-details [role=status] { display: block; font-size: 11px; overflow-wrap: anywhere; }
 .motion-error-notice-compact { padding: 0; border: 0; background: transparent; font-size: 11px; }
+
+.hf-toast-action {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--motion-space-4);
+  padding: var(--motion-space-4);
+  border-radius: var(--motion-radius-sm);
+  color: inherit;
+  cursor: pointer;
+}
+.hf-toast-action:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
+.hf-toast-action:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.hf-toast-action:disabled { opacity: .5; cursor: default; }
+
+[data-motion-ui] .motion-inline-toast {
+  position: fixed;
+  inset: auto var(--motion-space-16) var(--motion-space-16);
+  z-index: 1000;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--motion-space-16));
+  margin: 0 auto;
+  padding: var(--motion-space-10) var(--motion-space-16);
+  border: 1px solid var(--motion-border);
+  border-radius: var(--motion-radius-lg);
+  background: var(--motion-panel);
+  color: var(--motion-text);
+  font: var(--motion-text-sm)/var(--motion-leading-body) var(--motion-font-sans);
+  pointer-events: none;
+}
+[data-motion-ui] .motion-inline-toast[hidden] { display: none; }

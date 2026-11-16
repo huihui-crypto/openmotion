@@ -1,4 +1,5 @@
 import { RemixIcon } from "../../icons/RemixIcons";
+import { OverflowText } from "../ui/OverflowText";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -270,14 +271,11 @@ export function AudioRow({
               {name}
             </span>}
             {!playing && (meta?.duration || subtypeLabel) && (
-              <span className="text-[11px] text-panel-text-5 shrink-0">
-                {meta?.duration ? `${meta.duration}s${subtypeLabel ? " · " : ""}` : ""}
-                {subtypeLabel}
-              </span>
+              <OverflowText className="max-w-full truncate text-[11px] text-panel-text-5 shrink-0"
+                text={`${meta?.duration ? `${meta.duration}s${subtypeLabel ? " · " : ""}` : ""}${subtypeLabel ?? ""}`} />
             )}
             {used && (
-              <span className="text-[9px] font-medium text-accent-ink bg-panel-accent/10 px-1.5 py-px rounded-sm shrink-0">
-                {t("In use")}</span>
+              <OverflowText className="max-w-full truncate text-[9px] font-medium text-accent-ink bg-panel-accent/10 px-1.5 py-px rounded-sm shrink-0" text={t("In use")} />
             )}
             {(isCopied || copyFailed) && (
               <span
@@ -308,7 +306,7 @@ export function AudioRow({
             </div>
           )}
         </div>
-        <button type="button" className="motion-audio-menu-button" aria-label={t("Actions for {value0}", { value0: name })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
+        <button type="button" className="motion-audio-menu-button" aria-label={t("Actions for {value0}", { value0: name })} title={t("Actions for {value0}", { value0: name })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
       </div>
       {contextMenu && (
         <ContextMenu

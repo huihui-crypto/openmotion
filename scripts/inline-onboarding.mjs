@@ -19,13 +19,14 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en' 
   language = typeof language === 'string' ? language.trim().toLowerCase().split(/[-_]/)[0] : 'en';
   if (!['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'].includes(language)) language = 'en';
   const { loadTemplatePresentation, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
+  const { welcomeMarkdown } = await import('../mcp-ui/template-recommendations/i18n.ts');
   const directory = path.join(appRoot, 'mcp-ui/template-recommendations');
   const presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory });
   const match = presentation.content.text.match(/window\.__OPENMOTION_TEMPLATE_CARDS__=(.*?);<\/script>/s);
   assert(match, 'Verified production bootstrap is missing');
   const bootstrap = JSON.parse(match[1]);
   const recommendation = showTemplateRecommendations(presentation, {
-    templateIds: ['product-promo', 'nyt-graph', 'decision-tree'], onboarding: true, language,
+    templateIds: ['product-promo', 'nyt-graph', 'decision-tree'], language,
   });
   let fragment = await readFile(path.join(directory, 'inline.fragment.html'), 'utf8');
   const json = value => JSON.stringify(value).replaceAll('<', '\\u003c');
@@ -48,9 +49,10 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en' 
   return { status: 'prepared', mode: 'inline-document', path: output, bytes,
     sha256: createHash('sha256').update(fragment).digest('hex'), resourceVersion: presentation.resourceVersion,
     templateIds: recommendation.cards.map(card => card.templateId), language,
+    welcomeMarkdown: welcomeMarkdown(language),
     publicationRequired: true,
-    draftBehavior: 'copyable-brief; no task submission', nativeMcpSessionVerified: false,
-    instructions: 'This is a prepared runtime document, not a host-readable content reference. In the active chat, publish it with this script --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY, using that chat\'s explicitly permitted visualization directory. Never infer host readability from installation/data write access. After visibly opening the real template library, emit the published contentReference once. Preserve the production welcome/cards and verified full MP4s. Do not duplicate the welcome, restart the host or claim native MCP discovery. Recreate retains the copyable brief; no task is submitted. Preparation or publication alone does not prove visible delivery.' };
+    draftBehavior: 'clipboard-copy; no task submission', nativeMcpSessionVerified: false,
+    instructions: 'Complete onboarding in this same installation turn; never enqueue a user message or defer presentation. Initialize the browser and finish file reads/checks first. This runtime document needs publication with this script --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY using the active chat\'s explicitly permitted visualization directory; runtime write access alone is insufficient. With the returned reference ready, prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal the loaded tab and obtain its page state in one call. Do not reopen or inspect it again or repeat an open_in_codex opening. Complete mandatory browser bookkeeping next and immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. Preserve the production welcome/cards and full MP4s. Recreate copies the brief to the clipboard with a floating copied/paste Toast; no extra textbox or task submission. Preparation/publication is not visible delivery or native MCP discovery.' };
 }
 
 export async function publishInlineOnboarding({ source, expectedSHA256, hostDirectory }) {

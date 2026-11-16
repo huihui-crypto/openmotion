@@ -152,7 +152,7 @@ test('parallel CI preserves common gates and builds distribution inputs in the s
 
 test('the existing standalone gate rejects failed, cancelled, skipped and missing lanes', async () => {
   const gate = jobBody(await readFile(ciPath, 'utf8'), 'standalone');
-  const jobs = ['template-library', 'maintainability', 'checks', 'studio', 'distribution'];
+  const jobs = ['template-library', 'maintainability', 'checks', 'platform-reliability', 'studio', 'distribution'];
   assert(gate.includes('if: ${{ always() }}'));
   assert(gate.includes(`needs: [${jobs.join(', ')}]`));
   assert(gate.includes('VALIDATION_RESULTS: ${{ toJSON(needs) }}'));

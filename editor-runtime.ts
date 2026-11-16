@@ -102,7 +102,9 @@ export async function serveEditor(directory: string) {
   if (held.dev !== lock.dev || held.ino !== lock.ino) throw new Error('请通过共享编辑器启动器运行后台');
   const store = new WorkspaceStore(data), token = randomBytes(32).toString('hex'), instanceId = randomUUID();
   // All production macOS writers enter this authority; stale private workspace locks died with the old owner.
-  await rm(path.join(data, 'workspace.lock'), { force: true });
+  const legacyLock = path.join(data, 'workspace.lock');
+  const legacy = await lstat(legacyLock).catch(error => { if (error.code !== 'ENOENT') throw error; return null; });
+  if (legacy?.isFile() && legacy.size === 0) await rm(legacyLock);
   const previous = await store.job();
   if (previous && ['pending', 'running', 'cancelling'].includes(previous.state)) {
     previous.state = 'failed'; previous.error = 'Editor restarted; this export was interrupted and was not replayed';

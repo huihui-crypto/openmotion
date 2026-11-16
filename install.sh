@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Remote entry point: download the source, then use the repository installer.
+# Remote entry point: source by default; an explicit --package installs a pinned npm app.
 set -euo pipefail
 
 install_prebuilt() {
@@ -41,6 +41,10 @@ JS
 
 main() {
   if [ "${1:-}" = '--package' ]; then install_prebuilt "$@"; return; fi
+  if [ "$#" -ne 0 ]; then
+    echo 'Usage: install.sh [--package EXACT_SPEC [Codex setup options]]. With no arguments, install from source.' >&2
+    return 2
+  fi
   local motion_repo='https://github.com/nexu-io/openmotion.git'
   local motion_ref="${OPENMOTION_REF:-main}"
   local motion_destination="${OPENMOTION_INSTALL_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/open-motion}"

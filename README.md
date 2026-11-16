@@ -1,9 +1,13 @@
 <p align="center"><img src="docs/readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-<p align="center"><strong>Reverse engineering for any video</strong></p>
+<p align="center"><strong>The open-source Claude Motion &amp; CapCut alternative</strong></p>
 
 <p align="center">
-  <picture><source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg"><img src="https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg" width="100%" alt="Dan Martell’s original beside an OpenMotion remake with Riya. A handwritten keyword sits between two lines of bold captions, with the editable Studio timeline below."></picture>
+  <picture>
+    <source type="image/webp" srcset="docs/readme/capcut-claude-motion-cover.webp">
+    <source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg">
+    <img src="https://releases.open-design.ai/open-motion/media/sha256/730e1d6235820d39ba8adde42810d1165377992136a3b20290ad5d504abb527b.jpg" width="100%" alt="OpenMotion — the open-source Claude Motion and CapCut alternative. Dan Martell’s original and an OpenMotion remake with Riya appear beside each other above the editable Studio timeline.">
+  </picture>
 </p>
 
 <p align="center">
@@ -33,12 +37,12 @@
 
 # OpenMotion
 
-OpenMotion is **the first full-stack agentic video generator**. Upload a reference video or paste a social video link to **recreate it with your own brand kit and copy**.
+OpenMotion is a **full-stack agentic video** studio and an **open-source alternative to Claude Motion and CapCut**. Upload a reference video or paste a social video link to **recreate it with your own brand kit and copy**.
 
 - 🎬 **Full-stack video recreation.** Code video with HTML. Your agent breaks down the reference, rebuilds its shots and transitions, and generates missing assets. Edit the timing in Studio and render an MP4 from the same project.
-- 🔑 **BYOA — Bring Your Own Agent. BYOK — Bring Your Own Keys.** OpenMotion is free and open source. Recreate videos in [your local agent](#agent-wall) and use your own API keys at every layer.
+- 🔑 **BYOA — Bring Your Own Agent. BYOK — Bring Your Own Keys.** OpenMotion is free and open source. Recreate videos in [your local agent](#agent-wall) with your own API keys. Supported agents include Claude Code, Codex, and WorkBuddy.
 - 🧩 OpenMotion introduces **Motion.md**, a Markdown format for shot order, timing and transitions. Use it to share how a brand film works, shot by shot.
-- 🎛️ **Images, video, music and voice.** Generate artwork with Nano Banana 2, add a shot with Seedance 2.0, score it with Suno v4 and narrate it with Kokoro. [Explore all seven built-in models](#model-wall).
+- 🎛️ **Images, video, music and voice.** Create artwork with GPT Image 2.6, add a shot with Seedance 2.5, score it with Suno and narrate it with Eleven v4. [Explore the models and providers](#model-wall).
 
 <a id="快速开始"></a> <a id="quick-start"></a>
 
@@ -60,12 +64,22 @@ Read https://github.com/nexu-io/openmotion/blob/main/install.md and follow the i
 
 After setup, the agent opens the local template library and suggests a template. Confirm the choice before creating a project. [Source installation guide](install.md)
 
+### Install the published npm app (optional)
+
+Source setup above remains the default for repository installation. To explicitly choose the published application with prebuilt Studio and its configured online catalog, copy this instruction into your local agent:
+
+```text
+Read https://github.com/nexu-io/openmotion/blob/main/docs/install.md and follow the instructions to install and connect the published npm application in the current agent.
+```
+
+[Published application installation and channel selection](docs/install.md). Published versions can lag behind this checkout.
+
 ### Run the repository locally
 
 Use Git, npm and Node.js 26.11.1:
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
@@ -74,17 +88,6 @@ npm start
 
 Open the actual `studioUrl` or `previewUrl` printed at startup, then choose **Template library**. Studio and MCP read the templates in this checkout. To connect your agent to this same copy, follow [source setup and MCP configuration](#agent-setup). [Clone size and optional media](docs/repository-storage.md)
 
-### Install the published app in your agent
-
-This installs the published npm application and uses its configured online catalog. To use or contribute repository templates, use the local source setup above.
-
-Copy this instruction into your local agent:
-
-```text
-Read https://github.com/nexu-io/openmotion/blob/main/docs/install.md and follow the instructions to install and connect OpenMotion in the current agent.
-```
-
-After installation, the agent offers a template to try. Confirm the choice before creating a project. [Installation and first-run guide](docs/install.md#installation-success-reply)
 
 <a id="agent-wall"></a>
 
@@ -294,7 +297,7 @@ Product tutorial + live demonstration<br>
 
 <a id="what-is-openmotion"></a> <a id="openmotion-是什么"></a> <a id="video-is-code"></a>
 
-### 1. The first full-stack agentic video generator
+### 1. A full-stack agentic video studio
 
 **Code video with HTML.** OpenMotion uses HTML, CSS and JavaScript to describe scenes, typography, layout, transitions and timing. Recorded footage, generated clips, images, music and voice-over become media inside the composition. The same project opens in Studio and renders to MP4.
 
@@ -380,7 +383,7 @@ Provider credentials stay in your workspace, separate from the video project. Yo
 
 <a id="make-your-motion-language-reusable"></a> <a id="motion-design-community"></a>
 
-### 3. 100+ Motion.md guides for video recreation
+### 3. 300+ Motion.md guides for video recreation
 
 OpenMotion introduces **Motion.md**: a Markdown format for shot order, timing, transitions and the assets you can replace. The online library brings reference videos and their motion guides into the same detail page.
 
@@ -410,6 +413,8 @@ Reference-only entries start a reconstruction workflow. When editable source is 
 
 **BYOK makes your multimodal accounts part of the video workflow.** Add your supported provider keys in **Model Settings**, choose your models, and generate images, video, music and speech through the Studio's **Model Gateway**. Preview candidates and adopt the results into the same project your agent and Studio edit. The supported local image path can reuse your existing agent login.
 
+Connect fal.ai in **Model Settings** and refresh its catalog to find GPT Image 2.6, Nano Banana 2.1, FLUX.3, Seedance 2.5, Kling 4.0, Wan 3.0 and Eleven v4. The presets below also appear before you refresh.
+
 <p><img src="docs/readme/models/codex.svg" width="133" alt="Codex Image">
 <img src="docs/readme/models/nano-banana.svg" width="133" alt="Nano Banana 2">
 <img src="docs/readme/models/flux.svg" width="133" alt="FLUX Schnell">
@@ -420,7 +425,7 @@ Reference-only entries start a reconstruction workflow. When editable source is 
 
 | Make what the video needs | Built-in model catalog examples | Bring it into your film |
 | --- | --- | --- |
-| **🖼️ Images** | Codex Image; Nano Banana 2 via Atlas Cloud; FLUX Schnell via fal.ai | Brand visuals, scene artwork and supporting images; reference-based editing through the supported Codex image path |
+| **🖼️ Images** | Codex Image; Nano Banana 2 via Atlas Cloud; FLUX Schnell via fal.ai | Brand visuals, scene artwork and supporting images; reference-based editing with Codex Image or an OpenDesign account image model that supports edits |
 | **🎬 Video** | Seedance 2.0 via Atlas Cloud; Wan 2.2 via fal.ai | Generated shots and B-roll to combine with your footage and motion |
 | **🎵 Music** | Suno v4 via Atlas Cloud | A soundtrack built around your mood and creative brief |
 | **🎙️ TTS / voice-over** | Kokoro via fal.ai | Narration from your approved script, placed alongside the visuals and music |
@@ -440,7 +445,7 @@ When choosing or replacing media, creation workflows share a [material sourcing 
 
 For agent-led installation, use the [installation instruction above](#quick-start). To run from source, follow the steps below.
 
-After a successful Agent-led installation, open the editor's template library in the current conversation, without creating a project. Browse and preview first; choose **Open and edit** to create an independent editable copy. Setup provides a direct library link even before the chat reloads MCP. See the [installation reply rules](docs/install.md#installation-success-reply).
+After a successful Agent-led installation, open the editor's template library in the current conversation, without creating a project. Browse and preview first; choose **Open and edit** to create an independent editable copy. Setup provides a direct library link even before the chat reloads MCP. See the [installation reply rules](docs/install-onboarding.md#installation-success-reply).
 
 During video creation and editing, the chat stays free of preview areas. OpenMotion presents the editable Studio when the final video is ready to preview, then shows [the final video in chat](docs/inline-video.md) after its MP4 export completes and passes verification. Native-host acceptance of an installed build remains separate.
 
@@ -449,7 +454,7 @@ If MCP tools are missing or fail to connect, use the installed [connection diagn
 Use Git, npm and **Node.js 26.11.1**. Source-based preview and export also need Chrome/Chromium and FFmpeg/FFprobe. [Runtime setup](docs/usage.md)
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
@@ -482,7 +487,7 @@ bash scripts/install-motion.command
 
 <a id="claude-setup"></a>
 
-**Claude Code** · Select `--host claude` in the local installer, then run `/mcp` in Claude Code to check the connection. [Local installation guide](docs/npm-installation.md)
+**Claude Code** · Connect this source checkout through the [manual MCP configuration](#manual-mcp), then run `/mcp` to check the connection.
 
 <a id="deepseek-setup"></a>
 
@@ -535,7 +540,7 @@ This copies instructions; it does not install the runtime or register MCP. Keep 
 }
 ```
 
-The **twelve public MCP tools** cover template discovery and details, project creation and reading, editing, preview, media import and BYOK generation, export, version restoration and cancellation. Shared workflow and engine guides are available through MCP resources. [Tool contract](docs/mcp-phase1-tools.md)
+The **fourteen public MCP names (including one asset compatibility alias)** cover template discovery and details, project creation and reading, editing, preview, media import and BYOK generation, reusable asset versions, export, version restoration and cancellation. Shared workflow and engine guides are available through MCP resources. [Tool contract](docs/mcp-phase1-tools.md)
 
 Find a template with `openmotion_list_templates`, inspect it with `openmotion_get_template`, then create an editable copy with `openmotion_create_project`. [Template catalog](docs/template-catalog.md)
 
@@ -655,7 +660,7 @@ Version-linked outcomes -> team memory / RAG -> evaluated Skill improvements
 
 </details>
 
-BYOA keeps the agent in your existing client; BYOK connects your supported model accounts. Studio and the local service manage the editable work, while provider credentials remain outside project files. The public phase-one MCP surface contains **twelve tools: nine project tools, two template catalog tools and one BYOK media-use tool**. Configure provider keys in Studio, then use `openmotion_media_use` for model discovery and media generation through the local Gateway service. Keys remain in the service; the public MCP contract does not include publishing.
+BYOA connects your existing Agent client; the Assets workspace supports direct model generation and reusable media. BYOK connects your supported model accounts. Studio and the local service manage the editable work, while provider credentials remain outside project files. The public phase-one MCP surface contains **fourteen names: nine project tools, two template catalog tools, one BYOK media-use tool and two names for the same workspace asset capability**. Configure provider keys in Studio, then use `openmotion_media_use` for model discovery and media generation through the local Gateway service. Use `openmotion_assets_use` (`openmotion_assets` remains compatible) to upload, inspect or generate reusable assets, retain versions and import a chosen version into a film. [Asset library guide](docs/assets.md). Keys remain in the service; the public MCP contract does not include publishing.
 
 #### Stack and source map
 

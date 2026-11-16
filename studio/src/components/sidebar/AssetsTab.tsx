@@ -1,3 +1,4 @@
+import { AssetImportMenu } from '../../motion/AssetLibraryImport';
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
@@ -15,18 +16,20 @@ import {
   type MediaCategory,
   type CopyFeedback,
   getCategory,
-  basename,
+  filename,
   CATEGORY_LABELS,
   FILTER_ORDER,
 } from "./assetHelpers";
 import { AudioRow } from "./AudioRow";
 import { AssetCard, FontRow } from "./AssetCard";
 import { studioApiFetch } from "../../utils/studioApiFetch";
+import type { FileTreeRefreshOptions } from '../../hooks/useFileTree';
 
 interface AssetsTabProps {
   projectId: string;
   assets: string[];
   onImport?: (files: FileList) => void | Promise<void>;
+  onLibraryImport?: (options: FileTreeRefreshOptions) => Promise<void>;
   onDelete?: (path: string) => void;
   onRename?: (oldPath: string, newPath: string) => void;
   onAddAssetToTimeline?: (path: string) => unknown;
@@ -105,30 +108,6 @@ export function deriveUsedPaths(elements: Array<{ src?: string }>): Set<string> 
   return paths;
 }
 
-/** Import trigger. An import is an await, so the button owns the pending state
- *  instead of leaving the author clicking a control that looks idle. */
-function ImportButton({ importing, onClick }: { importing: boolean; onClick: () => void }) {
-  const { t } = useI18n();
-  const mvp = useMvpEditor();
-  return (
-    <button
-      onClick={onClick}
-      disabled={importing}
-      aria-busy={importing}
-      aria-label={t("Import media")}
-      title={t("Import media")}
-      className="motion-import-button flex shrink-0 items-center justify-center gap-1 rounded-md bg-panel-input px-2 py-[5px] text-[11px] font-medium text-panel-text-3 enabled:hover:text-panel-text-1 enabled:active:scale-[0.98] disabled:opacity-60 transition-colors"
-    >
-      {importing ? (
-        <RemixIcon name="loader-4-line" size={14} className="animate-spin" />
-      ) : !mvp ? (
-        <RemixIcon name="add-line" size={14} />
-      ) : null}
-      {importing ? t("Importing…") : t("Import")}
-    </button>
-  );
-}
-
 /** Empty list body. A query that matched nothing says so and offers a way out;
  *  a genuinely empty project gets the drop hint. */
 function EmptyState({
@@ -168,6 +147,7 @@ export const AssetsTab = memo(function AssetsTab({
   projectId,
   assets,
   onImport,
+  onLibraryImport,
   onDelete,
   onRename,
   onAddAssetToTimeline,
@@ -176,6 +156,11 @@ export const AssetsTab = memo(function AssetsTab({
   const mediaGateway = useMediaGateway();
   const mvp = useMvpEditor();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const projectRef = useRef(projectId);
+  projectRef.current = projectId;
+  const [latestImport, setLatestImport] = useState<{ projectId: string; path: string }>();
+  const importedPath = latestImport?.projectId === projectId ? latestImport.path : undefined;
   const [dragOver, setDragOver] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback>(null);
   const [importing, setImporting] = useState(false);
@@ -184,6 +169,17 @@ export const AssetsTab = memo(function AssetsTab({
   const [manifest, setManifest] = useState<
     Map<string, { description?: string; duration?: number; width?: number; height?: number }>
   >(new Map());
+
+  const handleLibraryImport = useCallback(async (owner: string, paths: string[]) => {
+    await onLibraryImport!({ projectId: owner, requiredPaths: paths });
+    if (projectRef.current !== owner) return;
+    setSearchQuery('');
+    setActiveFilter(getCategory(paths[0]) ?? 'all');
+    setLatestImport({ projectId: owner, path: paths[0] });
+  }, [onLibraryImport]);
+  useEffect(() => {
+    if (importedPath && listRef.current) listRef.current.scrollTop = 0;
+  }, [latestImport, importedPath]);
 
   const manifest404Ref = useRef<Set<string>>(new Set());
   const assetsKey = assets.join("|");
@@ -263,7 +259,7 @@ export const AssetsTab = memo(function AssetsTab({
     if (!searchQuery) return all;
     const q = searchQuery.toLowerCase();
     return all.filter((a) => {
-      if (basename(a).toLowerCase().includes(q)) return true;
+      if (filename(a).toLowerCase().includes(q)) return true;
       const rec = manifest.get(a);
       return rec?.description?.toLowerCase().includes(q);
     });
@@ -278,13 +274,15 @@ export const AssetsTab = memo(function AssetsTab({
     // Sort: used assets first within each category
     for (const cat of FILTER_ORDER) {
       groups[cat].sort((a, b) => {
+        if (a === importedPath) return -1;
+        if (b === importedPath) return 1;
         const aUsed = usedPaths.has(a) ? 0 : 1;
         const bUsed = usedPaths.has(b) ? 0 : 1;
         return aUsed - bUsed;
       });
     }
     return groups;
-  }, [mediaAssets, usedPaths]);
+  }, [mediaAssets, usedPaths, importedPath]);
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: mediaAssets.length };
     for (const cat of FILTER_ORDER) c[cat] = categorized[cat].length;
@@ -313,7 +311,7 @@ export const AssetsTab = memo(function AssetsTab({
             aria-label={t("Search assets")}
             className="min-w-0 flex-1"
           />
-          {onImport && <ImportButton importing={importing} onClick={() => fileInputRef.current?.click()} />}
+          {onImport && <AssetImportMenu projectId={projectId} importing={importing} onUpload={() => fileInputRef.current?.click()} onImported={onLibraryImport ? handleLibraryImport : undefined} />}
         </div>
         {!mvp && onImport && mediaGateway && <button className="motion-asset-generate" onClick={event => mediaGateway.openGenerator({ anchor: mediaPopoverAnchor(event.currentTarget) })}>{t("Generate media")}</button>}
         {onImport && (
@@ -337,6 +335,7 @@ export const AssetsTab = memo(function AssetsTab({
           <div className="flex gap-1.5 flex-wrap">
             <FilterChip
               onClick={() => setActiveFilter("all")}
+              className="max-w-full [overflow-wrap:anywhere]"
               active={activeFilter === "all"}
             >
               {t("All")}{" "}{counts.all}
@@ -346,6 +345,7 @@ export const AssetsTab = memo(function AssetsTab({
                 <FilterChip
                   key={cat}
                   onClick={() => setActiveFilter(activeFilter === cat ? "all" : cat)}
+                  className="max-w-full [overflow-wrap:anywhere]"
                   active={activeFilter === cat}
                 >
                   {t(CATEGORY_LABELS[cat])} {counts[cat]}
@@ -362,6 +362,7 @@ export const AssetsTab = memo(function AssetsTab({
         aria-label={t("Project assets")}
         tabIndex={0}
         data-assets-list
+        ref={listRef}
       >
         {mediaAssets.length === 0 ? (
           <EmptyState searchQuery={searchQuery} onClearSearch={() => setSearchQuery("")} />

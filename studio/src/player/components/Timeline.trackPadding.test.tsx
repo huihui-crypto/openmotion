@@ -83,6 +83,7 @@ describe("Timeline trackPadding", () => {
       `${RULER_H + TRACK_H + CLIP_Y}px`,
     );
     drag("dragover", RULER_H / 2);
+    await act(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
     expect(top(host.querySelector('[data-testid="timeline-insert-line"]'))).toBe(
       `${RULER_H - 0.5}px`,
     );

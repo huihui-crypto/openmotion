@@ -1,3 +1,4 @@
+import { PropertyLabel } from "./PropertyLabel";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -52,7 +53,7 @@ export function FlatRow({
   const track = useTrackDesignInput();
   return (
     <div className="group flex min-h-[30px] items-center justify-between gap-3" title={tooltip ? t(tooltip) : undefined}>
-      <span className={`text-[11px] ${VALUE_TIER_LABEL_CLASS[tier]}`}>{t(label)}</span>
+      <PropertyLabel label={t(label)} className={VALUE_TIER_LABEL_CLASS[tier]} />
       <span className="flex min-w-0 shrink-0 items-center gap-1.5">
         <span
           data-flat-row-value="true"
@@ -133,9 +134,9 @@ export function FlatSegmentedRow({
   const { t } = useI18n();
   const track = useTrackDesignInput();
   return (
-    <div className="flex min-h-[32px] items-center justify-between">
-      <span className="text-[11px] text-panel-text-3">{t(label)}</span>
-      <span className="flex items-center gap-0.5">
+    <div className="flex min-h-[32px] items-center justify-between gap-2">
+      <PropertyLabel label={t(label)} className="text-panel-text-3" />
+      <span className="flex shrink-0 items-center gap-0.5">
         {options.map((option, index) => (
           <span key={option.key} className="flex items-center">
             <button
@@ -420,8 +421,8 @@ export function FlatSlider({
   };
 
   return (
-    <div className="flex min-h-[28px] items-center gap-2.5">
-      <span className="w-[86px] shrink-0 text-[11px] text-panel-text-3">{t(label)}</span>
+    <div className="flex min-h-[28px] items-center gap-2.5 @max-[224px]/inspector:flex-wrap @max-[224px]/inspector:gap-y-1">
+      <PropertyLabel label={t(label)} className="max-w-[86px] text-panel-text-3 @max-[224px]/inspector:basis-full @max-[224px]/inspector:max-w-none" />
       <div
         data-flat-slider-track="true"
         role="slider"

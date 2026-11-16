@@ -33,6 +33,7 @@ import { groupMoveFloor, resolveGroupMovers } from "./timelineMultiDragPreview";
 import type { DraggedClipState, ResizingClipState } from "./timelineClipDragTypes";
 import { useLinkedClipPreferences } from "../../utils/linkedClipPreferences";
 import { heldAudioShiftRange, heldPartnerVideoBounds } from "./audioClipLink";
+import { isPendingTimelineRow } from "./timelinePendingRows";
 
 /** Snap-target builder closure supplied by the hook (closes over refs + store). */
 type BuildSnapTargets = (
@@ -157,6 +158,9 @@ function resolveDropPlacement(
   group: GroupDrag,
 ): { track: number; insertRow: number | null; start: number } {
   const { trackOrder, elements } = ctx;
+  if (isPendingTimelineRow(desiredTrack, elements)) {
+    return { track: drag.element.track, start: drag.element.start, insertRow: null };
+  }
   const dragKey = drag.element.key ?? drag.element.id;
   const audioTracks =
     ctx.audioTracks ?? new Set(elements.filter(isAudioTimelineElement).map((e) => e.track));

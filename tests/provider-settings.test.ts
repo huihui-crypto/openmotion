@@ -1,17 +1,29 @@
 import test from 'node:test';
+import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
-import { access, chmod, readFile, stat, writeFile } from 'node:fs/promises';
-import { spawn, type SpawnOptions } from 'node:child_process';
+import { access, chmod, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { execFile, spawn, type SpawnOptions } from 'node:child_process';
+import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fixture } from './fixtures.ts';
-import { gatewayFor } from '../gateway/service.ts';
+import { gatewayFor, ModelGateway } from '../gateway/service.ts';
 import { ProviderConnections, connectionBaseUrl } from '../gateway/connections.ts';
-import { OpenDesignAccount } from '../gateway/account.ts';
+import { OpenDesignAccount, type SignInRecord } from '../gateway/account.ts';
+import { validProperties } from '../tracking/core.ts';
+import { omEvents } from '../tracking/events.ts';
 import { providerDirectory, setDefaultModel } from '../gateway/settings.ts';
 import { mediaUse } from '../gateway/media-use.ts';
+import { AssetLibrary } from '../gateway/asset-library.ts';
+import { Phase1Service } from '../phase1.ts';
+import { pluginRoot } from '../hyperframes.ts';
 import type { Fetcher } from '../gateway/network.ts';
+import { providerRegistry, mediaProviders, registeredProvider } from '../shared/provider-registry.ts';
+import { providerAdapters } from '../gateway/providers.ts';
+import { transport } from './http.ts';
+import { callTool } from '../mcp.ts';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
 const binary = fileURLToPath(new URL('./fixtures/account-cli.mjs', import.meta.url));
@@ -22,6 +34,108 @@ async function signIn(account: OpenDesignAccount) {
   await writeFile(path.join(account.home, 'authorize'), 'yes');
   await until(async () => (await account.summary()).state === 'signed-in');
 }
+
+test('one registry supplies the settings directory and every dedicated media adapter', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  assert.equal(new Set(providerRegistry.map(provider => provider.id)).size, providerRegistry.length);
+  assert.deepEqual(Object.keys(providerAdapters).sort(), [...mediaProviders].sort());
+  const directory = await providerDirectory(gateway);
+  assert.deepEqual(directory.providers.map(provider => provider.id).sort(), providerRegistry.map(provider => provider.id).sort());
+  for (const provider of directory.providers) {
+    const definition = registeredProvider(provider.id)!;
+    assert.equal(provider.label, definition.label);
+    assert.equal(provider.baseUrlEditable, definition.baseUrlEditable);
+    assert.equal(provider.website, definition.website);
+    if (definition.integration === 'media') assert.equal(provider.docs, `/motion-api/models/providers/${provider.id}/reference`);
+  }
+  await gateway.close();
+}));
+
+test('legacy files retain credentials, models and defaults across shared HTTP, MCP and configuration writes', () => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const root = gateway.root, custom = 'custom-existing';
+  const model = { id: 'openai:picture', provider: 'openai', modelId: 'picture', label: 'Saved picture', kind: 'image', enabled: true, source: 'custom' };
+  const files = {
+    'config.json': { version: 1, providers: { codex: { enabled: false }, fal: { enabled: true, verification: 'verified', keyHash: createHash('sha256').update('legacy-fal-key').digest('hex'), checkedAt: 123 }, opendesign: { baseUrl: 'https://cloud.example', enabled: true } },
+      routes: { image: 'openai:picture' }, customModels: [{ id: 'fal:saved-model', provider: 'fal', modelId: 'saved-model', label: 'Saved media', modality: 'video', mode: 'text-to-video', source: 'custom' }] },
+    'secrets.json': { fal: 'legacy-fal-key', opendesign: 'legacy-cloud-key' },
+    'connections.json': { providers: { openai: { enabled: true }, [custom]: { custom: true, label: 'Saved endpoint', protocol: 'openai', baseUrl: 'https://saved.example/v1', enabled: true, revision: 'saved-revision' } },
+      models: [model, { id: custom + ':language', provider: custom, modelId: 'language', label: 'Saved language', kind: 'text', enabled: true, source: 'custom' }],
+      defaults: { text: custom + ':language' }, modelOverrides: { 'fal:saved-model': { group: 'Saved group', defaults: { duration: 5 } } } },
+    'connection-secrets.json': { openai: 'legacy-openai-key', [custom]: 'legacy-custom-key' },
+  };
+  await mkdir(root, { recursive: true });
+  for (const [file, content] of Object.entries(files)) await writeFile(path.join(root, file), JSON.stringify(content), { mode: 0o600 });
+  const before = await Promise.all(Object.keys(files).map(file => readFile(path.join(root, file), 'utf8')));
+  const previous = process.env.FAL_KEY; process.env.FAL_KEY = 'environment-fal-key';
+  try {
+    const request = transport(store), directory = await (await request('/motion-api/settings/providers')).json();
+    assert.equal(directory.defaults.image, model.id); assert.equal(directory.defaults.text, custom + ':language');
+    assert.equal(directory.models.find((row: any) => row.id === 'fal:saved-model').group, 'Saved group');
+    assert.equal(directory.providers.find((row: any) => row.id === 'opendesign').baseUrl, 'https://cloud.example');
+    assert.equal((await gateway.status()).providers.find(provider => provider.id === 'fal')!.verification, 'verified');
+    assert.equal(await gateway.connections.credential('fal'), 'legacy-fal-key');
+    assert.equal(await gateway.connections.credential(custom), 'legacy-custom-key');
+    assert.equal(await gateway.connections.identity(custom), 'saved-revision');
+    assert.deepEqual(await Promise.all(Object.keys(files).map(file => readFile(path.join(root, file), 'utf8'))), before, 'Reading old configuration must not rewrite it');
+    assert.doesNotMatch(JSON.stringify(directory), /legacy-.*-key|environment-fal-key/);
+    const publicFields = new Set(['id', 'label', 'protocol', 'baseUrl', 'kinds', 'category', 'website', 'docs', 'setupRequired', 'baseUrlEditable', 'configured', 'enabled', 'available', 'custom', 'credentialSource', 'reason']);
+    for (const provider of [...directory.providers, ...await gateway.connections.list()]) {
+      assert.deepEqual(Object.keys(provider).filter(key => !publicFields.has(key)), [], `${provider.id} must contain only public connection fields`);
+    }
+
+    const update = await request('/motion-api/settings/providers/fal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: 'replacement-fal-key' }) });
+    assert.equal(update.status, 200); assert.doesNotMatch(await update.text(), /replacement-fal-key/);
+    assert.equal(await gateway.connections.credential('fal'), 'replacement-fal-key');
+    assert.equal((await gateway.status()).providers.find(provider => provider.id === 'fal')!.verification, 'unverified');
+    await callTool('openmotion_configure_provider', { provider: 'openai', apiKey: 'replacement-openai-key' }, store);
+    assert.equal(await gateway.connections.credential('openai'), 'replacement-openai-key');
+    const cleared = await request('/motion-api/models/providers/fal', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apiKey: null }) });
+    assert.equal(cleared.status, 200);
+    assert.equal((await gateway.status()).providers.find(provider => provider.id === 'fal')!.credentialSource, 'environment');
+    assert.equal(await gateway.connections.credential('fal'), 'environment-fal-key');
+    await gateway.connections.setDefault('image', model.id);
+    await gateway.connections.setDefault('text', custom + ':language');
+    const restarted = new ModelGateway(store, { detect: async () => [] });
+    assert.equal((await restarted.status()).routes.image, model.id);
+    assert.deepEqual(await restarted.connections.defaults(), { image: model.id, text: custom + ':language' });
+    assert.equal((await restarted.config()).customModels[0].id, 'fal:saved-model');
+    assert.equal(await restarted.connections.credential('opendesign'), 'legacy-cloud-key');
+    assert.equal(await restarted.connections.credential(custom), 'legacy-custom-key');
+    assert.equal((await stat(path.join(root, 'secrets.json'))).mode & 0o777, 0o600);
+    assert.equal((await stat(path.join(root, 'connection-secrets.json'))).mode & 0o777, 0o600);
+    await assert.rejects(restarted.connections.configure('codex', { apiKey: 'must-not-save' }), /own local login/);
+    await assert.rejects(restarted.connections.configure('account', { apiKey: 'must-not-save' }), /account sign-in/);
+    await assert.rejects(restarted.connections.configure('fal', { baseUrl: 'https://other.example' }), /built-in API origin/);
+    await restarted.close();
+  } finally {
+    if (previous === undefined) delete process.env.FAL_KEY; else process.env.FAL_KEY = previous;
+    await gateway.close();
+  }
+}));
+
+test('a queued legacy media job uses its existing credential and adapter after restart', () => fixture(async store => {
+  const root = path.join(store.directory, 'model-gateway'), id = randomUUID();
+  await mkdir(path.join(root, 'jobs'), { recursive: true });
+  await writeFile(path.join(root, 'config.json'), JSON.stringify({ version: 1, providers: { fal: { enabled: true } }, routes: {}, customModels: [] }));
+  await writeFile(path.join(root, 'secrets.json'), JSON.stringify({ fal: 'queued-legacy-key' }));
+  await writeFile(path.join(root, 'jobs', id + '.json'), JSON.stringify({ id, projectId: store.projectId, state: 'queued', modality: 'image', prompt: 'saved request',
+    model: { id: 'fal:fal-ai/flux/schnell', provider: 'fal', modelId: 'fal-ai/flux/schnell', label: 'FLUX Schnell', modality: 'image', mode: 'text-to-image', source: 'builtin' },
+    parameters: {}, requestHash: 'existing-hash', createdAt: 1, updatedAt: 1, phase: 'queued', assets: [] }));
+  let submissions = 0;
+  const gateway = new ModelGateway(store, { detect: async () => [], pollMs: 1, download: async () => png, fetcher: async (url, init = {}) => {
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Key queued-legacy-key');
+    if (init.method === 'POST') { submissions++; return Response.json({ request_id: 'existing-task', status_url: 'https://queue.fal.run/task/status', response_url: 'https://queue.fal.run/task/result' }); }
+    return Response.json(String(url).endsWith('status') ? { status: 'COMPLETED' } : { images: [{ url: 'https://cdn.example/image.png' }] });
+  } });
+  try {
+    await gateway.tick(); await Promise.all([...gateway.active.values()].map(task => task.done));
+    const job = await gateway.getJob(id);
+    assert.equal(job.state, 'completed', job.error); assert.equal(submissions, 1);
+    assert.deepEqual(await readFile(path.join(store.projectDirectory, job.assets[0].path)), png);
+    await gateway.tick(); assert.equal(submissions, 1);
+  } finally { await gateway.close(); }
+}));
 
 test('provider registry is searchable configuration; custom keys stay private and media routes execute once', () => fixture(async store => {
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];
@@ -88,13 +202,19 @@ test('account device authorization, billing, remote models and all media outputs
   const gateway = gatewayFor(store); gateway.options.detect = async () => [];
   const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
   t.after(() => gateway.close());
+  await mkdir(account.home, { recursive: true });
+  await Promise.all((['video', 'audio'] as const).map(async kind => writeFile(path.join(account.home, `fixture-${kind}`), await mediaBytes(kind))));
   assert.equal((await account.summary()).state, 'signed-out');
   await signIn(account);
   const summary = await account.summary(true);
-  assert.equal(summary.plan, 'pro'); assert.equal(summary.balance, '12.50'); assert.doesNotMatch(JSON.stringify(summary), /synthetic-private-account-key/);
+  assert.equal(summary.plan, 'pro'); assert.equal(summary.balance, '12.50'); assert.doesNotMatch(JSON.stringify(summary), /synthetic-private/);
+  assert.equal(summary.errorCode, undefined); assert.equal(summary.attempt?.receipt, 'accepted'); assert.equal(summary.attempt?.exitCode, 0);
+  assert.deepEqual(summary.attempt?.stages, ['attempt_started:started', 'device_auth_create_result:success', 'activation_ready:success', 'browser_open_result:success',
+    'device_authorization_result:success', 'token_exchange_result:success', 'credential_persist_result:success']);
   assert.equal((await stat(path.join(account.home, 'config.json'))).mode & 0o777, 0o600);
   const directory = await providerDirectory(gateway);
   assert(directory.providers.find(p => p.id === 'account')?.available); assert.equal(directory.models.find(m => m.modelId === 'disabled-one')?.enabled, false);
+  assert.equal(directory.models.find(m => m.modelId === 'fixture-audio')?.kind, 'audio'); assert.equal(directory.models.find(m => m.modelId === 'fixture-music')?.mode, 'text-to-audio');
   for (const kind of ['image', 'video', 'audio'] as const) {
     const args = { action: 'generate', provider: 'account', model: `fixture-${kind}`, projectId: store.projectId, modality: kind, prompt: 'hello', parameters: kind === 'audio' ? { voice: 'test-voice' } : {}, requestId: 'account-' + kind };
     const queued = await mediaUse(store, args); const completed = await finish(store, queued.job.id);
@@ -112,12 +232,328 @@ test('account device authorization, billing, remote models and all media outputs
   await gateway.close();
 }));
 
+test('account music and one-image editing run the matching connector commands', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const account = gateway.account = new OpenDesignAccount(store.directory, { binary, pollMs: 1 });
+  t.after(() => gateway.close());
+  await signIn(account); await account.models(true);
+  await writeFile(path.join(account.home, 'fixture-audio'), await mediaBytes('audio'));
+  const models = (await providerDirectory(gateway)).models;
+  assert.equal(models.find(m => m.modelId === 'fixture-image')?.supportsImageReference, true);
+  assert.equal(models.find(m => m.modelId === 'fixture-image-basic')?.supportsImageReference, undefined);
+  const submissions = async () => JSON.parse(await readFile(path.join(account.home, 'submissions.json'), 'utf8')) as string[][];
+
+  const music = { action: 'generate', provider: 'account', model: 'fixture-music', projectId: store.projectId, modality: 'audio', mode: 'text-to-audio', prompt: 'calm piano', parameters: { duration: 12 }, requestId: 'account-music' };
+  const queuedMusic = await mediaUse(store, music);
+  assert.equal((await finish(store, queuedMusic.job.id)).state, 'completed');
+  assert.deepEqual((await submissions()).at(-1)?.slice(0, 2), ['audio', 'music']);
+  assert.deepEqual((await submissions()).at(-1)?.slice(-4), ['--no-wait', '--json', '--duration', '12']);
+  await assert.rejects(mediaUse(store, { ...music, parameters: { duration: 1.5 }, requestId: 'account-music-fraction' }), /Invalid Duration/);
+  // A speech-only parameter fails the music job locally, before any connector submission.
+  const voiced = await mediaUse(store, { ...music, parameters: { voice: 'narrator' }, requestId: 'account-music-voice' });
+  assert.equal((await finish(store, voiced.job.id)).state, 'failed');
+  // A caller mode cannot switch an account model to another connector command.
+  await assert.rejects(mediaUse(store, { ...music, mode: 'text-to-speech', parameters: { voice: 'narrator' }, requestId: 'account-music-as-speech' }), /does not match the selected account model/);
+  assert.equal((await submissions()).length, 1);
+
+  await writeFile(path.join(store.projectDirectoryFor(store.projectId), 'cup.png'), png);
+  await assert.rejects(gateway.submit({ model: 'account:fixture-image-basic', modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png' }), /does not support reference image editing/);
+  const edit = await gateway.submit({ model: 'account:fixture-image', modality: 'image', prompt: 'make it blue', referenceAsset: 'cup.png' });
+  const edited = await finish(store, edit.id);
+  assert.equal(edited.state, 'completed', edited.error); assert.equal(edited.reference?.path, 'cup.png');
+  const call = (await submissions()).at(-1)!;
+  assert.deepEqual(call.slice(0, 2), ['image', 'edit']);
+  assert.match(call[call.indexOf('--image') + 1], /reference\.png$/);
+  assert.equal((await submissions()).length, 2);
+
+  // The public asset tool edits a pinned library version through the same connector command.
+  const source = path.join(store.directory, 'cup-source.png'); await writeFile(source, png);
+  const cup = await new AssetLibrary(store).importFile(source, { requestId: 'account-cup', name: 'Cup' });
+  const reference = { assetId: cup.id, versionId: cup.currentVersionId };
+  const api = new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined,
+    openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
+  const editInput = { action: 'generate', requestId: 'account-library-edit', model: 'account:fixture-image', modality: 'image', mode: 'text-to-image', prompt: 'make it blue', assetId: cup.id, parentVersionId: cup.currentVersionId, references: [reference] };
+  const queued = await api.call('openmotion_assets_use', editInput);
+  assert.equal((await api.call('openmotion_assets', editInput)).job.id, queued.job.id, 'Compatibility replay must not submit another account edit');
+  await finish(store, queued.job.id);
+  const status = await api.call('openmotion_assets_use', { action: 'status', jobId: queued.job.id });
+  assert.equal(status.job.state, 'completed', status.job.error);
+  const versions = (await new AssetLibrary(store).get(cup.id)).versions;
+  assert.equal(versions.length, 2); assert.deepEqual(versions[1].references, [reference]);
+  const libraryCall = (await submissions()).at(-1)!;
+  assert.deepEqual(libraryCall.slice(0, 2), ['image', 'edit']);
+  assert.match(libraryCall[libraryCall.indexOf('--image') + 1], /reference\.png$/);
+  assert.equal((await submissions()).length, 3, 'The replay submits no additional paid operation');
+}));
+
+test('source installations use the connector locked with their dependencies instead of installing one at runtime', async t => {
+  const packaged = createRequire(import.meta.url)('@powerformer/vela-cli').resolveVelaCliBin() as string | null;
+  if (!packaged) return t.skip('The connector has no binary for this platform');
+  await fixture(async store => {
+    const explicit = process.env.OPENMOTION_ACCOUNT_CLI; delete process.env.OPENMOTION_ACCOUNT_CLI;
+    t.after(() => { if (explicit !== undefined) process.env.OPENMOTION_ACCOUNT_CLI = explicit; });
+    const account = new OpenDesignAccount(store.directory); t.after(() => account.close());
+    // Preparation may install; it must pick the checkout's binary before `vela` on PATH or the private installation.
+    assert.equal(await account['prepare'](), packaged);
+    account['runtime'] = path.join(store.directory, 'removed-vela');
+    assert.equal(await account['prepare'](), packaged);
+    await assert.rejects(stat(path.join(store.directory, 'account', 'runtime')), { code: 'ENOENT' });
+  });
+});
+
 test('cancelling account authorization cannot register a provider from a late completion', t => fixture(async store => {
   await chmod(binary, 0o755); const account = new OpenDesignAccount(store.directory, { binary }); t.after(() => account.close());
   await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
   assert.equal((await account.summary()).userCode, 'TEST-123');
   await account.cancel(); await writeFile(path.join(account.home, 'authorize'), 'late'); await delay(50);
-  assert.equal((await account.summary()).state, 'signed-out'); assert.equal(await account.identity(), undefined); account.close();
+  const cancelled = await account.summary();
+  assert.equal(cancelled.state, 'signed-out'); assert.equal(cancelled.errorCode, undefined); assert.equal(await account.identity(), undefined); account.close();
+}));
+
+test('sign-in failures are classified by the stage reached and logged without account data', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const logs: string[] = [];
+  const attempt = async (scenario: string, options: { authorize?: boolean; binary?: string; authorizationMs?: number } = {}) => {
+    const account = new OpenDesignAccount(store.directory, { binary: options.binary ?? binary, authorizationMs: options.authorizationMs, log: line => logs.push(line) });
+    t.after(() => account.close());
+    await mkdir(account.home, { recursive: true });
+    await writeFile(path.join(account.home, 'fixture-mode'), scenario); await rm(path.join(account.home, 'authorize'), { force: true });
+    await account.login();
+    if (options.authorize !== false) { await until(async () => Boolean((await account.summary()).authorizationUrl)); await writeFile(path.join(account.home, 'authorize'), 'yes'); }
+    await until(async () => (await account.summary()).state !== 'authorizing');
+    const summary = await account.summary();
+    assert.equal(summary.state, 'signed-out', scenario); assert.equal(await account.identity(), undefined, scenario);
+    assert.equal(summary.authorizationUrl, undefined); assert.equal(summary.userCode, undefined);
+    return summary;
+  };
+  const created = await attempt('login-create-failure', { authorize: false });
+  assert.equal(created.errorCode, 'setup_failed'); assert.equal(created.error, "Can't connect to OpenDesign right now. Check your network and try again.");
+  assert.deepEqual(created.attempt?.stages, ['attempt_started:started', 'device_auth_create_result:failed:network_error']); assert.equal(created.attempt?.exitCode, 1);
+  const missing = await attempt('', { binary: path.join(store.directory, 'missing-connector'), authorize: false });
+  assert.equal(missing.errorCode, 'connector_unavailable');
+  assert.match(missing.error ?? '', /npm install -g @powerformer\/vela-cli@0\.1\.10/);
+  const denied = await attempt('login-denied');
+  assert.equal(denied.errorCode, 'authorization_expired'); assert.equal(denied.attempt?.stages.at(-1), 'device_authorization_result:failed:oauth_denied');
+  assert.equal((await attempt('', { authorize: false, authorizationMs: 300 })).errorCode, 'authorization_expired');
+  const incomplete = await attempt('login-incomplete');
+  assert.equal(incomplete.errorCode, 'credentials_rejected'); assert.equal(incomplete.attempt?.receipt, 'rejected'); assert.equal(incomplete.attempt?.persisted, true);
+  const unconfirmed = await attempt('login-complete-failure');
+  assert.equal(unconfirmed.errorCode, 'credentials_rejected'); assert.equal(unconfirmed.attempt?.receipt, 'accepted'); assert.equal(unconfirmed.attempt?.exitCode, 1);
+  assert.equal(unconfirmed.attempt?.stages.at(-1), 'credential_persist_result:success');
+  const approved = await attempt('login-missing-key-id');
+  assert.equal(approved.errorCode, 'credentials_rejected'); assert.equal(approved.attempt?.stages.at(-1), 'device_authorization_result:success');
+  // Nothing was accepted or stored, so a transient exchange or local write failure stays retryable.
+  const exchange = await attempt('login-exchange-failure');
+  assert.equal(exchange.errorCode, 'setup_failed'); assert.equal(exchange.attempt?.stages.at(-1), 'token_exchange_result:failed:network_error');
+  assert.equal(exchange.attempt?.persisted, false);
+  const persisted = await attempt('login-persist-failure');
+  assert.equal(persisted.errorCode, 'setup_failed'); assert.equal(persisted.attempt?.stages.at(-1), 'credential_persist_result:failed:credential_persist_error');
+  assert.equal(persisted.attempt?.persisted, false);
+  assert.equal(logs.length, 9);
+  assert.doesNotMatch(logs.join('\n'), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user|fixture-user-id|private upstream/);
+}));
+
+test('an interrupted sign-in is confirmed by the next attempt, or replaced by a new authorization once the service refuses it', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const logs: string[] = [], records: SignInRecord[] = [];
+  const account = new OpenDesignAccount(store.directory, { binary, log: line => logs.push(line), track: record => records.push(record) }); t.after(() => account.close());
+  const config = path.join(account.home, 'config.json');
+  const mode = async (scenario: string) => {
+    await mkdir(account.home, { recursive: true });
+    await writeFile(path.join(account.home, 'fixture-mode'), scenario); await rm(path.join(account.home, 'authorize'), { force: true });
+  };
+  const interrupt = async () => {
+    await mode('login-complete-unavailable');
+    await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
+    await writeFile(path.join(account.home, 'authorize'), 'yes');
+    await until(async () => (await account.summary()).state !== 'authorizing');
+    // The service could not confirm the saved credentials: they stay pending and the failure reads as a connection problem.
+    const failed = await account.summary();
+    assert.equal(failed.state, 'signed-out'); assert.equal(failed.errorCode, 'setup_failed'); assert.equal(failed.attempt?.receipt, 'accepted');
+    assert(JSON.parse(await readFile(config, 'utf8')).profiles.prod.pendingLogin);
+  };
+  await interrupt();
+  await mode('');
+  await account.login(); await until(async () => (await account.summary()).state !== 'authorizing');
+  const resumed = await account.summary();
+  assert.equal(resumed.state, 'signed-in'); assert.equal(resumed.errorCode, undefined); assert.equal(resumed.attempt?.resumed, true);
+  assert.deepEqual(resumed.attempt?.stages, ['attempt_started:started', 'device_authorization_result:success', 'token_exchange_result:success', 'credential_persist_result:success']);
+  await account.logout();
+  await interrupt();
+  // The service refuses the old attempt and the connector rolls it back; the same sign-in continues with a new link.
+  // Offline, the rolled-back key stays queued for revocation next to the new session until a refresh delivers it.
+  await mode('resume-rejected'); await writeFile(path.join(account.home, 'offline'), 'yes');
+  await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
+  const fresh = await account.summary();
+  assert.equal(fresh.state, 'authorizing'); assert.equal(fresh.userCode, 'TEST-123'); assert.equal(fresh.attempt?.resumed, undefined);
+  await writeFile(path.join(account.home, 'authorize'), 'yes');
+  await until(async () => (await account.summary()).state === 'signed-in');
+  assert.equal(JSON.parse(await readFile(config, 'utf8')).pendingRevocations.length, 1);
+  await rm(path.join(account.home, 'offline')); await account.summary(true);
+  await until(async () => !JSON.parse(await readFile(config, 'utf8')).pendingRevocations);
+  assert.equal((await account.summary()).state, 'signed-in');
+  assert.equal(JSON.parse(await readFile(path.join(account.home, 'revoked.json'), 'utf8')).length, 2);
+  assert.equal(logs.length, 3); assert.match(logs[2], /"errorCode":"credentials_rejected".*"resumed":true/);
+  assert.doesNotMatch(logs.join('\n'), /synthetic-private|TEST-123|open-design\.ai|fixture@example|fixture-user-id/);
+  // The refused attempt is reported as replaced, so one click still counts as one completed sign-in.
+  assert.deepEqual(records.map(record => [record.outcome, record.resumed, record.error_code]), [
+    ['failure', false, 'setup_failed'], ['success', true, undefined], ['failure', false, 'setup_failed'], ['replaced', true, 'credentials_rejected'], ['success', false, undefined]]);
+}));
+
+test('each finished sign-in attempt gives telemetry one record the tracker accepts, without account data', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const records: SignInRecord[] = [];
+  const account = new OpenDesignAccount(store.directory, { binary, track: record => records.push(record) }); t.after(() => account.close());
+  const file = (name: string) => path.join(account.home, name);
+  // Holds the model catalogue sync so the step after browser approval can be observed.
+  let release: (() => void) | undefined;
+  const connector = (args: string[]) => new Promise<string>((resolve, reject) => execFile(binary, args, { env: { ...process.env, AMR_HOME: account.home } }, (error, stdout) => error ? reject(error) : resolve(stdout)));
+  account.options.run = async args => { if (args[0] === 'model') await new Promise<void>(resolve => { release = resolve; }); return connector(args); };
+  await account.login(); await until(async () => (await account.summary()).browserOpened !== undefined);
+  const waiting = await account.summary();
+  assert.equal(waiting.browserOpened, true); assert.equal(waiting.syncing, undefined); assert(waiting.authorizationUrl);
+  await writeFile(file('authorize'), 'yes'); await until(async () => Boolean(release));
+  const syncing = await account.summary();
+  assert.equal(syncing.state, 'authorizing'); assert.equal(syncing.syncing, true); assert.equal(syncing.authorizationUrl, undefined); assert.equal(records.length, 0);
+  release!(); await until(async () => (await account.summary()).state === 'signed-in');
+  assert.equal((await account.summary()).syncing, undefined);
+  await account.logout(); await rm(file('authorize'));
+  // Two clients cancelling the same attempt still count it once.
+  await account.login(); await until(async () => (await account.summary()).browserOpened === true); await Promise.all([account.cancel(), account.cancel()]);
+  await writeFile(file('fixture-mode'), 'login-denied');
+  await account.login(); await until(async () => Boolean((await account.summary()).authorizationUrl));
+  await writeFile(file('authorize'), 'yes'); await until(async () => (await account.summary()).state !== 'authorizing');
+  assert.deepEqual(records.map(record => record.outcome), ['success', 'cancelled', 'failure']);
+  const [success, cancelled, failure] = records;
+  const { attempt_id: _id, duration_ms, prepare_ms, link_ms, approved_ms, ...fixed } = success;
+  assert.deepEqual(fixed, { outcome: 'success', connector_version: '0.1.10', resumed: false, last_stage: 'credential_persist_result', last_result: 'success',
+    browser_opened: true, receipt: 'accepted', exit_code: 0 });
+  assert(prepare_ms! <= link_ms! && link_ms! <= approved_ms! && approved_ms! <= duration_ms);
+  assert.equal(cancelled.error_code, undefined); assert.equal(cancelled.last_stage, 'browser_open_result'); assert.equal(cancelled.approved_ms, undefined);
+  assert.equal(failure.error_code, 'authorization_expired'); assert.equal(failure.error_kind, 'oauth_denied');
+  assert.equal(failure.last_stage, 'device_authorization_result'); assert.equal(failure.last_result, 'failed'); assert.equal(failure.exit_code, 1);
+  assert.equal(new Set(records.map(record => record.attempt_id)).size, 3);
+  for (const record of records) assert(validProperties(omEvents, 'account_sign_in_result', record), JSON.stringify(record));
+  assert.doesNotMatch(JSON.stringify(records), /synthetic-private|TEST-123|open-design\.ai|fixture@example|Fixture user|fixture-user-id/);
+}));
+
+test('sign-out keeps an undelivered revocation and retries it after a restart and on refresh', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const account = new OpenDesignAccount(store.directory, { binary }); t.after(() => account.close());
+  const file = (name: string) => path.join(account.home, name);
+  const exists = (name: string) => access(file(name)).then(() => true, () => false);
+  const retries = async () => await exists('retries') ? (await readFile(file('retries'), 'utf8')).length : 0;
+  await signIn(account);
+  await writeFile(file('offline'), 'yes');
+  assert.equal((await account.logout()).state, 'signed-out'); assert.deepEqual(await account.models(), []);
+  const queued = JSON.parse(await readFile(file('config.json'), 'utf8'));
+  assert.equal(queued.pendingRevocations.length, 1); assert.doesNotMatch(JSON.stringify(queued.profiles), /synthetic-private/);
+  await account.summary(true); await until(async () => await retries() === 1);
+  assert(await exists('config.json')); assert.equal(await exists('revoked.json'), false);
+  // Back online: the first status read after a restart delivers the revocation and removes the file.
+  await rm(file('offline'));
+  const restarted = new OpenDesignAccount(store.directory, { binary }); t.after(() => restarted.close());
+  assert.equal((await restarted.summary()).state, 'signed-out');
+  await until(async () => !await exists('config.json'));
+  assert.equal(await retries(), 2); assert.deepEqual(JSON.parse(await readFile(file('revoked.json'), 'utf8')), ['fixture-control-key-id']);
+  // A refresh retries as well.
+  await rm(file('authorize')); await signIn(account);
+  await writeFile(file('offline'), 'yes'); await account.logout(); await rm(file('offline'));
+  await account.summary(true); await until(async () => !await exists('config.json'));
+  assert.equal(await retries(), 3); assert.equal(JSON.parse(await readFile(file('revoked.json'), 'utf8')).length, 2);
+}));
+
+test('a revocation retry in flight holds back sign-in and sign-out and cannot remove the credentials they use', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const account = new OpenDesignAccount(store.directory, { binary }); t.after(() => account.close());
+  const file = (name: string) => path.join(account.home, name);
+  // Holds every `logout --retry-pending` until released; other commands run the fixture connector.
+  let release: ((output: string) => void) | undefined;
+  const connector = (args: string[]) => new Promise<string>((resolve, reject) => execFile(binary, args, { env: { ...process.env, AMR_HOME: account.home } }, (error, stdout) => error ? reject(error) : resolve(stdout)));
+  const hold = () => { release = undefined; account.options.run = args => args.includes('--retry-pending') ? new Promise(resolve => { release = resolve; }) : connector(args); };
+  const delivered = JSON.stringify({ ok: true, revocationPending: false });
+  await signIn(account);
+  await writeFile(file('offline'), 'yes'); await account.logout(); await rm(file('offline')); await rm(file('authorize'));
+  hold(); await account.summary(true); await until(async () => Boolean(release));
+  // Sign-in waits for the retry: no connector runs and no activation link appears before it finishes.
+  await account.login(); await delay(200);
+  const waiting = await account.summary();
+  assert.equal(waiting.state, 'authorizing'); assert.equal(waiting.authorizationUrl, undefined);
+  release!(delivered);
+  await until(async () => Boolean((await account.summary()).authorizationUrl));
+  await writeFile(file('authorize'), 'yes'); await until(async () => (await account.summary()).state === 'signed-in');
+  assert((await access(file('config.json')).then(() => true, () => false)));
+  // Sign in again while offline so a key stays queued; the refresh at the end of sign-in starts a held retry.
+  await writeFile(file('offline'), 'yes'); await account.logout(); await rm(file('authorize'));
+  hold(); await signIn(account); await until(async () => Boolean(release)); await rm(file('offline'));
+  // Sign-out waits for that retry, and the retry finishing during sign-out cannot remove the file first.
+  let signedOut = false; const logout = account.logout().then(summary => { signedOut = true; return summary; });
+  await delay(200);
+  assert.equal(signedOut, false); assert(JSON.parse(await readFile(file('config.json'), 'utf8')).profiles.prod.controlKey);
+  release!(delivered);
+  assert.equal((await logout).state, 'signed-out');
+  assert.equal(await access(file('config.json')).then(() => true, () => false), false);
+}));
+
+test('production billing uses the authenticated summary and preserves HTTP refusals', t => fixture(async store => {
+  const account = new OpenDesignAccount(store.directory);
+  await mkdir(account.home, { recursive: true });
+  await writeFile(path.join(store.directory, 'account/session.json'), JSON.stringify({ id: 'test-session' }));
+  const profile = { apiUrl: 'https://amr-api.open-design.ai', user: { id: 'test' }, controlKey: 'test-control', controlKeyId: 'test-id', runtimeKey: 'test-runtime' };
+  await writeFile(path.join(account.home, 'config.json'), JSON.stringify({ profiles: { prod: profile } }));
+  let response = Response.json({ membershipTier: 'pro', balanceUsd: '12.3456' });
+  t.mock.method(globalThis, 'fetch', async (url: string, init: RequestInit) => {
+    assert.equal(url, 'https://amr-api.open-design.ai/api/v1/billing/summary');
+    assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer test-control');
+    assert.equal(init.redirect, 'error');
+    return response;
+  });
+  const summary = await account.summary(true);
+  assert.equal(summary.plan, 'pro'); assert.equal(summary.balance, '12.3456');
+  response = Response.json({ error: 'workspace_billing_scope_locked' }, { status: 403 });
+  const denied = await account.summary(true);
+  assert.deepEqual(denied.billingError, { status: 403, code: 'workspace_billing_scope_locked' });
+  assert.equal(denied.balance, undefined);
+}));
+
+test('billing reads an empty tier as Free, keeps the session on refusal and asks to sign in again on a rejected key', t => fixture(async store => {
+  await chmod(binary, 0o755);
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const account = gateway.account = new OpenDesignAccount(store.directory, { binary }); t.after(() => gateway.close());
+  const mode = (scenario: string) => writeFile(path.join(account.home, 'fixture-mode'), scenario);
+  const provider = async () => (await providerDirectory(gateway)).providers.find(p => p.id === 'account')!;
+  await signIn(account);
+  await mode('billing-free');
+  const free = await account.summary(true);
+  assert.equal(free.plan, 'free'); assert.equal(free.balance, '0.00'); assert.equal(free.billingUnavailable, false);
+  await mode('billing-403');
+  const refused = await account.summary(true);
+  assert.equal(refused.state, 'signed-in'); assert.equal(refused.billingUnavailable, true); assert.equal(refused.plan, undefined); assert.equal(refused.balance, undefined);
+  assert.deepEqual(refused.billingError, { status: 403, code: 'workspace_billing_scope_locked' }); assert((await provider()).available);
+  await mode('billing-failure');
+  const failed = await account.summary(true);
+  assert.equal(failed.billingUnavailable, true); assert.equal(failed.billingError, undefined); assert.doesNotMatch(JSON.stringify(failed), /private upstream/);
+  await mode('billing-401');
+  const rejected = await account.summary(true);
+  assert.equal(rejected.state, 'reauth-required'); assert.equal(rejected.billingUnavailable, false); assert.equal(rejected.plan, undefined);
+  assert.equal((await provider()).available, false); assert.match((await provider()).reason, /sign-in expired/);
+  const gatewayAccount = (await gateway.status()).providers.find(p => p.id === 'account')!;
+  assert.equal(gatewayAccount.available, false); assert.match(gatewayAccount.reason, /sign-in expired/);
+  assert.equal((await account.summary()).state, 'reauth-required');
+  for (const scenario of ['billing-failure', 'billing-502']) {
+    await mode(scenario); assert.equal((await account.summary(true)).state, 'reauth-required', scenario);
+  }
+  await mode('billing-403-text');
+  const untyped = await account.summary(true);
+  assert.equal(untyped.state, 'signed-in'); assert.deepEqual(untyped.billingError, { status: 403 });
+  await mode('billing-401'); await account.summary(true);
+  await mode('billing-403');
+  assert.equal((await account.summary(true)).state, 'signed-in');
+  await mode('billing-401'); await account.summary(true);
+  await mode('');
+  const restored = await account.summary(true);
+  assert.equal(restored.state, 'signed-in'); assert.equal(restored.plan, 'pro'); assert.equal(restored.billingError, undefined);
 }));
 
 test('a late catalogue response cannot replace models after a protocol change', () => fixture(async store => {
@@ -220,4 +656,20 @@ test('model overrides survive catalogue sync and reach generation with per-reque
   for (const invalid of [{ contextWindow: -1 }, { contextWindow: 128000, maxInputTokens: 200000 }, { inputs: ['unknown'] }, { defaults: { authorization: 'secret' } }, { defaults: [] }]) await assert.rejects(gateway.connections.updateMetadata(id, invalid));
   await gateway.connections.updateModel(id, null); assert.equal((await gateway.connections.modelOverrides())[id], undefined);
   await gateway.close();
+}));
+
+test('media setup discovery rechecks saved and removed keys without executing a model', () => fixture(async store => {
+  const gateway = gatewayFor(store);
+  gateway.options.detect = async () => [];
+  gateway.options.fetcher = async () => { throw new Error('Setup must not call a paid model'); };
+  const inspect = () => mediaUse(store, { action: 'inspect' });
+  const before = await inspect();
+  assert.deepEqual(before.settingsHandoff, { tool: 'openmotion_open_preview', arguments: { target: 'providers' } });
+  assert.equal(before.providers.some(provider => provider.available), false);
+  await gateway.configureProvider('atlascloud', { apiKey: 'synthetic-onboarding-key' });
+  const saved = await inspect();
+  assert.equal(saved.providers.find(provider => provider.id === 'atlascloud')?.available, true);
+  assert.doesNotMatch(JSON.stringify(saved), /synthetic-onboarding-key/);
+  await gateway.configureProvider('atlascloud', { apiKey: null });
+  assert.equal((await inspect()).providers.find(provider => provider.id === 'atlascloud')?.available, false);
 }));

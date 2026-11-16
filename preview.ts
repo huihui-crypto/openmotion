@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import { WorkspaceStore } from './workspace.ts';
 import { ensureEditor, editorRequest, readEditor, sharedEditorEnabled } from './editor-runtime.ts';
 import { supportsPhase1Tool } from './shared/phase1-tools.ts';
+import { withProcessLock } from './shared/process-lock.ts';
 
 const pluginRoot = fileURLToPath(new URL('./', import.meta.url));
 export const VERSION: string = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
@@ -105,17 +106,7 @@ export async function openPreview(store = new WorkspaceStore(), environment: Pre
   }
   await mkdir(store.directory, { recursive: true });
   const lockPath = path.join(store.directory, 'preview-start.lock');
-  const deadline = Date.now() + 360_000;
-  let lock;
-  while (!lock) {
-    try { lock = await open(lockPath, 'wx', 0o600); }
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
-      if (Date.now() > deadline) throw new Error('另一个 Motion 启动任务尚未结束，请稍后重试；不会重启其他进程。');
-      await environment.wait();
-    }
-  }
-  try {
+  return withProcessLock(lockPath, async () => {
     const firstPort = initialPort(), previous = await registeredPort(store);
     const candidates = [...new Set([...(previous ? [previous] : []), ...Array.from({ length: 10 }, (_, i) => firstPort + i)])];
     let available: number | null = null;
@@ -161,7 +152,7 @@ export async function openPreview(store = new WorkspaceStore(), environment: Pre
       child.stop();
       throw new Error(`${error instanceof Error ? error.message : '启动失败'}。请查看 ${log}。不会重启 Codex 或改用其他启动方式绕过权限限制。`);
     }
-  } finally { await lock.close(); await rm(lockPath, { force: true }); }
+  }, 360_000);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

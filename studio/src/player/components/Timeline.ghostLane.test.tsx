@@ -59,6 +59,7 @@ describe("Timeline ghost lane", () => {
     drag("dragover", ROW1_MID);
     expect(ghost()?.dataset.active).toBeUndefined();
     drag("dragover", GHOST_MID);
+    await act(() => new Promise<void>(resolve => requestAnimationFrame(() => resolve())));
     expect(ghost()?.dataset.active).toBe("true");
     drag("drop", GHOST_MID);
     expect(onAssetDrop).toHaveBeenCalledWith("a.png", expect.objectContaining({ track: 3 }));

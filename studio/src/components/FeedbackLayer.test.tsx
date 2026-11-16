@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, expect, it, vi } from 'vitest';
 import { FeedbackLayer } from './FeedbackLayer';
 import { mountFeedbackLayer } from '../../../web/feedback-layer';
+import { SettingsDialog } from '../motion/settingsPrimitives';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 afterEach(() => { document.body.innerHTML = ''; vi.restoreAllMocks(); });
@@ -39,4 +40,20 @@ it('follows nested modal open/close and restores the original feedback node on c
   stop(); expect(feedback.parentElement).toBe(origin);
   dialogs[0].open = false; await new Promise(resolve => setTimeout(resolve, 0));
   expect(feedback.parentElement).toBe(origin);
+});
+
+it('keeps actions inside a shared modal focus boundary and returns them when it closes', async () => {
+  const host = document.createElement('div'); document.body.append(host);
+  const root = createRoot(host), undo = vi.fn();
+  const content = (modal: boolean) => <><FeedbackLayer><button onClick={undo}>Undo</button></FeedbackLayer>{modal && <SettingsDialog title="Choose an asset" onClose={() => {}}><button>Pick</button></SettingsDialog>}</>;
+  await act(async () => root.render(content(false)));
+  await act(async () => { root.render(content(true)); });
+  const layer = document.querySelector<HTMLElement>('[data-feedback-layer]')!;
+  expect(layer.closest('[role=dialog]')).not.toBeNull();
+  expect(layer.closest('[aria-hidden=true], [inert], [data-base-ui-inert]')).toBeNull();
+  await act(async () => layer.querySelector<HTMLButtonElement>('button')!.click());
+  expect(undo).toHaveBeenCalledOnce();
+  await act(async () => root.render(content(false)));
+  expect(layer.parentElement).toBe(document.body);
+  await act(async () => root.unmount());
 });

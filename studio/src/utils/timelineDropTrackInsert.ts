@@ -8,6 +8,7 @@ import type { TimelineDropPlacement } from "../player/components/timelineCallbac
 import { applyPatchByTarget, readAttributeByTarget, readTagSnippetByTarget, readTagAttribute } from "./sourcePatcher";
 import { buildPatchTarget } from "../hooks/timelineEditingHelpers";
 import { formatTimelineAttributeNumber } from "../player/components/timelineEditing";
+import { planTimelineLanePersistence, withPersistedTimelineLanes } from "../player/components/timelineLanePersistence";
 
 export interface DropTrackInsertPlan {
   /** Lane the dropped clip is written on. */
@@ -58,7 +59,7 @@ export function applyTrackRenumbers(source: string, plan: DropTrackInsertPlan): 
   let out = source;
   for (const { element, track } of plan.renumbers) {
     const target = buildPatchTarget(element);
-    if (!target || readAttributeByTarget(out, target, "track-index") === undefined) {
+    if (!target || !readTagSnippetByTarget(out, target)) {
       throw new Error(`Cannot renumber the track of "${element.id}" in the source`);
     }
     out = applyPatchByTarget(out, target, {
@@ -111,11 +112,9 @@ export function resolveDropTrack(input: {
     for (const element of [...elements, ...(input.placed ?? [])]) {
       const target = buildPatchTarget(element);
       const raw = target ? readAttributeByTarget(source, target, "track-index") : undefined;
-      if (raw === undefined) {
-        if (target && readTagSnippetByTarget(source, target)) throw new Error(`Cannot renumber the track of "${element.id}" in the source`);
-        continue;
-      }
-      const track = Number(raw);
+      if (!target || !readTagSnippetByTarget(source, target)) continue;
+      // Absent data-track-index is the authored default lane, not a missing node.
+      const track = raw === undefined ? 0 : Number(raw);
       if (!Number.isFinite(track)) throw new Error("Invalid authored track index");
       peers.set(element.key ?? element.id, { ...element, track, authoredTrack: track });
     }
@@ -130,7 +129,12 @@ export function resolveDropTrack(input: {
     return { source: applyTrackRenumbers(source, plan), track: plan.track, start: dropped.start };
   }
   if (placement.insertRow == null) {
-    return { source, ...resolveRowDrop(elements, input.placed ?? [], placement.track, dropped) };
+    const target = { ...dropped, track: placement.track, sourceFile: elements[0]?.sourceFile };
+    const renumbers = planTimelineLanePersistence(elements, target);
+    return {
+      source: applyTrackRenumbers(source, { track: placement.track, renumbers }),
+      ...resolveRowDrop(withPersistedTimelineLanes(elements, renumbers), input.placed ?? [], placement.track, dropped),
+    };
   }
   const { insertRow, trackOrder } = placement;
   const plan = planDropTrackInsert({ elements, trackOrder, insertRow, dropped });

@@ -525,7 +525,6 @@ export function ColorGradingControls({
               <button
                 type="button"
                 aria-label={t("Close settings")}
-                title={t("Close settings")}
                 onClick={() => setDetailSettings(null)}
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-sm text-panel-text-5 transition-colors hover:bg-panel-hover hover:text-panel-text-1"
               >

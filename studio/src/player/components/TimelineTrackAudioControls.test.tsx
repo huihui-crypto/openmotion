@@ -67,6 +67,14 @@ it('opens the slider on hover without muting, and keeps it open when mute is cli
   expect(document.querySelector('input[aria-label="Volume"]')).not.toBeNull();
 });
 
+it('relies on the hover volume popover instead of a duplicate native title', async () => {
+  const host = render([video]);
+  const trigger = host.querySelector<HTMLButtonElement>('[aria-label="Mute audio · Track"]')!;
+  expect(trigger.hasAttribute('title')).toBe(false);
+  await act(async () => trigger.focus());
+  expect(document.querySelector('input[aria-label="Volume"]')).not.toBeNull();
+});
+
 it('shows muted output at the bottom of a 0–100 slider without overwriting saved gain', async () => {
   const host = render([{ ...video, muted: true }]);
   await act(async () => host.querySelector<HTMLButtonElement>('button')!.focus());

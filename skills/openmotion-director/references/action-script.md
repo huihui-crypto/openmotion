@@ -31,6 +31,8 @@
 
 ## 全片层记录
 
+When visual language is selected or changed, record the subject-specific materials and consequential text roles, faces/weights and mixed-language treatment in the existing creative record. Reuse confirmed brand/template decisions; scenes record exceptions only.
+
 用短文或表格记录以下与本次任务相关的内容：
 
 - 简报：受众、信息优先级、时长／比例、品牌、声音、事实与素材约束。

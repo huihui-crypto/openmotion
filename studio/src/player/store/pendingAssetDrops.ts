@@ -12,6 +12,7 @@ export interface PendingAssetDrop {
   duration?: number;
   element?: TimelineElement;
   failed?: "add" | "preview";
+  rowOwnerId?: string;
 }
 
 export function beginPendingAssetDrop(
@@ -20,16 +21,18 @@ export function beginPendingAssetDrop(
   duration?: number,
 ): string {
   const id = generateId();
+  duration ??= getTimelineAssetKind(assetPath) === "image" ? 3 : undefined;
   usePlayerStore.setState((state) => {
     const kind = getTimelineAssetKind(assetPath);
-    // Show feedback at the drop time; the save resolves collisions once metadata is known.
+    // Resolve known collisions before the first paint, in the displayed row.
     const busy = state.pendingAssetDrops.filter((drop) =>
       (!drop.failed || drop.element) && drop.placement.insertRow === placement.insertRow,
     ).map((drop) => drop.element ?? {
       id: drop.id, tag: getTimelineAssetKind(drop.assetPath) ?? "div",
       ...drop.placement, duration: drop.duration ?? 5,
     }).filter((element) => (element.tag === "audio") === (kind === "audio"));
-    const start = placement.newTrack ? placement.start : resolveNearestFreeStart(busy, placement.track, placement.start, duration ?? 5, null);
+    const peers = kind ? state.elements.filter(element => (element.tag === "audio") === (kind === "audio")) : [];
+    const start = placement.newTrack || placement.insertRow != null ? placement.start : resolveNearestFreeStart([...peers, ...busy], placement.track, placement.start, duration ?? 5, null);
     return { pendingAssetDrops: [...state.pendingAssetDrops, {
       id, assetPath, placement: { ...placement, start }, duration,
     }] };
@@ -48,9 +51,10 @@ export function isPendingAssetDropActive(id: string): boolean {
 }
 
 export function finishPendingAssetDrop(id: string, element?: TimelineElement): void {
+  const placement = usePlayerStore.getState().pendingAssetDrops.find(drop => drop.id === id)?.placement;
   updatePendingAssetDrop(id, element ? {
     element, duration: element.duration,
-    placement: { start: element.start, track: element.track },
+    placement: { ...placement, start: element.start, track: placement?.track ?? element.track },
   } : { failed: "add" });
 }
 

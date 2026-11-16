@@ -107,3 +107,7 @@ Current OpenMotion non-2xx handling omits the raw provider error body/headers. I
 
 - [Key creation](https://www.atlascloud.ai/console/api-keys), [authentication](https://www.atlascloud.ai/docs/api-keys)
 - [Prediction lifecycle](https://www.atlascloud.ai/docs/predictions), [audio models](https://www.atlascloud.ai/docs/models/audio), [errors and rate limits](https://www.atlascloud.ai/docs/errors)
+
+## Shared parameter discovery
+
+Checked on 2026-11-15: model discovery exposes `generationOptions` for [Nano Banana 2](https://www.atlascloud.ai/docs/more-models/google/nano-banana-2-text-to-image/generateImage), [Seedance 2.0](https://www.atlascloud.ai/docs/more-models/bytedance/seedance-2.0-text-to-video/generateVideo) and [Suno Chirp v4](https://www.atlascloud.ai/docs/more-models/suno/chirp-v4/generateAudio). Studio and MCP consume the same profile. Seedance uses `ratio` and integer `duration` (4–15, or -1 for automatic), while Nano Banana uses `aspect_ratio` and lowercase `resolution` values. Do not copy fields between endpoints. Unknown models keep their provider-specific parameters without an inferred control profile.

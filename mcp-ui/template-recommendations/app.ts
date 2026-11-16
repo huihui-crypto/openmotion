@@ -1,6 +1,7 @@
 import { App } from '@modelcontextprotocol/ext-apps/app-with-deps';
 import { templateIds } from './types.ts';
 import { isLanguage, resolveLanguage, translations } from './i18n.ts';
+import { createInlineFeedback } from '../../packages/design-system/inline-feedback.ts';
 import type { CreateArgs, HostContext, Recommendation, RecommendationCard, TemplateAsset, TemplateCardsBootstrap, TemplateCardsHost, Language, TemplateId } from './types.ts';
 
 declare global { interface Window { __OPENMOTION_TEMPLATE_CARDS__?: TemplateCardsBootstrap } }
@@ -55,6 +56,8 @@ export function readRecommendation(value: unknown, bootstrap: TemplateCardsBoots
 
 export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBootstrap, host: TemplateCardsHost) {
   const doc = root.ownerDocument, win = doc.defaultView!;
+  root.setAttribute('data-motion-ui', '');
+  const actionFeedback = createInlineFeedback(root);
   let context = host.getHostContext?.() ?? {}, connected = false, destroyed = false, generation = 0, busy = false;
   let snapshot: Recommendation | null = null, states: CardState[] = [], observer: IntersectionObserver | undefined;
   let detail: { section: HTMLElement; video: HTMLVideoElement; title: HTMLElement; back: HTMLButtonElement;
@@ -120,22 +123,25 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
     const capabilities = host.getHostCapabilities();
     return connected && Boolean(capabilities?.message) && record(capabilities?.experimental?.['openai/message']);
   }
-  function showManualDraft(prompt: string, card: RecommendationCard) {
-    let draft = root.querySelector<HTMLTextAreaElement>('.omtc-draft');
-    if (!draft) {
-      draft = element('textarea', 'omtc-draft'); draft.readOnly = true; draft.rows = 6;
-      draft.setAttribute('aria-label', t('draftLabel')); root.append(draft);
+  async function copyBrief(prompt: string) {
+    try {
+      if (!win.navigator.clipboard?.writeText) throw new Error('Clipboard API unavailable');
+      await win.navigator.clipboard.writeText(prompt); return true;
+    } catch {
+      const input = element('textarea'); input.value = prompt;
+      input.setAttribute('aria-hidden', 'true'); input.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+      const focused = doc.activeElement as HTMLElement | null;
+      doc.body.append(input); input.select();
+      try { return Boolean(doc.execCommand?.('copy')); }
+      catch { return false; }
+      finally { input.remove(); focused?.focus(); }
     }
-    draft.dataset.templateId = card.templateId; draft.value = prompt; draft.focus(); draft.select();
   }
   function refreshLabels() {
     root.lang = language();
     refreshWelcome();
     root.querySelector('.omtc-list')?.setAttribute('aria-label', t('listLabel'));
     for (const node of root.querySelectorAll<HTMLElement>('[data-copy-key]')) label(node, node.dataset.copyKey as CopyKey);
-    const draft = root.querySelector<HTMLTextAreaElement>('.omtc-draft');
-    const draftCard = states.find(state => state.card.templateId === draft?.dataset.templateId)?.card;
-    if (draft && draftCard) { draft.value = recreationPrompt(draftCard, language()); draft.setAttribute('aria-label', t('draftLabel')); }
     for (const state of states) {
       state.article.querySelector('.omtc-description')!.textContent = translations[language()].descriptions[state.card.templateId as TemplateId];
       state.cover.setAttribute('aria-label', `${t('preview')} ${state.card.title}`);
@@ -148,7 +154,9 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
       detail.video.setAttribute('aria-label', t('player'));
     }
     const hint = root.querySelector('[data-selection-hint]'); if (hint) hint.textContent = t('numeric');
-    if (context.theme === 'dark' || context.theme === 'light') doc.documentElement.style.colorScheme = context.theme;
+    if (context.theme === 'dark' || context.theme === 'light') {
+      doc.documentElement.style.colorScheme = context.theme; root.dataset.theme = context.theme;
+    }
   }
   function refreshWelcome() {
     let welcome = root.querySelector<HTMLElement>('.omtc-welcome');
@@ -158,11 +166,11 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
     const text = translations[language()].welcome;
     const recommendation = element('p'); recommendation.append(element('strong', '', text.recommendations));
     welcome.replaceChildren(element('h2', '', text.heading), element('p', '', text.introduction),
-      element('p', '', text.discovery), recommendation, element('p', '', text.draft));
+      element('p', '', text.discovery), recommendation, element('p', '', canPrepareDraft() ? text.draft : text.clipboardDraft));
     welcome.hidden = Boolean(detail?.selected);
   }
   function cleanupView() {
-    generation++; busy = false; observer?.disconnect(); observer = undefined;
+    generation++; busy = false; actionFeedback.clear(); observer?.disconnect(); observer = undefined;
     for (const cleanup of cleanups.splice(0)) cleanup();
     if (detail) { detail.video.pause(); detail.video.removeAttribute('src'); detail.video.load(); }
     for (const state of states) {
@@ -206,28 +214,30 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
   }
   async function prepareDraft(card: RecommendationCard, target: HTMLElement) {
     if (destroyed || busy) return;
-    const showFeedback = (key: CopyKey) => {
-      feedback(target, key);
-      const state = states.find(item => item.card === card); if (state) feedback(state.feedback, key);
-      if (detail?.selected?.card === card) feedback(detail.feedback, key);
-    };
+    const showFeedback = (key: CopyKey) => actionFeedback.show(t(key));
     const prompt = recreationPrompt(card, language());
-    if (!canPrepareDraft()) { showFeedback('manual'); showManualDraft(prompt, card); return; }
     const currentGeneration = generation;
-    busy = true; refreshLabels(); showFeedback('sending');
+    const copy = async () => {
+      const copied = await copyBrief(prompt);
+      if (!destroyed && generation === currentGeneration) showFeedback(copied ? 'copied' : 'copyFailed');
+    };
+    busy = true; refreshLabels();
     try {
+      if (!canPrepareDraft()) { await copy(); return; }
+      showFeedback('sending');
       // Without the negotiated extension, an older host could ignore metadata and submit a task.
       const result = await host.sendMessage({ role: 'user', content: [{ type: 'text', text: prompt }],
         _meta: { 'openai/message': { target: 'active', send: false } } });
       if (destroyed || generation !== currentGeneration) return;
-      if (result?.isError || result?.cancelled || result?.status === 'cancelled') { showFeedback('notSent'); showManualDraft(prompt, card); }
+      if (result?.cancelled || result?.status === 'cancelled') showFeedback('notSent');
+      else if (result?.isError) await copy();
       else {
+        actionFeedback.clear();
         for (const node of [target, ...states.map(state => state.feedback), ...(detail ? [detail.feedback] : [])]) {
           node.hidden = true; node.textContent = ''; delete node.dataset.copyKey;
         }
-        root.querySelector('.omtc-draft')?.remove();
       }
-    } catch { if (!destroyed && generation === currentGeneration) { showFeedback('notSent'); showManualDraft(prompt, card); } }
+    } catch { if (!destroyed && generation === currentGeneration) await copy(); }
     finally { if (!destroyed && generation === currentGeneration) { busy = false; refreshLabels(); } }
   }
   function wireVideo(video: HTMLVideoElement, status: HTMLElement, owner: CardState | null, currentGeneration: number) {
@@ -331,7 +341,7 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
       refreshLabels();
     },
     setHostContext(value: HostContext) { context = { ...context, ...value }; refreshLabels(); },
-    destroy() { if (destroyed) return; cleanupView(); destroyed = true; snapshot = null; for (const cleanup of lifetime.splice(0)) cleanup(); },
+    destroy() { if (destroyed) return; cleanupView(); actionFeedback.destroy(); destroyed = true; snapshot = null; for (const cleanup of lifetime.splice(0)) cleanup(); },
   };
 }
 

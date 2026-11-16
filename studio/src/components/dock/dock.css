@@ -247,3 +247,16 @@
   padding-top: 2px;
   gap: 6px;
 }
+
+/* Long translated titles stay within the scrollable tab strip. */
+.hf-dock .dv-tabs-container > .dv-tab {
+  max-width: 100%;
+}
+.hf-dock-tab {
+  min-width: 0;
+}
+.hf-dock-tab-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

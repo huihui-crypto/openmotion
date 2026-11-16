@@ -76,10 +76,6 @@ export function reportInstructionShown(template: Template, view: DetailView | un
 export function reportInstructionExpanded(template: Template, expanded: boolean, view: DetailView | undefined) {
   send('ui_click', { ...studio, area: 'template_instruction', element: 'expand_instruction', expanded, ...templateId(template), ...detail(view) });
 }
-/** The Copy button in the instruction panel. The recreate buttons report `start_use` instead; every copy reports a result. */
-export function reportCopyClicked(template: Template, copyAttemptId: string, view: DetailView | undefined) {
-  send('ui_click', { ...studio, area: 'template_instruction', element: 'copy_instruction', ...templateId(template), ...instruction(template), target_agent: 'codex', copy_attempt_id: copyAttemptId, ...detail(view) });
-}
 /** Only `clipboard_written` is a successful copy; showing the text for a manual copy is not. */
 export function reportCopyResult(template: Template, status: Fields<'template_instruction_copy_result'>['copy_status'], copyAttemptId: string, submit: boolean, view: DetailView | undefined) {
   send('template_instruction_copy_result', { ...studio, host_product: 'codex', copy_status: status, copy_attempt_id: copyAttemptId, ...templateId(template), ...resource(template), ...instruction(template, submit), ...detail(view) });

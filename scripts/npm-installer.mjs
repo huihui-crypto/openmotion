@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { lstat, mkdir, mkdtemp, readFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -7,7 +8,7 @@ import { realpathSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { canonical, extractArchive, nativeComponents, obtainAsset, readJSON, relativePath, runFile, sha256, withLock, writeAtomic, writeJSON } from './runtime-assets.mjs';
-import { ensureNativeRuntime, startNativePreparation } from './npm-runtime.mjs';
+import { defaultInstallationHome as defaultHome, nativeCacheDirectory, ensureNativeRuntime, startNativePreparation } from './npm-runtime.mjs';
 import { hosts, hostPlan, skillTargets, obsoleteSkills, checkSkillOwner, copyHostSkills } from './npm-hosts.mjs';
 import { installedTool } from './mcp-client.mjs';
 import { checkTransport, redact } from './check-installed-mcp.mjs';
@@ -16,7 +17,6 @@ import { exportDiagnostics, recordDiagnostic } from './diagnostics.mjs';
 // Keep ownership stable so earlier local installations remain upgradable.
 export const managedBy = '@openmotion/installer';
 const bundledManifest = fileURLToPath(new URL('../payload/release-npm.json', import.meta.url));
-const defaultHome = (environment = 'prod') => path.join(process.platform === 'win32' ? process.env.LOCALAPPDATA || os.homedir() : path.join(os.homedir(), '.local/share'), environment === 'dev' ? 'openmotion-dev' : 'openmotion');
 const contains = (parent, child) => { const rel = path.relative(parent, child); return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel)); };
 const usage = `Usage:
   openmotion setup --host <${hosts.join('|')}> [options]
@@ -100,7 +100,7 @@ export async function setup(options) {
     assert(!previous || (previous.templateEnvironment ?? 'prod') === templateEnvironment, 'This installation uses another template environment; choose a separate --home');
     const launcher = path.join(home, 'run-mcp.mjs');
     if (!previous) await readFile(launcher).then(() => { throw new Error('Refusing to replace an unowned MCP launcher'); }, error => { if (error.code !== 'ENOENT') throw error; });
-    const plan = await hostPlan(options, home, launcher, previous);
+    const plan = await hostPlan(options, home, launcher, previous, randomUUID());
     assert(!plan.metadata.configFile || !contains(dataDirectory, plan.metadata.configFile), 'Keep host configuration outside user data');
     assert(!plan.metadata.configFile || !['apps', 'cache', 'hosts'].some(name => contains(path.join(home, name), plan.metadata.configFile)), 'Keep host configuration outside managed application/cache/host directories');
     if (plan.layout !== 'deepseek') assert(!contains(dataDirectory, plan.skillsDirectory) && !contains(plan.skillsDirectory, dataDirectory)
@@ -129,7 +129,7 @@ export async function setup(options) {
           await runFile(process.execPath, [npm, 'ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: temporary });
         }
         await writeJSON(path.join(temporary, '.npm-install.json'), { schemaVersion: 1, applicationSHA256: manifest.application.sha256, installHome: home, commit: manifest.commit,
-          cacheDirectory: path.join(home, 'cache/native'), runtime: manifest.runtime, allowLocalAssets: true });
+          cacheDirectory: nativeCacheDirectory(home), runtime: manifest.runtime, allowLocalAssets: true });
         await rename(temporary, appRoot);
       } finally { await rm(temporary, { recursive: true, force: true }); }
     }
@@ -141,7 +141,7 @@ export async function setup(options) {
     const targets = await skillTargets(plan, appRoot), directories = [];
     for (const target of targets) directories.push({ target, existed: await checkSkillOwner(target, home, plan.host, plan.layout), movedOld: false, movedNew: false });
     for (const target of await obsoleteSkills(plan, home, targets)) directories.push({ target, existed: true, removeOnly: true, movedOld: false, movedNew: false });
-    let wroteState = false, wroteLauncher = false;
+    let wroteState = false, wroteLauncher = false, state;
     try {
       for (const item of directories) {
         await mkdir(path.dirname(item.target), { recursive: true });
@@ -156,24 +156,31 @@ export async function setup(options) {
       await writeAtomic(launcher, `import { readFile } from 'node:fs/promises';\nimport { spawn } from 'node:child_process';\nimport { pathToFileURL } from 'node:url';\nconst state = JSON.parse(await readFile(new URL('./install.json', import.meta.url), 'utf8'));\nawait (await import(pathToFileURL(state.appRoot + '/scripts/npm-runtime.mjs'))).configureNativeEnvironment(state.appRoot);\nconst child = spawn(process.execPath, ['--experimental-strip-types', state.appRoot + '/mcp.ts'], { cwd: state.appRoot, env: { ...process.env, MOTION_DATA_DIR: state.dataDirectory }, stdio: 'inherit', windowsHide: true });\nfor (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => child.kill(signal));\nchild.once('error', error => { console.error(error.message); process.exitCode = 1; });\nchild.once('exit', code => { process.exitCode = code ?? 1; });\n`);
       wroteLauncher = true;
       const registered = previous?.hosts || (previous?.skillsDirectory ? { codex: { skillsDirectory: previous.skillsDirectory } } : {});
-      const state = { ...previous, managedBy, version: manifest.version, templateEnvironment, appRoot, dataDirectory, launcher,
+      state = { ...previous, managedBy, version: manifest.version, templateEnvironment, appRoot, dataDirectory, launcher,
         hosts: { ...registered, [plan.host]: plan.metadata },
         ...(plan.host === 'codex' ? { skillsDirectory: targets[0] } : {}) };
+      // The registered MCP launcher must be usable even if Harness starts it synchronously.
       await writeJSON(stateFile, state); wroteState = true;
       await plan.register();
+      if (plan.host === 'deepseek' && previous?.hosts?.deepseek?.bundleDirectory) {
+        console.error('OpenMotion: previous Harness bundle retained at ' + previous.hosts.deepseek.bundleDirectory + '. Refresh host Tools/Skills; remove this old bundle only after the host has stopped.');
+      }
       for (const item of directories) await rm(item.backup, { recursive: true, force: true }).catch(error => console.error('Old instruction backup retained: ' + error.message));
       await startNativePreparation(appRoot).catch(error => console.error('OpenMotion: background preparation could not start; retry in Studio or run prepare. ' + error.message));
       const onboarding = await prepareInstallationFlow({ appRoot, dataDirectory, templateEnvironment,
         host: plan.host, onboardingOutput: options.onboardingOutput, codex: options.codex, expectedVersion: manifest.version });
       onboarding.directAccess = directAccess(home, plan.host, appRoot, options);
-      if (plan.host === 'codex' && onboarding.inlinePresentation?.status === 'prepared' && onboarding.preview.status === 'ready') {
-        const { scheduleInstallationOnboarding } = await import(pathToFileURL(path.join(appRoot, 'scripts/onboarding-callback.mjs')).href);
-        onboarding.callback = await scheduleInstallationOnboarding({ appRoot, dataDirectory, version: manifest.version,
-          onboarding, entry: 'npm', codex: options.codex });
-        if (onboarding.callback.status === 'queued') onboarding.onboardingStatus = 'callback_queued';
-      }
       return { ...state, host: plan.host, hostInstallation: plan.metadata, nativeDependencies: 'background-preparation; status and retry available in Studio', onboarding };
     } catch (error) {
+      if (plan.host === 'deepseek') {
+        // Registration can update the profile before throwing. Never delete a referenced bundle.
+        const registered = await plan.isRegistered().catch(() => null);
+        if (registered !== false) {
+          if (state && registered) await writeJSON(stateFile, state).catch(failure => console.error('OpenMotion: registered bundle retained; state recovery is needed: ' + failure.message));
+          error.message += ' Harness registration may already be active; its bundle was retained. Retry setup for this same home/profile.';
+          throw error;
+        }
+      }
       if (wroteLauncher && !previous) await rm(launcher, { force: true });
       if (wroteState) { if (previous) await writeJSON(stateFile, previous); else await rm(stateFile, { force: true }); }
       for (const item of [...directories].reverse()) {
@@ -281,7 +288,12 @@ async function main() {
     const state = await readJSON(path.join(values.home || defaultHome(environment), 'install.json'));
     assert(state?.managedBy === managedBy, 'Run setup first');
     await ensureNativeRuntime(state.appRoot);
-    console.log('Pinned FFmpeg, ffprobe and browser are ready.');
+    const runtime = (await readJSON(path.join(state.appRoot, '.npm-install.json')))?.runtime;
+    if (runtime?.vision) {
+      const { ensureVisionRuntime } = await import(pathToFileURL(path.join(state.appRoot, 'scripts/vision-runtime.mjs')).href);
+      await ensureVisionRuntime(state.appRoot);
+    }
+    console.log('Pinned native components and configured vision tools are ready.');
   } else if (command === 'diagnose') {
     const result = await diagnose({ home: values.home, host: values.host, codex: values.codex, claude: values.claude, dsh: values.dsh, profile: values.profile });
     console.log(JSON.stringify(result, null, 2));

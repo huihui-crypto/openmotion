@@ -18,7 +18,7 @@ test('legacy projects and conversation files become sessions without changing pr
   assert.equal(session.artifacts[0].projectId, 'project');
   assert.equal(session.messages[0].content, '保留已有需求');
   await store.renameSession('project', '会话名称');
-  assert.equal(store.projectCatalog().projects[0].title, '初始工程');
+  assert.equal(store.projectCatalog().projects[0].title, 'OpenMotion 示例短片');
   assert.equal(await readFile(path.join(store.directory, 'sessions/project.json'), 'utf8'), saved);
   assert.equal((await store.get()).revision, before);
   const read = await callTool('openmotion_get_session', { sessionId: 'project' }, store) as any;

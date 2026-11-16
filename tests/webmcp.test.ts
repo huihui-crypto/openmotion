@@ -9,6 +9,8 @@ import { pluginRoot } from '../hyperframes.ts';
 const projectId = '11111111-1111-1111-1111-111111111111';
 const revision = 'a'.repeat(64);
 const inputs: Record<string, object> = {
+  openmotion_assets_use: { action: 'list' },
+  openmotion_assets: { action: 'list' },
   openmotion_media_use: { action: 'inspect' },
   openmotion_list_templates: {},
   openmotion_get_template: { templateId: 'decision-tree' },
@@ -23,11 +25,11 @@ const inputs: Record<string, object> = {
   openmotion_export_cancel: { projectId, requestId: 'cancel', jobId: 'job' },
 };
 
-test('all twelve domain tools reuse public schemas and forward unchanged inputs and results', async () => {
+test('all fourteen registered domain names reuse public schemas and forward unchanged inputs and results', async () => {
   const calls: { url: string; init?: RequestInit }[] = [];
   const result = { projectId, previewHandoff: { state: 'pending' }, nested: { value: 42 } };
   const tools = buildOpenMotionWebMcpTools(async (url, init) => { calls.push({ url, init }); return Response.json(result); });
-  assert.equal(tools.length, 12);
+  assert.equal(tools.length, 14);
   assert.deepEqual(tools.map(tool => tool.name).sort(), Object.keys(inputs).sort());
   for (const [i, tool] of tools.entries()) {
     assert.equal(tool.inputSchema, phase1Tools[i].inputSchema);

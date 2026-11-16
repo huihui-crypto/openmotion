@@ -1849,5 +1849,6 @@
   "Unlock track": "Spur entsperren",
   "Delete track": "Spur löschen",
   "Unlock the track before deleting it": "Entsperren Sie die Spur, bevor Sie sie löschen",
-  "Open the composition to delete this track": "Öffnen Sie die Komposition, um diese Spur zu löschen"
+  "Open the composition to delete this track": "Öffnen Sie die Komposition, um diese Spur zu löschen",
+  "Screen too small to expand this panel": "Der Bildschirm ist zu klein, um dieses Panel zu öffnen"
 }

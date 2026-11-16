@@ -7,6 +7,27 @@ import { WorkspaceStore, createBlankProject } from '../workspace.ts';
 import { inspectProject, pluginRoot, startStudio } from '../hyperframes.ts';
 import { fixture } from './fixtures.ts';
 
+test('default project labels migrate while explicit names survive reopening', () => fixture(async store => {
+  assert.equal(store.projectCatalog().projects[0].titleKey, 'OpenMotion Sample Video');
+  for (const title of ['初始工程', 'OpenMotion 示例短片']) {
+    const otherId = crypto.randomUUID();
+    await writeFile(path.join(store.directory, 'projects.json'), JSON.stringify({ activeId: 'project', projects: [
+      { id: 'project', title }, { id: otherId, title },
+    ] }));
+    const migrated = store.projectCatalog();
+    assert.equal(migrated.projects[0].title, 'OpenMotion 示例短片');
+    assert.equal(migrated.projects[0].titleKey, 'OpenMotion Sample Video');
+    assert.equal(migrated.projects[1].title, title);
+    assert.equal(migrated.projects[1].titleKey, undefined);
+    await store.renameProject('project', title);
+    const reopened = new WorkspaceStore(store.directory).projectCatalog().projects[0];
+    assert.equal(reopened.title, title);
+    assert.equal(reopened.titleKey, null);
+  }
+  await writeFile(path.join(store.directory, 'projects.json'), JSON.stringify({ activeId: 'project', projects: [{ id: 'project', title: 'My own film' }] }));
+  assert.deepEqual(store.projectCatalog().projects[0], { id: 'project', title: 'My own film' });
+}, false));
+
 for (const entry of ['sidebar', 'direct preview'] as const) {
   test(`missing initial project opens the bundled default through ${entry} without overwriting other projects`, { timeout: 60_000 }, () => fixture(async store => {
     const id = crypto.randomUUID(), directory = store.projectDirectoryFor(id);

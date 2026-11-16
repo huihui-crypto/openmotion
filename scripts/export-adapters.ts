@@ -73,7 +73,7 @@ export async function exportAdapters(runtimePath: string, dataPath: string, outp
   }
   for (const directory of ['skills', 'docs']) await readDocuments(directory);
   for (const name of ['packages/design-system/remix-icon-LICENSE.txt', 'packages/design-system/remix-icon-NOTICE.txt']) documents.push({ name: path.basename(name), data: await readFile(path.join(runtime, name)) });
-  for (const name of ['AGENTS.md', 'CLAUDE.md', 'cloud.md', ...designSystemDocuments]) documents.push({ name, data: await readFile(path.join(runtime, name)) });
+  for (const name of ['AGENTS.md', 'CLAUDE.md', ...designSystemDocuments]) documents.push({ name, data: await readFile(path.join(runtime, name)) });
   const filmIcon = (await readFile(path.join(runtime, 'packages/design-system/icons.svg'), 'utf8')).match(/<symbol id="icon-film" viewBox="0 0 24 24"[^>]*>([\s\S]*?)<\/symbol>/)?.[1];
   assert(filmIcon, 'Missing shared film icon.');
   await mkdir(path.dirname(output), { recursive: true });

@@ -3,13 +3,13 @@ export const settingsSections = ['account', 'subscription', 'providers', 'models
 export type SettingsSection = typeof settingsSections[number];
 export const mcpClients = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt', 'mcp'] as const;
 export type McpClient = typeof mcpClients[number];
-export type WorkspacePage = { settings: SettingsSection | null; templates: boolean; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null };
+export type WorkspacePage = { settings: SettingsSection | null; assets: boolean; templates: boolean; client: McpClient; setup: 'agent' | 'manual'; provider: string | null; template: string | null };
 
 export function readWorkspacePage(search: string): WorkspacePage {
   const query = new URLSearchParams(search), page = query.get('page'), section = query.get('section');
   const settings = page === 'mcp' ? 'mcp' : page === 'settings'
     ? settingsSections.find(value => value === section) ?? 'general' : null;
-  return { settings, templates: query.get('templates') === '1',
+  return { settings, assets: page === 'assets', templates: query.get('templates') === '1',
     client: mcpClients.find(value => value === query.get('host')) ?? 'codex',
     setup: query.get('setup') === 'manual' ? 'manual' : 'agent',
     provider: settings === 'providers' ? query.get('provider') || null : null,
@@ -19,7 +19,11 @@ export function readWorkspacePage(search: string): WorkspacePage {
 export function workspacePageHref(href: string, patch: Partial<WorkspacePage>): string {
   const url = new URL(href), page = { ...readWorkspacePage(url.search), ...patch };
   for (const key of ['page', 'section', 'templates', 'host', 'setup', 'provider', 'template']) url.searchParams.delete(key);
-  if (page.settings === 'mcp') {
+  if (patch.settings) page.assets = false;
+  if (patch.assets) page.settings = null;
+  if (page.assets) {
+    url.searchParams.set('page', 'assets');
+  } else if (page.settings === 'mcp') {
     url.searchParams.set('page', 'mcp');
     url.searchParams.set('host', page.client);
     if (page.setup === 'manual') url.searchParams.set('setup', 'manual');

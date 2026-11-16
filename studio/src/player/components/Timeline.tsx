@@ -2,6 +2,7 @@ import { useI18n } from "../../i18n/I18n";
 import { memo, useEffect } from "react";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { TimelineMediaBar } from '../../motion/TimelineMediaBar';
+import { usePlayerStore } from "../store/playerStore";
 import { TimelineColumnResize } from './TimelineColumnResize';
 import type { TimelineProps } from "./TimelineTypes";
 import { TimelineProvider, useTimelineContext } from "./TimelineProvider";
@@ -42,11 +43,12 @@ function TimelineView({ onContentHeightChange }: Pick<TimelineProps, "onContentH
   const { t } = useI18n();
   const { state, meta } = useTimelineContext();
   const { timelineReady, elements, canvas } = state;
+  const hasPending = usePlayerStore(s => s.pendingAssetDrops.length > 0);
   const changing = Boolean(canvas.draggedElement || canvas.resizingClip);
   useEffect(() => {
-    if (timelineReady && !changing) onContentHeightChange?.(elements.length ? canvas.intrinsicHeight : 128);
-  }, [timelineReady, changing, elements.length, canvas.intrinsicHeight, onContentHeightChange]);
-  if (!timelineReady || elements.length === 0) {
+    if (timelineReady && !changing) onContentHeightChange?.(elements.length || hasPending ? canvas.intrinsicHeight : 128);
+  }, [timelineReady, changing, elements.length, hasPending, canvas.intrinsicHeight, onContentHeightChange]);
+  if (!timelineReady || (elements.length === 0 && !hasPending)) {
     return <TimelineEmptyStatePart />;
   }
   return (

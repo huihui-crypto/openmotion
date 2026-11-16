@@ -13,6 +13,11 @@ interface UseFileTreeOptions {
   projectIdRef: React.RefObject<string | null>;
 }
 
+export interface FileTreeRefreshOptions {
+  projectId: string;
+  requiredPaths: readonly string[];
+}
+
 interface FetchedFileTree {
   projectId: string;
   loaded: boolean;
@@ -26,7 +31,7 @@ interface FetchedFileTree {
 // and defeat useMemo/useCallback deps downstream (e.g. the `assets` memo below).
 const EMPTY_FILE_LIST: string[] = [];
 
-type TreeListing = { files?: string[]; compositions?: string[]; fonts?: Array<Omit<ImportedFontAsset, "url">> };
+type TreeListing = { dir?: string; files?: string[]; compositions?: string[]; fonts?: Array<Omit<ImportedFontAsset, "url">> };
 
 async function readTreeListing(projectId: string, signal: AbortSignal): Promise<TreeListing> {
   const res = await studioApiFetch(buildProjectApiPath(projectId), { signal });
@@ -45,6 +50,10 @@ function reportRefreshFailure(err: unknown): void {
  */
 export function useFileTree({ projectId, projectIdRef }: UseFileTreeOptions) {
   const [fetched, setFetched] = useState<FetchedFileTree | null>(null);
+  const refreshRequestRef = useRef(0);
+  const appliedRequestRef = useRef(0);
+  const refreshAbortRef = useRef<AbortController | null>(null);
+  const failureReportedRef = useRef(false);
   const current = fetched?.projectId === projectId ? fetched : null;
   const fileTree = current?.fileTree ?? EMPTY_FILE_LIST;
   const compositionPaths = current?.compositionPaths ?? EMPTY_FILE_LIST;
@@ -55,6 +64,7 @@ export function useFileTree({ projectId, projectIdRef }: UseFileTreeOptions) {
   useEffect(() => {
     if (!projectId) return;
     let cancelled = false;
+    const requestId = ++refreshRequestRef.current;
     setFetched({ projectId, loaded: false, fileTree: [], compositionPaths: [], projectDir: null });
     studioApiFetch(buildProjectApiPath(projectId))
       // An unresolvable project answers 404 with a JSON body, so without this
@@ -65,8 +75,9 @@ export function useFileTree({ projectId, projectIdRef }: UseFileTreeOptions) {
         if (!r.ok) throw new Error(`tree fetch failed: ${r.status}`);
         return r.json();
       })
-      .then((data: TreeListing & { dir?: string }) => {
-        if (cancelled) return;
+      .then((data: TreeListing) => {
+        if (cancelled || requestId < appliedRequestRef.current) return;
+        appliedRequestRef.current = requestId;
         setFetched({
           projectId,
           loaded: true,
@@ -89,34 +100,41 @@ export function useFileTree({ projectId, projectIdRef }: UseFileTreeOptions) {
     };
   }, [projectId]);
 
-  const refreshRequestRef = useRef(0);
-  const refreshAbortRef = useRef<AbortController | null>(null);
-  const failureReportedRef = useRef(false);
-
-  const refreshFileTree = useCallback(async () => {
-    const pid = projectIdRef.current;
+  const refreshFileTree = useCallback(async (options?: FileTreeRefreshOptions) => {
+    const pid = options?.projectId ?? projectIdRef.current;
     if (!pid) return;
+    if (options && projectIdRef.current !== pid) throw new Error('Active project changed before asset refresh');
     // Same id+abort pair as useFileManager.ts's openSourceForSelection: cancel the
     // superseded request instead of letting it complete and discarding the result.
     refreshAbortRef.current?.abort();
     const requestId = ++refreshRequestRef.current;
     const controller = new AbortController();
-    refreshAbortRef.current = controller;
+    // A verified import refresh must finish even if an external file event also
+    // refreshes the tree. Ordinary background refreshes remain cancellable.
+    refreshAbortRef.current = options ? null : controller;
     let data: TreeListing;
     try {
       data = await readTreeListing(pid, controller.signal);
+      if (options && (!Array.isArray(data.files) || options.requiredPaths.some(path => !data.files!.includes(path)))) {
+        throw new Error('Imported files are missing from the project listing');
+      }
     } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") return;
+      if (!options && err instanceof DOMException && err.name === "AbortError") return;
       if (!failureReportedRef.current) reportRefreshFailure(err);
       failureReportedRef.current = true;
+      if (options) throw err;
       return;
     }
     failureReportedRef.current = false;
-    if (data.files && requestId === refreshRequestRef.current) {
+    if (options && projectIdRef.current !== pid) throw new Error('Active project changed during asset refresh');
+    if (data.files && !controller.signal.aborted && projectIdRef.current === pid && requestId >= appliedRequestRef.current) {
+      appliedRequestRef.current = requestId;
       setFetched((prev) =>
         prev?.projectId === pid
           ? {
               ...prev,
+              loaded: true,
+              projectDir: typeof data.dir === 'string' ? data.dir : prev.projectDir,
               fileTree: data.files ?? prev.fileTree,
               // A response that omits `compositions` must not wipe out a
               // known-good list — only replace it when the field is present.

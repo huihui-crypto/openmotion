@@ -3,8 +3,6 @@ import assert from 'node:assert/strict';
 import { fixture } from './fixtures.ts';
 import { Client } from './shared-editor-client.mjs';
 import { editorRequest, readEditor, sharedEditorEnabled } from '../editor-runtime.ts';
-import { stat } from 'node:fs/promises';
-import path from 'node:path';
 
 test('a stalled native project open times out and releases the other MCP client queue', { skip: !sharedEditorEnabled, timeout: 60_000 }, () => fixture(async store => {
   const clients = [new Client(store.directory), new Client(store.directory)];
@@ -23,17 +21,16 @@ test('a stalled native project open times out and releases the other MCP client 
     process.kill(nativePid!, 'SIGSTOP'); paused = true;
     assert.ok((await clients[1].call('openmotion_get_project')).projects.some((project: any) => project.id === projects[1].projectId), 'listing must work without the paused native service');
     const started = Date.now();
-    opening = clients[0].call('openmotion_open_preview', { projectId: projects[0].projectId }).then(value => ({ value }), error => ({ error }));
-    const deadline = Date.now() + 10_000;
-    while (!await stat(path.join(store.directory, 'workspace.lock')).catch(() => null)) {
-      assert.ok(Date.now() < deadline, 'opening must enter the workspace lock');
-      await pause(20);
-    }
+    let openingSettled = false;
+    opening = clients[0].call('openmotion_open_preview', { projectId: projects[0].projectId })
+      .then(value => ({ value }), error => ({ error })).finally(() => { openingSettled = true; });
+    // Issued while the native open still holds its stall, so a queue behind that call would miss the 2-second race.
     listing = clients[1].call('openmotion_get_project');
+    const listed = await Promise.race([listing, pause(2000).then(() => { throw new Error('Other MCP client remains blocked by the in-flight native open'); })]);
+    assert.ok(listed.projects.some((project: any) => project.id === projects[1].projectId));
+    assert.equal(openingSettled, false, 'the other client listed while the native open was still in flight');
     const opened = await Promise.race([opening, pause(35_000).then(() => { throw new Error('Native project open exceeded its deadline'); })]);
     assert.match(String(opened.error), /timeout|timed out/i);
-    const listed = await Promise.race([listing, pause(2000).then(() => { throw new Error('Other MCP client remains blocked after opening timeout'); })]);
-    assert.ok(listed.projects.some((project: any) => project.id === projects[1].projectId));
     console.log(JSON.stringify({ scenario: 'native-opening-timeout', elapsedMs: Date.now() - started, otherClientListedWhileNativePaused: true }));
     process.kill(nativePid!, 'SIGCONT'); paused = false;
     assert.equal((await clients[0].call('openmotion_open_preview', { projectId: projects[0].projectId })).projectId, projects[0].projectId, 'opening can be retried after native recovery');

@@ -96,6 +96,8 @@ export const TimelineClip = memo(function TimelineClip({
   const isAudioClip = isAudioTimelineElement(el);
   const ladder = clipWidthLadder(widthPx);
   const showHandles = handleOpacity > 0.01 && (widthPx >= HANDLES_MIN_PX || isSelected);
+  // Center grips on the outer borders and leave the middle of short clips available to move.
+  const trimHitWidth = Math.min(CLIP_TRIM_HIT_PX, widthPx / 2);
   const showLabel = !mvp && (!isAudioClip || ladder === "labeled");
   const showDefaultText = !hasCustomContent && ladder === "labeled";
   const startLabel = el.start.toFixed(1);
@@ -121,7 +123,7 @@ export const TimelineClip = memo(function TimelineClip({
   const clipClassName = [
     "timeline-clip",
     "absolute",
-    hasCustomContent ? "overflow-visible" : "overflow-hidden",
+    "overflow-visible",
     isSelected ? "is-selected" : "",
     isHovered ? "is-hovered" : "",
     isDragging ? "is-dragging" : "",
@@ -189,13 +191,14 @@ export const TimelineClip = memo(function TimelineClip({
       {showHandles && capabilities.canTrimStart && (
         <div
           aria-hidden="true"
+          data-trim-edge="start"
           onPointerDown={(e) => onResizeStart?.("start", e)}
           style={{
             position: "absolute",
-            left: 0,
+            left: -trimHitWidth / 2,
             top: 0,
             bottom: 0,
-            width: CLIP_TRIM_HIT_PX,
+            width: trimHitWidth,
             cursor: "col-resize",
             zIndex: 4,
           }}
@@ -204,7 +207,7 @@ export const TimelineClip = memo(function TimelineClip({
             className="timeline-clip__handle-bar"
             style={{
               position: "absolute",
-              left: 4,
+              left: trimHitWidth / 2 - 1,
               top: 6,
               bottom: 6,
               width: 2,
@@ -219,13 +222,14 @@ export const TimelineClip = memo(function TimelineClip({
       {showHandles && capabilities.canTrimEnd && (
         <div
           aria-hidden="true"
+          data-trim-edge="end"
           onPointerDown={(e) => onResizeStart?.("end", e)}
           style={{
             position: "absolute",
-            right: 0,
+            right: -trimHitWidth / 2,
             top: 0,
             bottom: 0,
-            width: CLIP_TRIM_HIT_PX,
+            width: trimHitWidth,
             cursor: "col-resize",
             zIndex: 4,
           }}
@@ -234,7 +238,7 @@ export const TimelineClip = memo(function TimelineClip({
             className="timeline-clip__handle-bar"
             style={{
               position: "absolute",
-              right: 4,
+              right: trimHitWidth / 2 - 1,
               top: 6,
               bottom: 6,
               width: 2,

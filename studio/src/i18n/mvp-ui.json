@@ -1,6 +1,7 @@
 {
   "ja": {
-    "Join the OpenDesign community": "OpenDesign コミュニティに参加しませんか",
+    "OpenMotion Sample Video": "OpenMotion サンプル動画",
+    "Join OpenMotion on {platform}": "{platform} の OpenMotion コミュニティに参加",
     "Expand": "展開",
     "Collapse": "折りたたむ",
     "Expand left panel": "左パネルを展開",
@@ -317,7 +318,8 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "このエディターでは、サブコンポジション内のクリップの分割はサポートされていません。"
   },
   "ko": {
-    "Join the OpenDesign community": "OpenDesign 커뮤니티에 참여하세요",
+    "OpenMotion Sample Video": "OpenMotion 예제 영상",
+    "Join OpenMotion on {platform}": "{platform}에서 OpenMotion 커뮤니티 참여",
     "Expand": "펼치기",
     "Collapse": "접기",
     "Expand left panel": "왼쪽 패널 펼치기",
@@ -634,7 +636,8 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "이 편집기에서는 하위 컴포지션 내부의 클립 분할을 지원하지 않습니다."
   },
   "de": {
-    "Join the OpenDesign community": "Tritt der OpenDesign-Community bei",
+    "OpenMotion Sample Video": "OpenMotion-Beispielvideo",
+    "Join OpenMotion on {platform}": "OpenMotion auf {platform} beitreten",
     "Expand": "Erweitern",
     "Collapse": "Einklappen",
     "Expand left panel": "Linken Bereich öffnen",
@@ -951,7 +954,8 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Das Teilen von Clips innerhalb einer Unterkomposition wird in diesem Editor nicht unterstützt."
   },
   "fr": {
-    "Join the OpenDesign community": "Rejoignez la communauté OpenDesign",
+    "OpenMotion Sample Video": "Vidéo d’exemple OpenMotion",
+    "Join OpenMotion on {platform}": "Rejoindre OpenMotion sur {platform}",
     "Expand": "Développer",
     "Collapse": "Réduire",
     "Expand left panel": "Ouvrir le panneau gauche",
@@ -1268,7 +1272,8 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Cet éditeur ne permet pas de scinder les clips à l’intérieur d’une sous-composition."
   },
   "ru": {
-    "Join the OpenDesign community": "Присоединяйтесь к сообществу OpenDesign",
+    "OpenMotion Sample Video": "Пример видео OpenMotion",
+    "Join OpenMotion on {platform}": "Присоединиться к OpenMotion в {platform}",
     "Expand": "Развернуть",
     "Collapse": "Свернуть",
     "Expand left panel": "Развернуть левую панель",
@@ -1585,7 +1590,8 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "В этом редакторе нельзя разделять клипы внутри подкомпозиции."
   },
   "es": {
-    "Join the OpenDesign community": "Únete a la comunidad de OpenDesign",
+    "OpenMotion Sample Video": "Vídeo de ejemplo de OpenMotion",
+    "Join OpenMotion on {platform}": "Únete a OpenMotion en {platform}",
     "Expand": "Expandir",
     "Collapse": "Contraer",
     "Expand left panel": "Abrir panel izquierdo",
@@ -1902,7 +1908,8 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor no permite dividir clips dentro de una subcomposición."
   },
   "pt-BR": {
-    "Join the OpenDesign community": "Junte-se à comunidade OpenDesign",
+    "OpenMotion Sample Video": "Vídeo de exemplo do OpenMotion",
+    "Join OpenMotion on {platform}": "Participe da comunidade OpenMotion no {platform}",
     "Expand": "Expandir",
     "Collapse": "Recolher",
     "Expand left panel": "Abrir painel esquerdo",
@@ -2219,7 +2226,8 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor não permite dividir clipes dentro de uma subcomposição."
   },
   "it": {
-    "Join the OpenDesign community": "Unisciti alla community OpenDesign",
+    "OpenMotion Sample Video": "Video di esempio OpenMotion",
+    "Join OpenMotion on {platform}": "Unisciti a OpenMotion su {platform}",
     "Expand": "Espandi",
     "Collapse": "Comprimi",
     "Expand left panel": "Apri pannello sinistro",
@@ -2536,7 +2544,8 @@
     "Splitting clips inside a sub-composition is not supported in this editor.": "Questo editor non supporta la divisione di clip all’interno di una sottocomposizione."
   },
   "tr": {
-    "Join the OpenDesign community": "OpenDesign topluluğuna katılın",
+    "OpenMotion Sample Video": "OpenMotion Örnek Videosu",
+    "Join OpenMotion on {platform}": "{platform} üzerinden OpenMotion topluluğuna katıl",
     "Expand": "Genişlet",
     "Collapse": "Daralt",
     "Expand left panel": "Sol paneli aç",

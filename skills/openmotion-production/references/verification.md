@@ -2,6 +2,8 @@
 
 Unchanged template delivery follows openmotion-template-to-video: confirm the template loaded and plays in the editor, without rendering, comparison or a fabricated export job. The fresh-export and job/revision checks below apply when a new render is required.
 
+For an unchanged template with explicit file delivery, [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md) supplies the complete verification sequence: preserve automatic technical verification and actual full-play/seek/replay evidence, inspect the final opening/main content/closing, and keep unavailable evidence explicit. Creative redesign, a new storyboard, full reference comparison and multiple prose reports are outside that unchanged branch. Modified content continues through the full relevant review below.
+
 Use separate evidence for creative quality, technical media integrity and playback. Each check is `passed`, `failed` or `not_run`; a missing tool or an unseen render cannot become `passed`. Scores are optional diagnostics, never the acceptance criterion.
 
 For dynamic creative work, also read the shared [Motion review](../../openmotion-director/references/motion-review.md); use it within the current route, without restarting director's full creation workflow. Local changes review the affected interval and adjacent joins; full-film delivery reviews the whole film. Export-only checks the requested file without authorizing creative rewrites. Apply the checks relevant to the requested stage: draft/review tasks do not trigger export.
@@ -43,7 +45,7 @@ Recheck: changed frames, neighboring cuts and new result
 Status: open or resolved with evidence
 ```
 
-Prioritize up to three defects per pass. Reinspect after each repair. Two unsuccessful local repairs of the same defect require a blocker report and user direction or a concrete capability fix. Do not automatically do three rounds when the first result passes; do not lower the criteria to finish. Minor intentional tradeoffs can be documented; blocking defects must be resolved before claiming final completion.
+Prioritize a small set of consequential defects per pass and reinspect after each repair. When repeated local changes fail, record what each attempt changed and reassess the cause, source control, material or representation before trying again. Continue repairs within the user's authorization. Request user direction when progress depends on missing user information, a changed requirement or additional authorization; report a concrete capability gap when available methods cannot resolve it. Stop iterating when the requested result passes. Document minor intentional tradeoffs and resolve blocking defects before claiming final completion.
 
 Local source edits are supported; each OpenMotion export renders a fresh snapshot of the whole composition. Reuse unaffected design decisions, not stale exported-file verification.
 

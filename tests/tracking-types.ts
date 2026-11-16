@@ -2,6 +2,9 @@ import { trackMotion } from '../studio/src/motion/tracking.ts';
 
 // Compile-only calls: this function must never execute or emit events.
 function studioContract() {
+  void trackMotion('webmcp_tool_finished', { tool_name: 'openmotion_assets_use', transport: 'webmcp', call_id: '', action: 'read', outcome: 'success', duration_ms: 10 });
+  // @ts-expect-error Tool actions are closed categories, never arbitrary input.
+  void trackMotion('webmcp_tool_started', { tool_name: 'openmotion_assets_use', transport: 'webmcp', call_id: '', action: 'PRIVATE_ACTION' });
   void trackMotion('ui_click', { page_name: 'home', area: 'workspace', element: 'new_creation' });
   void trackMotion('playback', { action: 'speed_change', rate: 1.25 });
   void trackMotion('audio_fx_param_committed', { effect: 'compressor', param: 'threshold', value: -18.5, surface: 'details' });

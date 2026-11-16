@@ -8,7 +8,7 @@ import { runFile } from './runtime-assets.mjs';
 import { prepareCodexHostHandoff } from './codex-host-handoff.mjs';
 
 export async function installationInstructions(appRoot) {
-  const guide = await readFile(path.join(appRoot, 'docs/install.md'), 'utf8');
+  const guide = await readFile(path.join(appRoot, 'docs/install-onboarding.md'), 'utf8');
   const sections = [...guide.matchAll(/<!-- installation-onboarding:start -->([\s\S]*?)<!-- installation-onboarding:end -->/g)];
   assert.equal(sections.length, 1, 'Installation guide must contain one onboarding contract');
   assert(sections[0][1].trim(), 'Installation onboarding contract is empty');
@@ -151,13 +151,6 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
     const defaults = JSON.parse(await readFile(path.join(appRoot, 'shared/template-config.json'), 'utf8'));
     const options = { appRoot, dataDirectory: process.env.MOTION_DATA_DIR, templateEnvironment: process.env.MOTION_TEMPLATE_ENV || defaults.environment };
     const result = await prepareInstallationFlow(options);
-    if (process.argv.includes('--summary') && result.inlinePresentation?.status === 'prepared' && result.preview.status === 'ready') {
-      const { scheduleInstallationOnboarding } = await import('./onboarding-callback.mjs');
-      result.callback = await scheduleInstallationOnboarding({ appRoot, dataDirectory: result.dataDirectory,
-        version: JSON.parse(await readFile(path.join(appRoot, 'package.json'), 'utf8')).version,
-        onboarding: result, entry: 'source' });
-      if (result.callback.status === 'queued') result.onboardingStatus = 'callback_queued';
-    }
     const { hostHandoff, preview } = result;
     // Keep the decision and handoff visible instead of burying them after a long
     // quoted success contract. The full contract remains available for the Agent.
@@ -165,12 +158,12 @@ if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToP
       const detailsFile = path.join(appRoot, '.artifacts/install', `onboarding-${Date.now()}-${process.pid}.json`);
       await mkdir(path.dirname(detailsFile), { recursive: true });
       await writeFile(detailsFile, JSON.stringify(result, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-      if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + (result.callback?.reason || hostHandoff?.reason || result.callback?.status || result.onboardingStatus)
+      if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + (hostHandoff?.reason || result.onboardingStatus)
         + '. Installation is registered; welcome/cards delivery remains unverified. '
         + (result.inlinePresentation?.status === 'prepared'
-          ? 'The active callback must publish the verified document into this chat\'s permitted visualization directory, visibly open the template library and emit the published reference. '
+          ? 'Continue in this same installation turn: initialize the browser, finish checks and publish the verified document in this chat\'s permitted visualization directory before opening the library. Prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal that loaded tab and obtain its page state in one call; do not reopen or inspect it again. Complete mandatory browser bookkeeping next, then immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. '
           : 'Open the library and report the required host action. ')
-        + 'Do not send a library-only success welcome or schedule a duplicate callback.');
+        + 'Do not enqueue a user message, defer to another turn or send a separate success reply.');
       if (preview.status !== 'ready') console.error('ONBOARDING_PENDING: ' + preview.warning);
       console.log(JSON.stringify({ ...result, instructions: undefined, catalog: undefined, detailsFile }, null, 2));
     } else console.log(JSON.stringify(result, null, 2));

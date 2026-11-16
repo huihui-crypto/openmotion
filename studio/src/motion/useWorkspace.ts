@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '../i18n/I18n';
 import { projectHref, requestedProject, sessionHref } from './workspaceRouting';
 import type { CreativeSession, CreationMode } from '../../../shared/session';
 import { preservePresentation } from '../../../shared/workspace-url';
@@ -6,7 +7,7 @@ import { diagnosticFetch } from './diagnosticRequests';
 import { initializeWorkspaceHistory, WORKSPACE_LOCATION_CHANGED, workspaceHistoryIndex, workspaceHistorySession, writeWorkspaceHistory } from '../utils/workspaceHistory';
 import { readWorkspacePage } from './workspacePageRouting';
 
-export type SavedProject = { id: string; title: string; templateId?: string; createdAt?: number; openedAt?: number };
+export type SavedProject = { id: string; title: string; titleKey?: 'OpenMotion Sample Video' | null; templateId?: string; createdAt?: number; openedAt?: number };
 type Job = { id: string; state: 'pending' | 'running' | 'completed' | 'failed'; error?: string };
 export type WorkspaceStatus = { revision: string; projectId: string; projectTitle: string; exportJob: Job | null; sessionId?: string;
   historyRestoreError?: { requestId: string; message: string } | null };
@@ -27,7 +28,10 @@ export function navigateWorkspace(url: string, replace = false) {
 const jsonBody = (body: unknown) => ({ headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
 export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: string, sessionId?: string, navigate = navigateWorkspace) {
+  const { t } = useI18n();
   const [projects, setProjects] = useState<SavedProject[]>([]);
+  const displayedProjects = useMemo(() => projects.map(project => project.id === 'project' && project.titleKey === 'OpenMotion Sample Video'
+    ? { ...project, title: t(project.titleKey) } : project), [projects, t]);
   const [sessions, setSessions] = useState<CreativeSession[]>([]);
   const [status, setStatus] = useState<WorkspaceStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -183,5 +187,5 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
   }, [updateCatalog]);
   const rename = useCallback((id: string, title: string) => renameItem(id, title, 'projects'), [renameItem]);
   const renameSession = useCallback((id: string, title: string) => renameItem(id, title, 'sessions'), [renameItem]);
-  return { projects, sessions, session: sessions.find(item => item.id === sessionId), status, busy, navigationError, error: error || connectionError, errorSource: error ? 'operation' as const : 'connection' as const, checkingConnection, retryConnection, open, create, home, rename, startSession, openSession, createArtifact, renameSession, clearError: () => { setError(''); setConnectionError(''); } };
+  return { projects: displayedProjects, sessions, session: sessions.find(item => item.id === sessionId), status, busy, navigationError, error: error || connectionError, errorSource: error ? 'operation' as const : 'connection' as const, checkingConnection, retryConnection, open, create, home, rename, startSession, openSession, createArtifact, renameSession, clearError: () => { setError(''); setConnectionError(''); } };
 }

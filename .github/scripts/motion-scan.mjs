@@ -66,14 +66,15 @@ export function privacyFindings(name, text, kind = 'source') {
     || /(?:^|\/)(?:\.npmrc|\.DS_Store|id_rsa|id_ed25519)$/.test(name)
     || /\.(?:log|pem|key|p12|pfx)$/.test(name)) add('private-file');
   if (/(?:^|\/)\.env(?:\.|$)/.test(name) && !(kind === 'source' && /(?:^|\/)\.env\.(?:example|development)$/.test(name))) add('environment-file');
-  // Only the owner-approved public Feishu invitation in the four product READMEs is exempt.
-  // Pin the complete URL by digest so adjacent private URLs and changed invitations still fail.
-  const publicReadmes = ['README.md', 'README.zh-CN.md', 'docs/README.zh-CN.md', 'docs/README.ja.md'];
-  // The npm installer archive keeps the same product READMEs under its single `package/` root.
-  const publicReadme = publicReadmes.includes(kind === 'package' ? name.replace(/^package\//, '') : name);
+  // Only the owner-approved public Feishu invitation in the product READMEs, the shared community link and its
+  // bundled Studio asset is exempt. Pin the complete URL by digest so adjacent private URLs and changed invitations fail.
+  const publicCommunityFiles = ['README.md', 'README.zh-CN.md', 'docs/README.zh-CN.md', 'docs/README.ja.md', 'studio/src/motion/CommunityLink.tsx'];
+  // The npm installer archive keeps the same files under its single `package/` root.
+  const publicCommunityFile = kind === 'package' ? name.replace(/^package\//, '') : name;
+  const publicCommunity = publicCommunityFiles.includes(publicCommunityFile) || /^studio\/build\/editor-assets\/[^/]+\.js$/.test(publicCommunityFile);
   const urls = text.match(/https?:\/\/[^\s"'<>)]*/gi) || [];
   if (urls.some(url => /(?:powerformer\.(?:net|com)|feishu\.(?:cn|com)|larksuite\.com)/i.test(url)
-    && !(publicReadme && createHash('sha256').update(url).digest('hex') === 'd3337d48607e553372bf4a64d1fb41299487d510b1cc95d565698ff4540003b3'))) add('internal-link');
+    && !(publicCommunity && createHash('sha256').update(url).digest('hex') === 'd3337d48607e553372bf4a64d1fb41299487d510b1cc95d565698ff4540003b3'))) add('internal-link');
   if (/\/(?:Users|home)\/[a-zA-Z0-9_.-]+\/|[a-z]:\\Users\\[^\\\s]+\\|\/var\/folders\//i.test(text)) add('personal-path');
   return findings;
 }

@@ -24,7 +24,7 @@ Keep user projects and credentials outside the checkout; `MOTION_DATA_DIR` can s
 - Studio uses the same repository reader and serves guides and downloaded media from `/api/template-source/<id>/<path>`. Linked large images and videos still need network access. Local changes are read on the next request; refresh the manifest after source edits.
 - An installation without the repository catalog defaults to `cms`, retaining the existing DEV/prod publication and cache behavior. Explicitly set `MOTION_TEMPLATE_SOURCE=cms` to inspect a CMS publication from a checkout. `MOTION_TEMPLATE_ENV` selects the CMS environment; it does not override repository mode.
 
-These imported guidance packages are not verified complete Studio projects. Read their motion rules and examples when authoring a new project; only entries with actual editable project files can use direct template-copy creation. Copied Agent prompts use the connected local plugin in all eleven supported interface languages.
+These imported guidance packages are not verified complete Studio projects. Read their motion rules and examples when authoring a new project; only entries with actual editable project files can use direct template-copy creation. Copied Agent prompts use the same creative brief as CMS templates in all eleven supported interface languages: the public GitHub installation link, the selected template title and ID, the user’s requirements and attachments, preservation of the main motion and style, and HTML/MP4 delivery. The catalog source does not add internal tool instructions or make MP4 optional.
 
 ## Layout and storage
 

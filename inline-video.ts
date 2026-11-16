@@ -19,6 +19,12 @@ export type WorkRound = {
   state: 'authoring' | 'saved' | 'failed'; error?: string; jobId?: string; previousJobId?: string;
 };
 
+/** The recorded mode of a work round, or undefined when no readable round is recorded. */
+export async function workRoundMode(store: WorkspaceStore, projectId: string | undefined, id: string | undefined): Promise<WorkRound['mode'] | undefined> {
+  if (!projectId || !id) return undefined;
+  try { return (await new WorkRounds(store).get(projectId, id)).mode; } catch { return undefined; }
+}
+
 /** Work identity is separate from the native content version and export identity. */
 export class WorkRounds {
   readonly store: WorkspaceStore;

@@ -13,6 +13,7 @@ export interface EditingFile {
 }
 
 export interface AppToast {
+  action?: { key: string; label: string; onClick: () => void | Promise<void> };
   message: string;
   tone: "error" | "info";
   /** Brief feedback without actions or diagnostics; expires after three seconds. */

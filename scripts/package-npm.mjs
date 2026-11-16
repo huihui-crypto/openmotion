@@ -8,6 +8,7 @@ import { releaseProfile } from '../shared/mcp-registry.ts';
 import { distributionFiles } from './distribution.ts';
 import { welcomeSharedAssets } from '../template-library.ts';
 import { packageTemplateConfig } from '../shared/template-config.ts';
+import { checkVisionLock } from './vision-runtime.mjs';
 import { checkReleaseVersion, releaseTemplateEnvironment } from './release-version.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -56,6 +57,7 @@ export function checkReleaseLocks(pkg, lockfile, runtime) {
     }
   }
   for (const key of ['node', 'chromium', 'ffmpeg', 'hyperframes']) assert.match(runtime[key], /^\d+\.\d+\.\d+(?:\.\d+)?$/, 'Pin native runtime version: ' + key);
+  checkVisionLock(runtime);
   assert.equal(runtime.hyperframes, pkg.dependencies.hyperframes);
   assert.equal(runtime.chromium, PUPPETEER_REVISIONS['chrome-headless-shell'], 'Browser must match the locked Puppeteer release');
   assert(Object.keys(runtime.targets || {}).length, 'At least one native target is required');

@@ -8,12 +8,12 @@ import { resolveInstalled } from '../scripts/resolve-installed.mjs';
 test('installation onboarding routes only to existing Skills', async () => {
   const script = await readFile(new URL('../scripts/install-motion.command', import.meta.url), 'utf8');
   assert.match(script, /scripts\/install-onboarding\.mjs/);
-  const contract = await readFile(new URL('../docs/install.md', import.meta.url), 'utf8');
+  const contract = await readFile(new URL('../docs/install-onboarding.md', import.meta.url), 'utf8');
   assert.match(contract, /After acceptance, use openmotion-template-to-video/);
   await access(new URL('../skills/openmotion-template-to-video/SKILL.md', import.meta.url));
   const guide = new URL('../docs/usage.md', import.meta.url);
   const guideText = await readFile(guide, 'utf8');
-  assert.match(guideText, /install\.md#installation-success-reply/);
+  assert.match(guideText, /install-onboarding\.md#installation-success-reply/);
   const canonical = new URL('../skills/openmotion-template-to-video/SKILL.md', import.meta.url);
   for (const [url, body] of [
     ...await Promise.all(['../README.md', '../docs/README.zh-CN.md'].map(async file => {

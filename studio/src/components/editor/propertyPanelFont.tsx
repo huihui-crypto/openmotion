@@ -1,3 +1,4 @@
+import { PropertyLabel } from "./PropertyLabel";
 import { SearchInput } from "../ui/SearchInput";
 import { Popover } from "../ui/Popover";
 import type { ReactElement } from "react";
@@ -435,14 +436,14 @@ export function FontFamilyField({
 
   if (flat) {
     return (
-      <div className="relative flex min-h-[30px] items-center justify-between">
-        <span className="text-[11px] text-panel-text-2">{t("Font")}</span>
+      <div className="relative flex min-h-[30px] min-w-0 items-center justify-between gap-2">
+        <PropertyLabel label={t("Font")} className="text-panel-text-2" />
         {renderPicker(<button
           type="button"
           data-flat-font-trigger="true"
           disabled={disabled || importingFonts}
           aria-busy={importingFonts}
-          className="flex items-center gap-1.5 disabled:cursor-not-allowed"
+          className="flex min-w-0 max-w-[65%] items-center gap-1.5 disabled:cursor-not-allowed"
         >
           <span
             className="max-w-[200px] truncate font-mono text-[11px] text-panel-text-0"

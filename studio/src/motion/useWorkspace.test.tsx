@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { useWorkspace } from './useWorkspace';
+import { I18nProvider, useI18n } from '../i18n/I18n';
+import { languages, translate } from '../i18n/messages';
 
 const first = '11111111-1111-1111-1111-111111111111';
 const second = '22222222-2222-2222-2222-222222222222';
@@ -28,6 +30,31 @@ async function mount(wait: () => Promise<void>, projectId?: string, sessionId?: 
   await act(async () => root.render(<Harness />));
 }
 const writes = () => fetcher.mock.calls.filter(call => call[1]?.method === 'POST');
+
+it('switches the default project label in all interface languages without saving or translating custom names', async () => {
+  let locale: ReturnType<typeof useI18n>;
+  let custom = false;
+  fetcher.mockImplementation(async (url: string) => Response.json(url.endsWith('/projects') ? {
+    activeId: 'project', projects: [
+      { id: 'project', title: 'OpenMotion 示例短片', titleKey: custom ? null : 'OpenMotion Sample Video' },
+      { id: second, title: 'OpenMotion 示例短片' },
+    ],
+  } : { ...status, projectId: 'project' }));
+  const wait = async () => {};
+  function Harness() { locale = useI18n(); workspace = useWorkspace(wait, 'project'); return null; }
+  await act(async () => root.render(<I18nProvider initialLocale="zh-CN"><Harness /></I18nProvider>));
+  for (const { locale: language } of languages) {
+    act(() => locale.setLocale(language));
+    expect(workspace.projects[0].title).toBe(translate(language, 'OpenMotion Sample Video'));
+    if (language !== 'en') expect(workspace.projects[0].title).not.toBe('OpenMotion Sample Video');
+    expect(workspace.projects[1].title).toBe('OpenMotion 示例短片');
+  }
+  custom = true;
+  await act(async () => workspace.retryConnection());
+  act(() => locale.setLocale('en'));
+  expect(workspace.projects[0].title).toBe('OpenMotion 示例短片');
+  expect(fetcher.mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
+});
 
 it('reconnects with read requests only and clears a recovered polling failure', async () => {
   const original = fetcher.getMockImplementation()!;

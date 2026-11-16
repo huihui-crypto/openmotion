@@ -5,6 +5,7 @@ import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/prom
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { prepareVisionAssets } from './vision-runtime.mjs';
 import { releaseProfile } from '../shared/mcp-registry.ts';
 import { distributionFiles, requireDownloadedMedia } from './distribution.ts';
 import { packageTemplateConfig } from '../shared/template-config.ts';
@@ -49,6 +50,7 @@ export async function prepare(target) {
     await cp(component === 'browser' ? extracted : relativePath(extracted, separateTool ? asset.executable : asset.directory), destination, { recursive: true, verbatimSymlinks: true });
     await rm(extracted, { recursive: true, force: true });
   }
+  await prepareVisionAssets(lock, target, path.join(runtime, 'vision-assets'));
   const node = path.join(runtime, 'node', info.platform === 'win32' ? 'node.exe' : 'bin/node');
   const env = {
     HYPERFRAMES_BROWSER_PATH: path.join(runtime, 'browser', info.browser.executable),

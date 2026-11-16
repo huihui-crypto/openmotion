@@ -8,7 +8,7 @@ Updated: 2026-11-15.
 
 已有 Agent 用户需要在制作视频时知道哪些图片、视频、音乐或语音模型可以调用，并让生成结果继续参与手工编辑。此前只能自行生成文件后导入；Studio 与 MCP 没有共同的生成入口。
 
-当前实现为工作区级 Model Gateway：本地 Agent 检测、供应商 Key、模型目录、默认路由、异步任务和素材落盘共用一个服务。工程格式、时间轴与渲染仍使用 Hyperframes。It does not run a conversational Agent; OpenDesign account authorization and subscription state are integrated through a separate connector.
+当前实现为工作区级 Model Gateway：本地 Agent 检测、供应商 Key、模型目录、默认路由、异步任务和素材落盘共用一个服务。工程格式、时间轴与渲染仍使用 Hyperframes。It does not itself run a conversational Agent; the [Assets conversation service](assets.md) orchestrates local Codex and submits library jobs through this same gateway; OpenDesign account authorization and subscription state are integrated through a separate connector.
 
 在 OpenDesign 通用会话架构中，Gateway 服务于 Motion 产物：会话拥有产物，产物引用原生工程，生成任务固定该工程。模型设置管理工作区配置；The application rail opens a full settings center for providers, models and account connections in standalone and embedded editors.旧时间轴生成浮层保留为内部兼容接口。各入口复用同一 Gateway。创作模式与媒体模态、供应商模型的职责划分见[会话技术架构](session-architecture.md#会话编排与媒体生成的分层)。
 
@@ -18,7 +18,7 @@ Updated: 2026-11-15.
 
 The application rail and bottom account menu open the settings center. **Model providers** includes dedicated media adapters, the provider preset directory, custom connections and account models. Users can save/remove masked keys, enable providers, sync/search/filter models, add exact model IDs and select defaults. Environment keys remain separately identified. **Account** connects an OpenDesign identity, retrieves subscription/balance and synchronizes enabled models alongside BYOK. The existing OpenDesign Cloud origin/key configuration remains a separate connection. See [provider settings](provider-settings.md) for protocol coverage, private storage and account limitations.
 
-The public `openmotion_media_use` Tool has inspect, reference, models, generate, status and cancel actions. The existing [shared material guidance](../skills/openmotion-production/references/materials.md#byok-provider-references) links to the provider references, including account and compatible API guides, available through action=reference and production workflow resources. Generate requires explicit projectId and stable requestId. Dedicated media adapters can accept provider-native model IDs directly. Compatible/account generation uses registered or remotely discovered media models. The service reads credentials, constructs supported provider requests, persists the task, downloads and validates output and imports it under the initiating project's assets/generated. Poll the original job instead of submitting again. A completed task does not place media on the timeline; re-read current revision/version before editing project source.
+The public `openmotion_media_use` Tool has inspect, reference, models, generate, status, cancel and retry_save actions. The existing [shared material guidance](../skills/openmotion-production/references/materials.md#byok-provider-references) links to the provider references, including account and compatible API guides, available through action=reference and production workflow resources. Generate requires explicit projectId and stable requestId. Dedicated media adapters can accept provider-native model IDs directly. Compatible/account generation uses registered or remotely discovered media models. The service reads credentials, constructs supported provider requests, persists the task, downloads and validates output, saves an immutable version in the local workspace asset library, and keeps an independent copy under the initiating project's assets/generated. Status returns libraryAssets (assetId/versionId) alongside the existing assets project paths. Saving failures retain complete local outputs and set savePending; action=retry_save with the original projectId/jobId and a stable requestId retries local saving only, without credentials, a provider request or another charge. Incomplete/interrupted provider generation is never resubmitted automatically. Poll the original job instead of submitting again. A completed task does not place media on the timeline; re-read current revision/version before editing project source.
 
 fal, Atlas Cloud and WaveSpeedAI support image/video/audio model endpoints with model-specific parameters. Atlas Cloud reuses its prediction adapter; WaveSpeed submits to /api/v3/{model} and polls /api/v3/predictions/{id}/result. WaveSpeed discovery uses the saved key, while Atlas/fal catalogues are public. Environment alternatives are ATLASCLOUD_API_KEY and WAVESPEED_API_KEY. For speech, mode=text-to-speech maps the prompt to text. Cloud supports text-to-image, text-to-video and speech; audio requires parameters.voice and a matching voice model. Cloud music, local reference uploads and image edits are not implemented by this extension. Parameters can include references already hosted according to the provider contract; local paths are not uploaded automatically.
 
@@ -36,7 +36,7 @@ Existing local Codex configuration, generation UI and legacy Gateway APIs remain
 | verification verified / rejected | 云供应商生成请求返回过媒体结果，或收到 401/403；更换 Key 重置状态。验证通过不保证后续下载/入库或未来请求成功 |
 | job completed | 文件已下载、类型校验并保存；不是仅收到远端任务 ID |
 
-本地检测包括 Codex、Claude Code、Gemini CLI。当前只有 Codex 注册了本地媒体适配器，其他 Agent 的安装结果不会被当成生图能力。Codex 要求 CLI 支持 `--ephemeral`，`codex login status` 显示已登录，`codex features list` 的 `image_generation` 开启。使用用户已有 CLI 配置和登录，以独立临时工作目录运行 `codex exec`；不读取或复制 OAuth token，不调用私有后端接口。成功与否最终以真实输出文件为准。
+本地检测包括 Codex、Claude Code、Gemini CLI。当前只有 Codex 注册了本地媒体适配器，其他 Agent 的安装结果不会被当成生图能力。Codex 要求 CLI 支持 `--ephemeral`，`codex login status` 显示已登录，`codex features list` 的 `image_generation` 开启。使用用户已有 CLI 配置和登录，以独立临时工作目录运行 `codex exec`；不读取或复制 OAuth token，不调用私有后端接口。Success requires one newly created, regular raster file in the isolated job directory and the existing media-signature validation. The adapter reads bounded JSON completion/error events and relevant image-service diagnostics; it does not persist the raw CLI transcript. Reference files, stale outputs, symlinks and arbitrary paths in model replies are excluded. The CLI inherits the user's active Codex provider, endpoint and authentication configuration. A CLI login check does not establish image-service authorization. A proxy response of `personal engine key required` is reported separately from general authorization failures: verify that Codex `model_provider` selects the intended configured provider and that its endpoint and authentication match. Merely defining a provider does not select it, and signing in again does not supply a proxy key. OpenMotion does not edit Codex configuration or copy credentials. Other authorization failures direct users to inspect the active provider and account session without asserting that the login expired. No automatic retry or provider switch occurs.
 
 请求中的明确模型优先，其次是该模态的默认路由，最后才自动选择可用的文本生成模型（图片优先本地 Codex）。已配置的路由不可用时明确失败，不自动换成另一个付费供应商。
 
@@ -67,6 +67,8 @@ flowchart LR
 | 源码 | 职责 |
 | --- | --- |
 | `shared/gateway.ts` | 无凭据的 Model、Provider、Capability、GenerationJob 合约 |
+| `shared/provider-registry.ts` | Shared registration metadata for dedicated media, compatible presets, account and local Codex; IDs, setup links, endpoint policy and credential environment names |
+| `gateway/connections.ts` | Shared provider configuration, credential/endpoint resolution and default storage, retaining existing file layouts |
 | `gateway/agents.ts` | 本地检测与 Codex 内置生图调用 |
 | `gateway/catalog.ts` | 目录规范化、来源、模态识别与默认候选 |
 | `gateway/providers.ts` | Atlas / fal / WaveSpeed submission, polling and supported remote cancellation |
@@ -77,7 +79,7 @@ flowchart LR
 | `studio/src/motion/MotionTimelineMedia.tsx` | 选择范围与原生导入/放置的桥接 |
 | `studio/src/motion/TimelineMediaBar.tsx`、`timelineMediaSelection.ts` | 片段/标尺/范围的上下文入口，项目素材定位与图片替换保护 |
 
-新增供应商应实现 `ProviderAdapter`，扩展 Provider ID、目录与凭据来源，不另建任务队列。支持参考图时必须显式声明 `supportsImageReference` 并实现适配器；不能仅依据模型名称推断支持。后续属性面板可传 `usage: {compositionId, elementId, property}` 并消费 `onComplete`；目前只有时间轴的图片修改流程显式替换目标，不自动替换任意元素。完整 motion 视频由 Agent 查询能力、生成素材，再用已有源文件/MCP 工具编排和导出，不把单个模型的媒体生成伪装成完整影片生产。
+Register dedicated providers in `shared/provider-registry.ts` and compatible presets through its imported preset directory. Dedicated media IDs derive the adapter-map type; implement `ProviderAdapter` and the provider's catalogue protocol without creating another configuration store or task queue. Account and CLI login remain separate authentication boundaries. Reference-image support still requires an explicit `supportsImageReference` declaration and an implemented adapter; model names do not establish support. Editor consumers may pass `usage: {compositionId, elementId, property}` and consume `onComplete`; only the timeline image-edit flow explicitly replaces its target. Complete films still require the Agent to generate assets, compose editable source, inspect and export.
 
 ## HTTP 与 MCP
 
@@ -138,3 +140,7 @@ Cloud uses a workspace Bearer key and the supplied media API contract: authentic
 The `/motion-api/settings/` endpoints expose the provider directory, custom connection CRUD, catalogue synchronization, model enablement and capability defaults. Account endpoints expose summary, login, cancel and logout. They share the existing Host/Origin write checks and never return keys. `connections.json` stores API connection metadata, registered models and language/embedding defaults; media defaults remain in gateway routes. Account runtime, CLI-owned credentials, session identity and cached models live under the data directory’s `account/` folder. The [settings guide](provider-settings.md) describes the exact boundary and connector installation.
 
 `tests/provider-settings.test.ts` covers compatible catalogue protocols, key isolation, revision-bound queue execution and subprocess account authorization/media fixtures. `tests/byok-browser.mjs` drives the real editor HTTP server in an isolated Chrome profile. These deterministic checks do not prove live authorization, billing entitlement or paid generation acceptance.
+
+## Model-specific creation controls
+
+See [generation options](generation-options.md) for the shared Studio/MCP parameter profiles, native field types, model defaults, Codex reasoning controls and validation boundaries. Asset navigation and the creator can be resized by dragging or keyboard, with remembered widths.

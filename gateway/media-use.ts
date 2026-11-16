@@ -1,19 +1,21 @@
 import type { WorkspaceStore } from '../workspace.ts';
-import { mediaProviders, type GenerateInput } from '../shared/gateway.ts';
+import type { GenerateInput } from '../shared/gateway.ts';
+import { isMediaProvider, registeredProvider } from '../shared/provider-registry.ts';
 import { gatewayFor } from './service.ts';
 import { getWorkflow } from '../shared/workflow.ts';
 
 export async function mediaUse(store: WorkspaceStore, args: any) {
   const gateway = gatewayFor(store);
   const connections = await gateway.connections.list();
-  const supported = (id: string) => mediaProviders.includes(id as typeof mediaProviders[number]) || id === 'account' || connections.some(p => p.id === id && p.protocol === 'openai' && !p.setupRequired);
-  const referenceSection = (id: string) => mediaProviders.includes(id as typeof mediaProviders[number]) ? id : id === 'account' ? 'account' : 'compatible';
+  const supported = (id: string) => isMediaProvider(id) || registeredProvider(id)?.integration === 'account' || connections.some(p => p.id === id && p.protocol === 'openai' && !p.setupRequired);
+  const referenceSection = (id: string) => registeredProvider(id)?.reference ?? 'compatible';
   if (args.provider !== undefined && !supported(args.provider)) throw new Error('INVALID_ARGUMENT: unsupported media provider');
   if (args.action === 'inspect') {
     const status = await gateway.status();
-    return { providers: status.providers.filter(p => supported(p.id) && (mediaProviders.includes(p.id as any) || p.configured || p.id === 'account')),
+    return { providers: status.providers.filter(p => supported(p.id) && (isMediaProvider(p.id) || p.configured || p.id === 'account')),
       defaults: status.routes,
       settings: 'Open Settings > Model providers, or Account for OpenDesign sign-in. Saving a key enables a provider; sync or add its models and select defaults by capability.',
+      settingsHandoff: { tool: 'openmotion_open_preview', arguments: { target: 'providers' } },
       references: status.providers.filter(p => supported(p.id)).map(p => ({ provider: p.id, uri: `openmotion://workflow/production/${referenceSection(p.id)}` })),
       credentials: 'Read by the local service; keys are never returned to the Agent.' };
   }
@@ -33,11 +35,11 @@ export async function mediaUse(store: WorkspaceStore, args: any) {
       prompt: args.prompt, parameters: args.parameters, mode: args.mode, idempotencyKey: args.requestId } as GenerateInput);
     return { projectId: job.projectId, job, next: { action: 'status', projectId: job.projectId, jobId: job.id } };
   }
-  if (args.action === 'status' || args.action === 'cancel') {
+  if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save') {
     const job = await gateway.getJob(args.jobId);
     if (job.projectId !== args.projectId || job.model.provider === 'codex') throw new Error('GENERATION_NOT_FOUND: job does not belong to this project');
-    if (args.action === 'cancel' && !args.requestId) throw new Error('INVALID_ARGUMENT: requestId is required');
-    return { projectId: job.projectId, job: args.action === 'cancel' ? await gateway.cancel(job.id) : job };
+    if (args.action !== 'status' && !args.requestId) throw new Error('INVALID_ARGUMENT: requestId is required');
+    return { projectId: job.projectId, job: args.action === 'retry_save' ? await gateway.retrySave(job.id) : args.action === 'cancel' ? await gateway.cancel(job.id) : job };
   }
   throw new Error('INVALID_ARGUMENT: unsupported media action');
 }

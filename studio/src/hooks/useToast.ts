@@ -4,6 +4,7 @@ import type { AppToast } from "../utils/studioHelpers";
 
 interface ToastItem extends AppToast {
   id: number;
+  pending?: boolean;
   /** True while the exit animation plays, just before removal. */
   leaving?: boolean;
 }
@@ -17,6 +18,7 @@ let nextToastId = 1;
 /**
  * Stacked toasts (max 3). Info toasts auto-dismiss after 3s; error toasts
  * persist until explicitly dismissed, unless explicitly marked brief feedback.
+ * Optional actions stay available until completed, dismissed or displaced.
  * Feedback dismissal never changes the underlying operation or save guards.
  */
 export function useToast() {
@@ -51,16 +53,28 @@ export function useToast() {
   );
 
   const showToast = useCallback(
-    (message: string, tone: AppToast["tone"] = "error", presentation?: AppToast["presentation"]): number => {
+    (message: string, tone: AppToast["tone"] = "error", presentation?: AppToast["presentation"], action?: AppToast['action']): number => {
       const id = nextToastId++;
+      let running = false, completed = false;
+      const toastAction = action && { ...action, onClick: async () => {
+        if (running || completed) return;
+        running = true;
+        setToasts(current => current.map(item => item.id === id ? { ...item, pending: true } : item));
+        try { await action.onClick(); completed = true; dismissToast(id); }
+        catch (error) { showToast(error instanceof Error ? error.message : 'Action not completed. Please try again.'); }
+        finally {
+          running = false;
+          setToasts(current => current.map(item => item.id === id ? { ...item, pending: false } : item));
+        }
+      } };
       setToasts((prev) => {
         // Refresh an identical notice instead of stacking the same failure.
         const retained = prev.filter((toast) => {
-          if (toast.message !== message || toast.tone !== tone || toast.presentation !== presentation) return true;
+          if (toast.message !== message || toast.tone !== tone || toast.presentation !== presentation || toast.action?.key !== action?.key) return true;
           clearTimer(toast.id);
           return false;
         });
-        const next = [...retained, { id, message, tone, presentation }];
+        const next = [...retained, { id, message, tone, presentation, action: toastAction }];
         // Cap the stack; drop the oldest (and its pending timer).
         while (next.length > MAX_TOASTS) {
           const dropped = next.shift();
@@ -68,7 +82,7 @@ export function useToast() {
         }
         return next;
       });
-      if (tone !== "error" || presentation === "feedback") {
+      if (!action && (tone !== "error" || presentation === "feedback")) {
         const timer = setTimeout(() => dismissToast(id), AUTO_DISMISS_MS);
         timersRef.current.set(id, timer);
       }

@@ -10,6 +10,8 @@ The current MVP opens directly into the editor. The home/session/browser rules b
 
 ## Visual foundation
 
+Collapsible navigation uses explicit `data-collapsed` state for geometry and visibility. Keep `aria-hidden` and `inert` for accessibility and interaction blocking: modal focus management may temporarily hide background regions from assistive technology without collapsing them or moving the workspace.
+
 产品界面视觉对齐到 **OpenDesign 主仓库 `20c49e75c`**。本次迁移只影响宿主 UI，保留现有首页、会话、浏览器、面板与时间轴的结构、尺寸、间距及行为。
 
 来源与适配关系：
@@ -52,8 +54,8 @@ Provider settings and model choices use locally bundled brand icons from `provid
 Albert Sans / 苹方统一用于界面与引导标题。时间码、编号与数值保留 Motion 已有的 IBM Plex Mono，不复制 OD 的 JiduMono 字体资产。本地字体及 SIL OFL 许可保存在 `packages/design-system/fonts/`。
 
 - 正文 14px、控件 13px、说明 12px、密集标注至少 11px；标题 16 / 20 / 24 / 32px。
-- 常用间距 4 / 8 / 12 / 16 / 24 / 32px；圆角沿用 OD 的 2 / 4 / 8 / 12 / 16px 梯度；常规控件 4px、卡片 8px、弹窗 12px。
-- Standard controls are 36px, compact controls 28px and icon buttons 32px. The application header is 40px, with a 48px control rail, centered 36px square rail buttons and 18px rail icons; the nested MVP editor toolbar is 36px; panel headings retain their existing measured geometry. The editor toolbar and preview transport share the flat panel surface and subtle separator treatment. The toolbar uses equal side columns around its centered, content-sized editable project title, with a muted, tabular automatic-save indicator on the left and actions on the right; the template entry remains in the application rail.
+- Common spacing follows 4 / 8 / 12 / 16 / 24 / 32px. The shared radius scale is 2 / 4 / 6 / 10 / 12px (`xs` through `xl`); application controls use 6px, cards and menus 10px, and dialogs 12px.
+- Standard application controls are 32px, compact controls 28px and icon buttons 32px. This is a deliberate global density setting shared by asset creation, navigation, settings and template browsing. The application header is 40px, with a 48px control rail, centered 32px square rail buttons and 18px rail icons; the nested MVP editor toolbar is 32px; panel headings retain their existing measured geometry. The editor toolbar and preview transport share the flat panel surface and subtle separator treatment. The toolbar uses equal side columns around its centered, content-sized editable project title, with a muted, tabular automatic-save indicator on the left and actions on the right; the template entry remains in the application rail.
 - 常规反馈 150 / 200ms，点阵加载 1043ms；减少动态效果偏好停用循环动画。
 - Studio saves Light, Dark or System in `hf-studio-ui-preferences`. System resolves before the first paint and follows live device changes; embedded editors continue to follow the host. Appearance cards preview the actual light/dark tokens, including the split System sample. Startup and crash recovery share a centered, bounded surface, rounded error details and neutral actions; copy/export results use floating Toasts.
 
@@ -157,6 +159,15 @@ categories describe intended videos; style, industry and other facets remain
 independently selectable. The full-window detail provides direct copy actions and
 repository links without a second recreation modal.
 
+Discovery headers and toolbars compose the shared `om-control-row`, `om-button`
+and `om-field` recipes. The `om-search-field` variant keeps its icon, input and
+shortcut centered with one outer focus treatment; `om-filter-pill` retains the
+rounded category shape and semantic selected state. Search, categories, dropdowns
+and icon actions share the 32px control height, with 6px control corners, 16px
+icons and 8px gaps. The library owns responsive geometry: a 320px desktop search,
+a reserved GitHub badge width, equal industry/sort widths and a full-width search
+row on narrow screens. Long dropdown labels truncate without moving the chevron.
+
 The shared `Skeleton` primitive uses `skeleton-base` and `skeleton-highlight` tokens in both themes, with reduced-motion support. Catalog placeholders reserve the final card geometry; lazy poster placeholders stay static to avoid animating offscreen cards. Detail preview buffering and retry states stay inside the media frame. Discovery filter menus are non-modal, keep checkbox selection open, and expose removable condition chips. Search uses a single outer focus treatment; detail action rows and guide summaries share inset padding and rounded hover surfaces. Recreate and submit uses the bundled Remix git-branch icon.
 
 
@@ -173,7 +184,7 @@ This contract applies to new and changed product UI, including the editor, templ
 | Resource failure | Recoverable state within that same reserved region, with retry or meaningful fallback |
 | Persistent input validation | Associated with the field and its reserved error space; distinct from an operation-result Toast |
 
-Use `useToast` with `StudioToastViewport`. The viewport uses `FeedbackLayer`, which follows the active native dialog and uses the browser top layer where supported. Notifications remain visible and interactive above modal content while the surrounding overlay is transparent to pointer input. Do not create an ad hoc toast store or render `StudioToast` as an ordinary content row. Info feedback expires after three seconds; actionable failures remain dismissible. Repeated messages coalesce. A copy failure may expose selectable instruction content for recovery, but its notification still floats.
+Use `useToast` with `StudioToastViewport`. The viewport uses `FeedbackLayer`, which follows the active native dialog or shared application dialog marked with `data-feedback-modal` and uses the browser top layer where supported. Notifications remain visible and interactive above modal content while the surrounding overlay is transparent to pointer input. Do not create an ad hoc toast store or render `StudioToast` as an ordinary content row. Ordinary info feedback expires after three seconds; actionable failures remain dismissible. Optional Toast actions remain available until dismissed, completed or displaced by the bounded stack, prevent duplicate execution while pending, and remain retryable after failure. Repeated messages coalesce by action identity as well as content so independent Undo targets stay distinct. A copy failure may expose selectable instruction content for recovery, but its notification still floats.
 
 Menus, popovers and Toasts must open in the intended floating layer, stay inside viewport bounds and preserve the user's working context. Multi-select filter items keep their menu open. Escape dismisses the active menu first, returning focus to its trigger. Clicking a condition's remove action clears only that condition. Routine copy sends the complete brief to the clipboard in one action, without a second instruction modal.
 
@@ -192,3 +203,9 @@ The dark theme uses neutral near-black workspace surfaces, a restrained raised-c
 The icon-only discovery filter opens an anchored, non-modal panel. Its 640px desktop layout combines category tabs with a two-column option grid. Choices remain a draft while switching tabs; a live count previews the result, Apply commits once, and dismissal discards changes. Quick purpose and industry controls still apply immediately. Clear selection resets the active group; Clear filters resets draft facets and editability while retaining the independent search. Applied conditions remain individually removable. Groups with more than twelve choices provide local search without losing hidden selections.
 
 Header, content and footer share one panel gutter; detail navigation and body share one sidebar gutter. Trailing icon actions use fixed control geometry and do not shrink when labels wrap. Checkboxes retain visible outlines in both themes, and selected glyphs inherit the selected text role. Hover fills remain rounded and inset. Verify the opened panel and detail in both themes and at narrow widths; inspect visible SVG paths, not just the presence of an empty SVG element.
+
+### Creative surfaces and execution
+
+Application controls use the shared 32px `control` height, with 28px compact actions. The `om-control-row` recipe aligns search fields, plain or icon-bearing selects and adjacent icon buttons to the same baseline; leading artwork must not increase a trigger's height. Multiline fields and descriptive menu options can grow with their content. Creative surfaces use compact typography, 24px icon tiles, 64px decorative emblems and restrained card borders. Keep panel spacing in feature layout styles and all control, typography and material recipes in the package.
+
+The package-owned `studio/application.css` provides creative media identities, prompt surfaces, suggestion cards, Agent messages and compact generation rows. The `creative-image`, `creative-video`, `creative-audio` and `creative-agent` semantic roles are defined for both themes in `tokens.json`. Icons and labels carry meaning alongside color. Generation rows use a 32px thumbnail or waveform, a single-line prompt, compact phase steps and expandable errors. Large decorative emblems remain limited to empty-state introductions. Orbit and waveform motion indicate an active task; real service phases drive submitted, creating and saved states without invented percentages. Reduced motion disables these animations, and hidden creation surfaces pause them. Known preview failures retain a static media emblem and the result action. Features own panel geometry, scrolling and task data; direct creation keeps its submit action outside the scrolling input area.
