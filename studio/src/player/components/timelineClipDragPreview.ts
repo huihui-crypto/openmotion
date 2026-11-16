@@ -180,6 +180,9 @@ function resolveDropPlacement(
     isAudio: isAudioTimelineElement(drag.element),
     minStart: group.floor,
     origin: { track: drag.element.track, start: drag.element.start },
+    previous: drag.started && drag.insertRow === null && ctx.pps > 0
+      ? { track: drag.previewTrack, start: drag.previewStart, switchMargin: TIMELINE_SNAP_PX / ctx.pps }
+      : undefined,
   });
 }
 
