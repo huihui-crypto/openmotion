@@ -92,3 +92,7 @@
   .om-skills-page[data-detail="true"] .om-skills-main { display: none; }
   .om-skill-detail { width: 100%; max-width: none; }
 }
+.om-skill-shortcut { display: grid; gap: var(--motion-space-8); width: min(380px, calc(100vw - 32px)); }
+.om-skill-shortcut p { margin: 0; }
+.om-skill-shortcut pre { margin: 0; padding: var(--motion-space-12); max-height: 200px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--motion-font-mono); font-size: var(--motion-text-sm); line-height: 1.6; color: var(--motion-text); background: var(--motion-inset); border-radius: var(--motion-radius-md); user-select: text; }
+[data-motion-studio] .om-skill-shortcut .om-button { justify-content: center; }

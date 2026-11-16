@@ -22,7 +22,8 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(26);
+  expect(motionSkills).toHaveLength(27);
+  expect(motionSkills[0].id).toBe('motionmaxxing');
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
   expect(motionSkills.every(skill => skill.repository)).toBe(true);
   expect(new Set(motionSkills.map(skill => skill.id)).size).toBe(motionSkills.length);

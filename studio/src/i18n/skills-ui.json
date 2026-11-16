@@ -156,6 +156,14 @@
     "Floating 3D cards": "3D 漂浮卡片",
     "Looping GIF sticker": "循环 GIF 贴纸",
     "Step-by-step feature tour": "功能分步讲解",
-    "Connect Agent": "连接 Agent"
+    "Connect Agent": "连接 Agent",
+    "Use in another AI Agent": "在其他 AI Agent 中使用",
+    "Copy this command into a chat with Codex, Claude or another AI Agent to run this skill.": "复制下方口令，粘贴到 Codex、Claude 等 AI Agent 的对话中，让它执行这个 Skill。",
+    "Copy command": "复制口令",
+    "Remove the AI look": "去 AI 味",
+    "A motion film that reads as designer-made: no slide layouts, color wipes, fake glow or invented numbers": "一支像动效设计师做的片子：没有 PPT 式排版、色块擦除转场、假光晕和编造的数字",
+    "Make AI motion look designer-made.": "让 AI 做的动效像设计师做的。",
+    "Run its anti-slop review: before building, check the plan against its “never ship” list (slide-style title-left/card-right layouts, color-block wipes between sections, near-black backgrounds with radial glow, badges and counters, invented numbers, web-footer endings). After rendering, sample frames and fix the three biggest failures, at most two passes. Report what you checked; never certify the film yourself.": "按它的防 AI 味审查来做：动手前用「不能发布」清单检查方案（PPT 式左标题右卡片、段落之间色块擦除、近黑底加径向光晕、角标和计数器、编造的数字、网页页脚式结尾）；渲染后抽帧，修最严重的三处，最多改两轮。说明检查了什么，不要自己宣布片子合格。",
+    "Rework my product launch video so it no longer looks AI-made": "把我的产品发布视频改得不再有 AI 味"
   }
 }

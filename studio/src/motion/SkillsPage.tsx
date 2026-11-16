@@ -3,13 +3,13 @@ import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useToast } from '../hooks/useToast';
 import { StudioToastViewport } from '../components/StudioToastViewport';
-import { aspectRatios, durations, motionSkills, skillCategories, skillPrompt, type MotionSkill, type SkillCategory, type SkillMotif, type SkillParameters } from './skillCatalog';
+import { aspectRatios, durations, motionSkills, skillCategories, skillPrompt, skillShortcut, type MotionSkill, type SkillCategory, type SkillMotif, type SkillParameters } from './skillCatalog';
 import { GitHubMark } from '../../../packages/design-system/react/GitHubMark';
 import { MotionIcon } from './icons';
 import styles from './TemplateLibraryDialog.module.css';
 import { motionApi } from './useWorkspace';
 import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration';
-import { useOptionalWorkspaceChrome } from './WorkspaceChromeContext';
+import { Popover } from '../components/ui/Popover';
 import './skills.css';
 
 /** Short source shown on cards: owner/repo (plus skill folder) or OpenMotion. */
@@ -23,8 +23,6 @@ const defaults: SkillParameters = { subject: '', duration: 10, aspect: '16:9', s
 /** Open-source motion techniques the user can hand to an Agent through OpenMotion MCP. */
 export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null; onSkillChange: (id: string | null) => void }) {
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
-  // Connecting an Agent reuses the workspace MCP page; standalone renders (tests) omit the button.
-  const chrome = useOptionalWorkspaceChrome();
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState('');
   // Same install guide as template instructions; the repository guide is the fallback until the service answers.
@@ -49,13 +47,14 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   }, [query, category, t]);
   // The instruction follows the interface language, including the example brief and borrowed technique.
   const prompt = selected ? skillPrompt({ ...selected, output: t(selected.output), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
+  const shortcut = selected ? skillShortcut({ ...selected, title: displayName(selected), example: t(selected.example) }, parameters, locale, installUrl) : '';
   const open = (skill: MotionSkill) => onSkillChange(skill.id);
   // The brief belongs to one skill; any route change (card, history, link) starts a fresh brief.
   useEffect(() => { setParameters(defaults); setManualCopy(''); }, [skillId]);
-  async function copy() {
+  async function copy(text = prompt) {
     if (!selected) return;
-    try { await navigator.clipboard.writeText(prompt); setManualCopy(''); toast.showToast(t('Copied. Paste into your Agent.'), 'info'); }
-    catch { setManualCopy(prompt); toast.showToast(t('Copy failed. Select and copy the instruction below.'), 'error', 'feedback'); }
+    try { await navigator.clipboard.writeText(text); setManualCopy(''); toast.showToast(t('Copied. Paste into your Agent.'), 'info'); }
+    catch { setManualCopy(text); toast.showToast(t('Copy failed. Select and copy the instruction below.'), 'error', 'feedback'); }
   }
   return <div className={`${styles.library} om-skills-page om-skills-library`} data-detail={Boolean(selected)}>
     <StudioToastViewport {...toast} />
@@ -99,7 +98,13 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       <footer className="om-skill-footer">
         <div className="om-skill-actions">
           <button className="om-button" data-primary onClick={() => void copy()}><RemixIcon name="file-copy-line" size={16} />{t('Copy for Agent')}</button>
-          {chrome && <button className="om-button" onClick={chrome.openConnections}><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</button>}
+          <Popover side="top" align="end" aria-label={t('Use in another AI Agent')} className="om-skill-shortcut"
+            trigger={<button className="om-button"><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</button>}>
+            <strong>{t('Use in another AI Agent')}</strong>
+            <p className="om-muted">{t('Copy this command into a chat with Codex, Claude or another AI Agent to run this skill.')}</p>
+            <pre tabIndex={0}>{shortcut}</pre>
+            <button className="om-button" data-primary onClick={() => void copy(shortcut)}><RemixIcon name="file-copy-line" size={16} />{t('Copy command')}</button>
+          </Popover>
         </div>
       </footer>
     </aside>}
@@ -177,5 +182,6 @@ const motifShapes: Record<SkillMotif, ReactElement> = {
   thumbnail: <><rect className="om-skill-line" x="18" y="14" width="124" height="62" rx="6" /><circle className="om-skill-fill" cx="112" cy="46" r="20" /><path className="om-skill-stroke om-skill-pulse" d="M30 34h44M30 50h30" /></>,
   generate: <><rect className="om-skill-line" x="20" y="18" width="36" height="54" rx="4" /><rect className="om-skill-fill om-skill-frame" x="20" y="18" width="36" height="54" rx="4" /><rect className="om-skill-line" x="62" y="18" width="36" height="54" rx="4" /><rect className="om-skill-line" x="104" y="18" width="36" height="54" rx="4" /><path className="om-skill-fill om-skill-pulse" d="M80 36l3 6 6 3-6 3-3 6-3-6-6-3 6-3z" /></>,
   identity: <><circle className="om-skill-line" cx="40" cy="45" r="18" /><circle className="om-skill-fill om-skill-pulse" cx="80" cy="45" r="18" /><circle className="om-skill-line" cx="120" cy="45" r="18" /></>,
+  polish: <><rect className="om-skill-line" x="16" y="18" width="60" height="54" rx="6" /><rect className="om-skill-fill" x="84" y="18" width="60" height="54" rx="6" /><path className="om-skill-stroke om-skill-draw" d="M66 45h28" /></>,
   particles: <>{Array.from({ length: 14 }, (_, index) => <circle key={index} className="om-skill-dot om-skill-burst" style={{ animationDelay: `${(index % 7) * 0.15}s`, transformOrigin: '80px 45px', ['--angle' as string]: `${index * 26}deg` }} cx="80" cy="45" r={index % 3 + 2} />)}</>,
 };

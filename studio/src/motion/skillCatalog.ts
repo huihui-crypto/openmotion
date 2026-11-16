@@ -7,7 +7,7 @@
  */
 export type SkillMotif = 'agent' | 'scene' | 'layout' | 'curve' | 'stagger' | 'math' | 'vector' | 'playback' | 'depth' | 'frames' | 'canvas' | 'particles'
   | 'icon' | 'sequence' | 'character' | 'globe' | 'levelup' | 'orbit' | 'promo'
-  | 'photo' | 'listing' | 'narration' | 'brand' | 'thumbnail' | 'generate' | 'identity';
+  | 'photo' | 'polish' | 'listing' | 'narration' | 'brand' | 'thumbnail' | 'generate' | 'identity';
 export type SkillCategory = 'Product promos' | 'Explainers' | 'Brand & covers' | 'People & AI media' | 'Motion techniques';
 
 export type MotionSkill = {
@@ -38,6 +38,8 @@ export type MotionSkill = {
 export const skillCategories: SkillCategory[] = ['Product promos', 'Explainers', 'Brand & covers', 'People & AI media', 'Motion techniques'];
 
 export const motionSkills: MotionSkill[] = [
+  { id: 'motionmaxxing', title: 'Remove the AI look', name: 'motionmaxxing', output: 'A motion film that reads as designer-made: no slide layouts, color wipes, fake glow or invented numbers', tagline: 'Make AI motion look designer-made.', category: 'Motion techniques', motif: 'polish', repository: 'https://github.com/Tejashmakwana/motionmaxxing', license: 'Apache-2.0', cover: { video: 'https://raw.githubusercontent.com/Tejashmakwana/motionmaxxing/main/docs/media/spotify-comparison.mp4', poster: 'https://raw.githubusercontent.com/Tejashmakwana/motionmaxxing/main/docs/media/spotify-poster.jpg', aspect: 1.78, source: 'https://github.com/Tejashmakwana/motionmaxxing#readme' },
+    technique: 'Run its anti-slop review: before building, check the plan against its “never ship” list (slide-style title-left/card-right layouts, color-block wipes between sections, near-black backgrounds with radial glow, badges and counters, invented numbers, web-footer endings). After rendering, sample frames and fix the three biggest failures, at most two passes. Report what you checked; never certify the film yourself.', example: 'Rework my product launch video so it no longer looks AI-made' },
   { id: 'higgsfield-product-photoshoot', title: 'Product showcase reel', name: 'Product Photoshoot', output: 'A short product reel: studio shot, lifestyle shot and hero banner of your product', tagline: 'Studio and lifestyle product shots.', category: 'Product promos', motif: 'photo', repository: 'https://github.com/higgsfield-ai/skills/tree/main/higgsfield-product-photoshoot', license: 'MIT', cover: { video: 'https://static.higgsfield.ai/public/marketing-studio/hero-banners/marketing-studio-slider-poster-Product.mp4', aspect: 1.78, source: 'https://higgsfield.ai/marketing-studio' }, media: true,
     technique: 'Follow its product-photoshoot modes (studio, lifestyle, hero banner, floating/splash, seasonal variation) to generate product stills, then animate them into a short product reel with camera moves and captions.', example: 'A 10-second reel of my headphones: studio shot, lifestyle shot, hero banner' },
   { id: 'higgsfield-marketplace-cards', title: 'Listing video', name: 'Marketplace Cards', output: 'An e-commerce listing video: main image, selling points, specs and comparison cards', tagline: 'Listing images and A+ modules.', category: 'Product promos', motif: 'listing', repository: 'https://github.com/higgsfield-ai/skills/tree/main/higgsfield-marketplace-cards', license: 'MIT', cover: { video: 'https://static.higgsfield.ai/public/marketing-studio/hero-banners/marketing-studio-slider-poster-Marketplace.mp4', aspect: 1.78, source: 'https://higgsfield.ai/marketing-studio' }, media: true,
@@ -133,4 +135,12 @@ Steps:
 ${skill.media ? 'When images, video or audio must be generated, use openmotion_media_use (inspect configured providers first); do not install other platforms\' CLIs or put keys in the chat.\n' : ''}3. Author a native HTML/CSS/JS composition that translates the technique into timeline animation. Save it with openmotion_edit_project, passing expectedRevision and expectedVersionId; on conflict, re-read instead of overwriting GUI edits.
 4. Borrow the technique only; do not copy upstream source wholesale. If a dependency is truly needed, state its source and license.
 5. When done, open it with openmotion_open_preview, give me the preview URL and keep the project editable in OpenMotion.`;
+}
+
+/** A short command for any Agent chat, like a share code: names the skill, the brief and how to install OpenMotion. */
+export function skillShortcut(skill: MotionSkill, parameters: SkillParameters, locale: string, installUrl: string) {
+  const subject = parameters.subject.trim() || skill.example;
+  const style = parameters.style.trim();
+  if (locale === 'zh-CN') return `用 OpenMotion 的「${skill.title}」Skill 做一支 ${parameters.duration} 秒、${parameters.aspect} 的视频：${subject}${style ? `；风格：${style}` : ''}。做法参考 ${skill.repository ?? 'OpenMotion'}。如果还没安装 OpenMotion，请先按 ${installUrl} 安装并接入。`;
+  return `Use the OpenMotion "${skill.title}" skill to make a ${parameters.duration}s ${parameters.aspect} video: ${subject}${style ? `; style: ${style}` : ''}. Technique reference: ${skill.repository ?? 'OpenMotion'}. If OpenMotion is not installed, install and connect it with ${installUrl} first.`;
 }
