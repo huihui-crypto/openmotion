@@ -80,10 +80,11 @@ export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, loc
 - 借鉴的技巧：${skill.technique}
 
 步骤：
-1. 在当前 Agent 中发现 OpenMotion MCP 工具，先调用 openmotion_get_project 确认工作区；没连上就停下告诉我，不要猜。
-2. 用 openmotion_create_session 新建会话和工程，读 openmotion_get_project 拿到 revision，再用 openmotion_write_files 写出可编辑的 Hyperframes HTML 合成（用暂停的 GSAP 时间线驱动，把上面的技巧翻译成时间线动画）。
-3. 只借鉴做法，不整段复制上游源码；确实需要引入依赖时，说明来源和许可证。
-4. 完成后调用 openmotion_open_preview，把预览地址给我，工程保留在 OpenMotion 里方便继续改。`;
+1. 在当前 Agent 中发现 OpenMotion MCP 工具（只用 tools/list 返回的工具），按已安装的 OpenMotion 制作 Skill 操作；没连上就停下告诉我，不要猜。
+2. 用 openmotion_create_project 新建项目（projectType=natural_language，带稳定的 requestId、标题和上面的需求）；再用 openmotion_get_project 读取 projectId、revision 和 currentVersionId。
+3. 编写原生 HTML/CSS/JS 合成，把上面的技巧翻译成时间线动画；用 openmotion_edit_project 保存，传 expectedRevision 和 expectedVersionId，冲突时重新读取，不覆盖界面里的修改。
+4. 只借鉴做法，不整段复制上游源码；确实需要引入依赖时，说明来源和许可证。
+5. 完成后用 openmotion_open_preview 打开预览，把预览地址给我，项目保留在 OpenMotion 里方便继续改。`;
   return `Make a motion video with OpenMotion, borrowing the technique of the open-source project ${skill.name}.
 Reference: ${skill.repository} (license: ${skill.license})
 
@@ -93,8 +94,9 @@ Brief:
 - Technique to borrow: ${skill.technique}
 
 Steps:
-1. Discover the OpenMotion MCP tools in this Agent and call openmotion_get_project to verify the workspace. If it is not connected, stop and tell me; do not guess.
-2. Create a session and project with openmotion_create_session, read openmotion_get_project for the revision, then write an editable Hyperframes HTML composition with openmotion_write_files (drive it with a paused GSAP timeline that translates the technique above).
-3. Borrow the technique only; do not copy upstream source wholesale. If a dependency is truly needed, state its source and license.
-4. When done, call openmotion_open_preview, give me the preview URL and keep the project editable in OpenMotion.`;
+1. Discover the OpenMotion MCP tools in this Agent (use only tools returned by tools/list) and follow the installed OpenMotion production skill. If it is not connected, stop and tell me; do not guess.
+2. Create the project with openmotion_create_project (projectType=natural_language, a stable requestId, a title and the brief above), then read projectId, revision and currentVersionId with openmotion_get_project.
+3. Author a native HTML/CSS/JS composition that translates the technique into timeline animation. Save it with openmotion_edit_project, passing expectedRevision and expectedVersionId; on conflict, re-read instead of overwriting GUI edits.
+4. Borrow the technique only; do not copy upstream source wholesale. If a dependency is truly needed, state its source and license.
+5. When done, open it with openmotion_open_preview, give me the preview URL and keep the project editable in OpenMotion.`;
 }

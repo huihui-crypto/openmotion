@@ -49,7 +49,9 @@ it('fills the brief and copies an MCP instruction for the Agent', async () => {
   expect(text).toContain('https://github.com/juliangarnier/anime');
   expect(text).toContain('Duration: 30s; aspect ratio: 9:16');
   expect(text).toContain('openmotion_get_project');
-  expect(text).toContain('openmotion_write_files');
+  expect(text).toContain('openmotion_create_project');
+  expect(text).toContain('openmotion_edit_project');
+  expect(text).not.toMatch(/openmotion_(create_session|write_files|create_artifact)/);
 });
 
 it('localizes the instruction and keeps the user brief', () => {
