@@ -46,7 +46,7 @@ export const omEvents = {
   page_view: { producers: ['studio'], fields: { page_name: ['home', 'studio'], view_id: 'uuid', embedded: 'boolean', has_project: 'boolean' }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
   studio_load_result: { producers: ['studio'], fields: { load_id: 'uuid', outcome, duration_ms: 'integer', embedded: 'boolean' }, required: ['load_id', 'outcome', 'duration_ms', 'embedded'] },
   ui_click: { producers: ['studio'], fields: { page_name: ['home', 'studio'],
-    area: ['workspace', 'templates', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'asset_generation', 'media_generator'],
+    area: ['workspace', 'templates', 'template_card', 'template_detail', 'template_instruction', 'template_discovery', 'asset_generation', 'asset_model_hint', 'media_generator'],
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
       'open_detail', 'start_use', 'copy_instruction', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
       'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',

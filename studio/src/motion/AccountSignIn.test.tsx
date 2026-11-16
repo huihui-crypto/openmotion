@@ -37,3 +37,12 @@ it('reopens the account page without restarting an authorization in progress', a
   expect(gatewayRequest).not.toHaveBeenCalledWith('settings/account/login', 'POST', {});
   expect(openAccount).toHaveBeenCalledOnce();
 });
+it('keeps an available model selectable and offers sign-in beside it', async () => {
+  respond('signed-out');
+  const { AccountSignInHint } = await import('./AccountSignIn');
+  await act(async () => root.render(<AccountSignInHint openAccount={openAccount} />));
+  expect(container.textContent).toContain('Sign in to OpenDesign for more image, video and audio models');
+  await act(async () => container.querySelector('button')!.click());
+  expect(trackMotion).toHaveBeenCalledWith('ui_click', expect.objectContaining({ area: 'asset_model_hint', element: 'sign_in' }));
+  expect(openAccount).toHaveBeenCalledOnce();
+});
