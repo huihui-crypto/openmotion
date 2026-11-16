@@ -201,6 +201,19 @@ describe("useRenderClipContent", () => {
     }
   });
 
+  it("treats detached audio that still points at a video file as a video source", () => {
+    const content = renderClipContent({
+      id: "talk-audio",
+      tag: "audio",
+      start: 0,
+      duration: 4,
+      track: 1,
+      src: "assets/talk.mp4?v=2",
+    });
+
+    expect(isValidElement<{ sourceKind: string }>(content) && content.props.sourceKind).toBe("video");
+  });
+
   it("routes root-relative iframe media back through the active project", () => {
     usePlayerStore.setState({ thumbnailMode: "adaptive" });
     const resolvedRootMedia = `${window.location.origin}/assets/clip.mp4`;
