@@ -92,10 +92,12 @@ export const durations = [5, 10, 15, 30] as const;
 export type SkillParameters = { subject: string; duration: typeof durations[number]; aspect: typeof aspectRatios[number]; style: string };
 
 /** The Agent instruction is the product: copy it into Codex, Claude Code or any MCP client. */
-export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, locale: string) {
+/** installUrl comes from the running installation (setupGuideUrl), matching template instructions. */
+export function skillPrompt(skill: MotionSkill, parameters: SkillParameters, locale: string, installUrl: string) {
   const subject = parameters.subject.trim() || skill.example;
   const style = parameters.style.trim();
-  if (locale === 'zh-CN') return `${skill.repository ? `用 OpenMotion 做一个动效视频，借鉴开源项目 ${skill.name} 的做法。` : `用 OpenMotion 的「${skill.name}」Skill 做一个视频。`}
+  if (locale === 'zh-CN') return `使用说明：请使用 OpenMotion 插件。如未安装，请按 ${installUrl} 安装并接入后继续。
+${skill.repository ? `用 OpenMotion 做一个动效视频，借鉴开源项目 ${skill.name} 的做法。` : `用 OpenMotion 的「${skill.name}」Skill 做一个视频。`}
 ${skill.repository ? `参考来源：${skill.repository}（许可证：${skill.license}）` : '来源：OpenMotion 自有 Skill'}
 
 要求：
@@ -104,12 +106,13 @@ ${skill.repository ? `参考来源：${skill.repository}（许可证：${skill.l
 - 借鉴的技巧：${skill.technique}
 
 步骤：
-1. 在当前 Agent 中发现 OpenMotion MCP 工具（只用 tools/list 返回的工具），按已安装的 OpenMotion 制作 Skill 操作；没连上就停下告诉我，不要猜。
+1. 在当前 Agent 中发现 OpenMotion MCP 工具（只用 tools/list 返回的工具），按已安装的 OpenMotion 制作 Skill 操作；安装接入后仍连不上就停下告诉我，不要猜。
 2. 用 openmotion_create_project 新建项目（projectType=natural_language，带稳定的 requestId、标题和上面的需求）；再用 openmotion_get_project 读取 projectId、revision 和 currentVersionId。
 ${skill.media ? '需要生成图片、视频或音频时，用 openmotion_media_use（先 inspect 查看已配置的供应商），不安装其他平台的 CLI，不把密钥写进对话。\n' : ''}3. 编写原生 HTML/CSS/JS 合成，把上面的技巧翻译成时间线动画；用 openmotion_edit_project 保存，传 expectedRevision 和 expectedVersionId，冲突时重新读取，不覆盖界面里的修改。
 4. 只借鉴做法，不整段复制上游源码；确实需要引入依赖时，说明来源和许可证。
 5. 完成后用 openmotion_open_preview 打开预览，把预览地址给我，项目保留在 OpenMotion 里方便继续改。`;
-  return `${skill.repository ? `Make a motion video with OpenMotion, borrowing the technique of the open-source project ${skill.name}.` : `Make a video with the OpenMotion "${skill.name}" skill.`}
+  return `Instructions: Use the OpenMotion plugin. If it is not installed, follow ${installUrl} to install and connect it, then continue.
+${skill.repository ? `Make a motion video with OpenMotion, borrowing the technique of the open-source project ${skill.name}.` : `Make a video with the OpenMotion "${skill.name}" skill.`}
 ${skill.repository ? `Reference: ${skill.repository} (license: ${skill.license})` : 'Source: OpenMotion skill'}
 
 Brief:
@@ -118,7 +121,7 @@ Brief:
 - Technique to borrow: ${skill.technique}
 
 Steps:
-1. Discover the OpenMotion MCP tools in this Agent (use only tools returned by tools/list) and follow the installed OpenMotion production skill. If it is not connected, stop and tell me; do not guess.
+1. Discover the OpenMotion MCP tools in this Agent (use only tools returned by tools/list) and follow the installed OpenMotion production skill. If it still cannot connect after installation, stop and tell me; do not guess.
 2. Create the project with openmotion_create_project (projectType=natural_language, a stable requestId, a title and the brief above), then read projectId, revision and currentVersionId with openmotion_get_project.
 ${skill.media ? 'When images, video or audio must be generated, use openmotion_media_use (inspect configured providers first); do not install other platforms\' CLIs or put keys in the chat.\n' : ''}3. Author a native HTML/CSS/JS composition that translates the technique into timeline animation. Save it with openmotion_edit_project, passing expectedRevision and expectedVersionId; on conflict, re-read instead of overwriting GUI edits.
 4. Borrow the technique only; do not copy upstream source wholesale. If a dependency is truly needed, state its source and license.

@@ -8,6 +8,8 @@ import { GitHubMark } from '../../../packages/design-system/react/GitHubMark';
 import { MotionIcon } from './icons';
 import styles from './TemplateLibraryDialog.module.css';
 import higgsfieldLogo from './template-brands/higgsfield.png';
+import { motionApi } from './useWorkspace';
+import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration';
 import './skills.css';
 
 /** Short source shown on cards: owner/repo (plus skill folder) or OpenMotion. */
@@ -23,6 +25,13 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState('');
+  // Same install guide as template instructions; the repository guide is the fallback until the service answers.
+  const [installUrl, setInstallUrl] = useState(() => setupGuideUrl(null));
+  useEffect(() => {
+    let cancelled = false;
+    motionApi<IntegrationInfo>('/integration').then(info => { if (!cancelled) setInstallUrl(setupGuideUrl(info)); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
   const instruction = useRef<HTMLPreElement>(null), search = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const focus = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); search.current?.focus(); } };
@@ -37,7 +46,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       && (!needle || [skill.name, displayName(skill), skill.tagline, t(skill.tagline), skill.repository ?? 'OpenMotion'].some(value => value.toLocaleLowerCase().includes(needle))));
   }, [query, category, t]);
   // The instruction follows the interface language, including the example brief and borrowed technique.
-  const prompt = selected ? skillPrompt({ ...selected, name: displayName(selected), example: t(selected.example), technique: t(selected.technique) }, parameters, locale) : '';
+  const prompt = selected ? skillPrompt({ ...selected, name: displayName(selected), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
   const open = (skill: MotionSkill) => onSkillChange(skill.id);
   // The brief belongs to one skill; any route change (card, history, link) starts a fresh brief.
   useEffect(() => { setParameters(defaults); setManualCopy(''); }, [skillId]);

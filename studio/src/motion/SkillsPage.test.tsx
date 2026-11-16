@@ -56,9 +56,9 @@ it('fills the brief and copies an MCP instruction for the Agent', async () => {
 });
 
 it('routes generated media through OpenMotion only for media skills', () => {
-  const library = skillPrompt(motionSkills.find(skill => skill.id === 'anime-js')!, { subject: '', duration: 15, aspect: '9:16', style: '' }, 'en');
+  const library = skillPrompt(motionSkills.find(skill => skill.id === 'anime-js')!, { subject: '', duration: 15, aspect: '9:16', style: '' }, 'en', 'https://example.test/install.md');
   expect(library).not.toContain('openmotion_media_use');
-  const photo = skillPrompt(motionSkills.find(skill => skill.id === 'higgsfield-product-photoshoot')!, { subject: '', duration: 10, aspect: '1:1', style: '' }, 'en');
+  const photo = skillPrompt(motionSkills.find(skill => skill.id === 'higgsfield-product-photoshoot')!, { subject: '', duration: 10, aspect: '1:1', style: '' }, 'en', 'https://example.test/install.md');
   expect(photo).toContain('openmotion_media_use');
   expect(photo).toContain('https://github.com/higgsfield-ai/skills/tree/main/higgsfield-product-photoshoot');
 });
@@ -73,8 +73,9 @@ it('starts a fresh brief when the selected skill changes from outside, such as h
 });
 
 it('localizes the instruction and keeps the user brief', () => {
-  const text = skillPrompt(motionSkills[0], { subject: '新品发布', duration: 10, aspect: '1:1', style: '' }, 'zh-CN');
+  const text = skillPrompt(motionSkills[0], { subject: '新品发布', duration: 10, aspect: '1:1', style: '' }, 'zh-CN', 'https://example.test/install.md');
   expect(text).toContain('内容：新品发布');
+  expect(text.split('\n')[0]).toBe('使用说明：请使用 OpenMotion 插件。如未安装，请按 https://example.test/install.md 安装并接入后继续。');
   expect(text).not.toContain('风格');
 });
 
