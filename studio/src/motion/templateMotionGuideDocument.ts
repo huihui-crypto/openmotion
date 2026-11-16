@@ -48,7 +48,7 @@ const guideLayout = `(() => {
     const label = document.createElement('div');
     label.className = 'tile-label';
     const hint = document.createElement('span');
-    hint.textContent = zh ? '左侧实时预览' : 'Live preview';
+    hint.textContent = zh ? '实时预览' : 'Live preview';
     label.append(zh ? '换成你的品牌' : 'Make it yours', hint);
     panel.append(label, params);
     const accent = params.querySelector('input[type=color]');
