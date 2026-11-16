@@ -14,8 +14,8 @@ import './skills.css';
 /** Short source shown on cards: owner/repo (plus skill folder) or OpenMotion. */
 const sourceLabel = (skill: MotionSkill) => skill.repository?.replace('https://github.com/', '').replace('/tree/main/', ' / ') ?? 'OpenMotion';
 
-/** Upstream project names stay verbatim; only OpenMotion-authored skill names are translated. */
-const displayNameOf = (t: (text: string) => string) => (skill: MotionSkill) => skill.repository ? skill.name : t(skill.name);
+/** Cards lead with the task, like the template library; the upstream project name stays verbatim as the source. */
+const displayNameOf = (t: (text: string) => string) => (skill: MotionSkill) => t(skill.title);
 
 const defaults: SkillParameters = { subject: '', duration: 10, aspect: '16:9', style: '' };
 
@@ -42,10 +42,10 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return motionSkills.filter(skill => (!category || skill.category === category)
-      && (!needle || [skill.name, displayName(skill), skill.tagline, t(skill.tagline), t(skill.output), skill.repository ?? 'OpenMotion'].some(value => value.toLocaleLowerCase().includes(needle))));
+      && (!needle || [skill.name, skill.title, displayName(skill), skill.tagline, t(skill.tagline), t(skill.output), skill.repository ?? 'OpenMotion'].some(value => value.toLocaleLowerCase().includes(needle))));
   }, [query, category, t]);
   // The instruction follows the interface language, including the example brief and borrowed technique.
-  const prompt = selected ? skillPrompt({ ...selected, name: displayName(selected), output: t(selected.output), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
+  const prompt = selected ? skillPrompt({ ...selected, output: t(selected.output), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
   const open = (skill: MotionSkill) => onSkillChange(skill.id);
   // The brief belongs to one skill; any route change (card, history, link) starts a fresh brief.
   useEffect(() => { setParameters(defaults); setManualCopy(''); }, [skillId]);
@@ -72,7 +72,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       <main className={styles.results}>
         <div className={`${styles.grid} om-skills-grid`}>
           <section className={styles.intro}><span className={styles.eyebrow}>{t('Teach your Agent new moves.')}</span><h1>{t('Pick a skill. Let your Agent make it.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project through OpenMotion MCP.')}</p><small>{t('{count} skills', { count: visible.length })}</small></section>
-          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} category={t(skill.category)} tagline={t(skill.output)} source={sourceLabel(skill)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
+          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} category={t(skill.category)} tagline={skill.name} source={sourceLabel(skill)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
         </div>
         {!visible.length && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
       </main>
