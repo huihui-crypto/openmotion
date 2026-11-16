@@ -6,6 +6,7 @@
 import { Tooltip as BaseTooltip } from "@base-ui/react/tooltip";
 import {
   cloneElement,
+  useEffect,
   useId,
   useRef,
   useState,
@@ -51,9 +52,10 @@ export function Tooltip({
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLSpanElement>(null);
   const tooltipId = useId();
+  useEffect(() => { if (disabled) setOpen(false); }, [disabled]);
 
   return (
-    <BaseTooltip.Root open={open} onOpenChange={setOpen} disabled={disabled}>
+    <BaseTooltip.Root open={open && !disabled} onOpenChange={setOpen} disabled={disabled}>
       <BaseTooltip.Trigger delay={delay} render={<span ref={boxRef} className="contents" />}>
         {cloneElement(children, {
           "aria-describedby": open && !disabled ? tooltipId : children.props["aria-describedby"],

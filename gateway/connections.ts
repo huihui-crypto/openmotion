@@ -1,9 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import { chmod } from 'node:fs/promises';
 import path from 'node:path';
-import presets from '../shared/provider-presets.json' with { type: 'json' };
-import { modelKinds, type DirectoryModel, type ModelKind, type ModelMetadata, type ProviderConnection, type ProviderDefinition, type ProviderProtocol } from '../shared/provider-directory.ts';
+import { isGatewayProvider, isMediaProvider, providerRegistry, registeredProvider } from '../shared/provider-registry.ts';
+import { modelKinds, publicProviderConnection, type DirectoryModel, type ModelKind, type ModelMetadata, type ProviderConnection, type ProviderDefinition, type ProviderProtocol } from '../shared/provider-directory.ts';
 import { modelMetadata } from './model-metadata.ts';
-import type { Model, ProviderState } from '../shared/gateway.ts';
+import { modalities, type Model, type Modality, type ProviderState } from '../shared/gateway.ts';
 import type { WorkspaceStore } from '../workspace.ts';
 import { apiJson, providerOrigin, publicProviderFetch, type Fetcher } from './network.ts';
 import { readSettings, writeSettings } from './settings-storage.ts';
@@ -11,8 +12,11 @@ import { readSettings, writeSettings } from './settings-storage.ts';
 type SavedConnection = { label?: string; protocol?: ProviderProtocol; baseUrl?: string; enabled?: boolean; custom?: boolean; revision?: string };
 type Config = { providers: Record<string, SavedConnection>; models: DirectoryModel[]; defaults: Partial<Record<ModelKind, string>>; modelOverrides?: Record<string, ModelMetadata & { label?: string }> };
 const emptyConfig = (): Config => ({ providers: {}, models: [], defaults: {} });
-const definitions = presets as ProviderDefinition[];
+const definitions = providerRegistry.filter(provider => provider.integration === 'compatible');
 const protocols = ['openai', 'anthropic', 'google'];
+export type GatewayConfig = { version: 1; providers: Record<string, { enabled?: boolean; baseUrl?: string; verification?: 'verified' | 'rejected'; keyHash?: string; checkedAt?: number }>;
+  routes: Partial<Record<Modality, string>>; customModels: Model[] };
+const hash = (key: string) => createHash('sha256').update(key).digest('hex');
 
 /** Preserve path prefixes, while applying the same public HTTPS boundary as media providers. */
 export function connectionBaseUrl(value: unknown): string {
@@ -29,19 +33,37 @@ function validId(id: unknown): asserts id is string {
   if (typeof id !== 'string' || !/^[a-zA-Z0-9][a-zA-Z0-9._/:-]{0,179}$/.test(id)) throw new Error('Invalid model ID');
 }
 
+/** One configuration boundary; existing on-disk layouts remain readable without migration. */
 export class ProviderConnections {
   readonly store: WorkspaceStore;
   readonly fetcher: Fetcher;
   constructor(store: WorkspaceStore, fetcher: Fetcher = publicProviderFetch) { this.store = store; this.fetcher = fetcher; }
   private file(name: string) { return path.join(this.store.directory, 'model-gateway', name); }
   config() { return readSettings<Config>(this.file('connections.json'), emptyConfig()); }
+  gatewayConfig() { return readSettings<GatewayConfig>(this.file('config.json'), { version: 1, providers: {}, routes: {}, customModels: [] }); }
   private keys() { return readSettings<Record<string, string>>(this.file('connection-secrets.json'), {}); }
+  private gatewayKeys() { return readSettings<Record<string, string>>(this.file('secrets.json'), {}); }
   async identity(id: string) { return (await this.config()).providers[id]?.revision; }
-  async credential(id: string) { return (await this.keys())[id] || ''; }
+  async resolveCredential(id: string) {
+    const definition = registeredProvider(id);
+    if (definition?.integration === 'account' || definition?.integration === 'agent') return { key: '', source: 'none' as const };
+    const saved = isGatewayProvider(id) ? (await this.gatewayKeys())[id] : (await this.keys())[id];
+    const env = definition?.keyEnvironment ? process.env[definition.keyEnvironment] : undefined;
+    return { key: saved || env || '', source: saved ? 'stored' as const : env ? 'environment' as const : 'none' as const };
+  }
+  async credential(id: string) { return (await this.resolveCredential(id)).key; }
+  async baseUrl(id: string) {
+    const definition = registeredProvider(id);
+    if (!isGatewayProvider(id)) return (await this.list()).find(provider => provider.id === id)?.baseUrl;
+    const saved = (await this.gatewayConfig()).providers[id]?.baseUrl;
+    const env = definition?.originEnvironment ? process.env[definition.originEnvironment] : undefined;
+    const value = saved || env || definition?.baseUrl;
+    return value && definition?.baseUrlEditable ? providerOrigin(value) : value || undefined;
+  }
   async list(): Promise<ProviderConnection[]> {
     const [config, keys] = await Promise.all([this.config(), this.keys()]);
     const custom: ProviderDefinition[] = Object.entries(config.providers).filter(([, p]) => p.custom).map(([id, p]) => ({
-      id, label: p.label!, protocol: p.protocol!, baseUrl: p.baseUrl!, kinds: ['text'], category: 'custom',
+      id, label: p.label!, protocol: p.protocol!, baseUrl: p.baseUrl!, kinds: ['text'], category: 'custom', baseUrlEditable: true,
     }));
     return [...definitions, ...custom].map(definition => {
       const saved = config.providers[definition.id] ?? {};
@@ -49,13 +71,20 @@ export class ProviderConnections {
       const baseUrl = saved.baseUrl ?? definition.baseUrl;
       const available = configured && enabled && Boolean(baseUrl) && !definition.setupRequired;
       const kinds = [...new Set([...definition.kinds, ...config.models.filter(model => model.provider === definition.id).map(model => model.kind)])];
-      return { ...definition, ...saved, baseUrl, kinds, custom: !!saved.custom, configured, enabled, available,
-        credentialSource: configured ? 'stored' : 'none', reason: definition.setupRequired ? 'This provider requires a dedicated integration. Use a compatible API endpoint as a custom provider.' : !configured ? 'API key required' : !enabled ? 'Disabled' : 'Configured; availability and quota are checked when generating' };
+      return publicProviderConnection({ ...definition, ...saved, baseUrl, kinds, custom: !!saved.custom, configured, enabled, available,
+        credentialSource: configured ? 'stored' : 'none', reason: definition.setupRequired ? 'This provider requires a dedicated integration. Use a compatible API endpoint as a custom provider.' : !configured ? 'API key required' : !enabled ? 'Disabled' : 'Configured; availability and quota are checked when generating' });
     });
   }
   async configure(id: string | null, input: Record<string, unknown>) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw new Error('Provider settings required');
     validKey(input.apiKey);
     if (input.enabled !== undefined && typeof input.enabled !== 'boolean') throw new Error('enabled must be boolean');
+    const definition = id === null ? undefined : registeredProvider(id);
+    if (definition?.integration === 'account') throw new Error('OpenDesign uses account sign-in; open Account settings');
+    if (id && isGatewayProvider(id)) {
+      await this.configureGateway(id, input);
+      return id;
+    }
     if (input.label !== undefined && (typeof input.label !== 'string' || !input.label.trim() || input.label.length > 80)) throw new Error('Provider name is required (up to 80 characters)');
     if (input.protocol !== undefined && !protocols.includes(String(input.protocol))) throw new Error('Unsupported provider protocol');
     const baseUrl = input.baseUrl === undefined ? undefined : connectionBaseUrl(input.baseUrl);
@@ -80,6 +109,41 @@ export class ProviderConnections {
       await writeSettings(this.file('connections.json'), config);
     });
     return providerId;
+  }
+  private async configureGateway(id: string, input: Record<string, unknown>) {
+    const definition = registeredProvider(id)!;
+    if (definition.integration === 'agent' && input.apiKey !== undefined) throw new Error('Codex uses its own local login; no API key is stored here');
+    const baseUrl = input.baseUrl === undefined ? undefined : providerOrigin(input.baseUrl);
+    if (baseUrl && !definition.baseUrlEditable) throw new Error('This provider uses its built-in API origin');
+    await this.store.lock(async () => {
+      const config = await this.gatewayConfig(), state = config.providers[id] ?? {};
+      if (baseUrl) { state.baseUrl = baseUrl; delete state.verification; delete state.keyHash; delete state.checkedAt; }
+      if (input.apiKey !== undefined) {
+        const keys = await this.gatewayKeys();
+        if (input.apiKey === null) delete keys[id]; else keys[id] = String(input.apiKey).trim();
+        await writeSettings(this.file('secrets.json'), keys);
+        await chmod(path.dirname(this.file('secrets.json')), 0o700);
+        delete state.verification; delete state.keyHash; delete state.checkedAt;
+      }
+      if (input.apiKey && isMediaProvider(id)) state.enabled = true;
+      if (input.enabled !== undefined) state.enabled = input.enabled as boolean;
+      config.providers[id] = state;
+      await writeSettings(this.file('config.json'), config);
+    });
+  }
+  async verifyKey(id: string, key: string, verification: 'verified' | 'rejected', origin?: string) {
+    if (!isMediaProvider(id) || !key) return;
+    await this.store.lock(async () => {
+      if (await this.credential(id) !== key || registeredProvider(id)?.baseUrlEditable && origin !== await this.baseUrl(id)) return;
+      const config = await this.gatewayConfig(); config.providers[id] = { ...config.providers[id], verification, keyHash: hash(key), checkedAt: Date.now() };
+      await writeSettings(this.file('config.json'), config);
+    });
+  }
+  async saveMediaModel(model: Model) {
+    await this.store.lock(async () => {
+      const config = await this.gatewayConfig(); config.customModels = [...config.customModels.filter(row => row.id !== model.id), model];
+      await writeSettings(this.file('config.json'), config);
+    });
   }
   async remove(id: string) {
     await this.store.lock(async () => {
@@ -129,8 +193,17 @@ export class ProviderConnections {
   }
   async setDefault(kind: ModelKind, id: string | null) {
     if (!modelKinds.includes(kind)) throw new Error('Unknown model capability');
-    await this.store.lock(async () => { const config = await this.config(); if (id) config.defaults[kind] = id; else delete config.defaults[kind]; await writeSettings(this.file('connections.json'), config); });
+    await this.store.lock(async () => {
+      if (modalities.includes(kind as Modality)) {
+        const config = await this.gatewayConfig(); if (id) config.routes[kind as Modality] = id; else delete config.routes[kind as Modality];
+        await writeSettings(this.file('config.json'), config);
+      } else {
+        const config = await this.config(); if (id) config.defaults[kind] = id; else delete config.defaults[kind];
+        await writeSettings(this.file('connections.json'), config);
+      }
+    });
   }
+  async defaults() { const [config, gateway] = await Promise.all([this.config(), this.gatewayConfig()]); return { ...config.defaults, ...gateway.routes }; }
   async sync(id: string) {
     const revision = await this.identity(id);
     const provider = (await this.list()).find(p => p.id === id);

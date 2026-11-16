@@ -335,6 +335,7 @@ export const AssetsTab = memo(function AssetsTab({
           <div className="flex gap-1.5 flex-wrap">
             <FilterChip
               onClick={() => setActiveFilter("all")}
+              className="max-w-full [overflow-wrap:anywhere]"
               active={activeFilter === "all"}
             >
               {t("All")}{" "}{counts.all}
@@ -344,6 +345,7 @@ export const AssetsTab = memo(function AssetsTab({
                 <FilterChip
                   key={cat}
                   onClick={() => setActiveFilter(activeFilter === cat ? "all" : cat)}
+                  className="max-w-full [overflow-wrap:anywhere]"
                   active={activeFilter === cat}
                 >
                   {t(CATEGORY_LABELS[cat])} {counts[cat]}

@@ -20,6 +20,7 @@ import { purposeOrder } from './templateDiscoveryTaxonomy';
 import { templateContributionUrl, templateSubmissionPrompt } from './templateContribution';
 import styles from './TemplateLibraryDialog.module.css';
 import { TemplateMotionGuide } from './TemplateMotionGuide';
+import { RelatedTemplatePreviews } from './RelatedTemplatePreviews';
 import { facetValues as values, templateFacets as facets, templateAspect, templateRatio, relatedTemplates, randomTemplate, type Facet } from './templateDiscovery';
 import { TemplateGalleryCard as TemplateCard, TemplatePoster, TemplateIdentity as Identity } from './TemplateGalleryCard';
 import { useTemplatePlayback } from './useTemplatePlayback';
@@ -367,34 +368,36 @@ export function TemplateLibraryDialog(props: Props) {
       <header className={styles.header}>
         {props.onTemplateChange && <WorkspaceHistoryNavigation tooltips />}
         <div className={styles.wordmark}><BrandLogo compact /><span className={styles.libraryLabel}>{t('Template library')}</span></div>
-        <label className={styles.search}><MotionIcon name="search" size={18} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} /><kbd>⌘ K</kbd></label>
-        <GitHubLink />
-        <button ref={libraryClose} className={styles.iconButton} disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={22} /></button>
+        <div className={`om-control-row ${styles.headerActions}`}>
+          <label className={`om-field om-search-field ${styles.search}`}><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} /><kbd>⌘ K</kbd></label>
+          <GitHubLink className="om-button" />
+          <button ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={16} /></button>
+        </div>
       </header>
       <div className={styles.toolbar}>
-        <div className={styles.categories} role="group" aria-label={t('Video purpose')}>
-          <button aria-pressed={!brandsOnly && !selected.uses?.length} onClick={() => chooseCategory('uses', undefined)}>{t('All')}</button>
-          <button aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><span className="ui-collection-label" aria-hidden="true"><span className="ui-collection-label__title">TOP 100</span><span>{t('Brands')}</span></span></button>
-          {categories.map(value => <button key={value} aria-pressed={selected.uses?.includes(value) ?? false} onClick={() => chooseCategory('uses', value)}>{t(value)}</button>)}
+        <div className={`om-control-row ${styles.categories}`} role="group" aria-label={t('Video purpose')}>
+          <button className="om-button om-filter-pill" aria-pressed={!brandsOnly && !selected.uses?.length} onClick={() => chooseCategory('uses', undefined)}>{t('All')}</button>
+          <button className="om-button om-filter-pill" aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><span className="ui-collection-label" aria-hidden="true"><span className="ui-collection-label__title">TOP 100</span><span>{t('Brands')}</span></span></button>
+          {categories.map(value => <button className="om-button om-filter-pill" key={value} aria-pressed={selected.uses?.includes(value) ?? false} onClick={() => chooseCategory('uses', value)}>{t(value)}</button>)}
         </div>
-        <div className={styles.controls}>
-          {industries.length > 0 && <Menu modal={false} container={null} align="start" aria-label={t('By industry')} className={styles.discoveryMenu}
-            trigger={<button className={styles.dropdownButton}><span>{selected.industries?.length === 1 ? t(selected.industries[0]) : t('By industry')}</span>{(selected.industries?.length ?? 0) > 1 && <span className={styles.filterCount}>{selected.industries!.length}</span>}<MotionIcon name="chevron-down" size={16} /></button>}>
+        <div className={`om-control-row ${styles.controls}`}>
+          {industries.length > 0 && <div className={`om-control-row ${styles.discoveryControl}`}><Menu modal={false} container={null} align="start" aria-label={t('By industry')} className={styles.discoveryMenu}
+            trigger={<button className={`om-button ${styles.dropdownButton}`}><span>{selected.industries?.length === 1 ? t(selected.industries[0]) : t('By industry')}</span>{(selected.industries?.length ?? 0) > 1 && <span className={styles.filterCount}>{selected.industries!.length}</span>}<MotionIcon name="chevron-down" size={16} /></button>}>
             <MenuRadioGroup value={selected.industries?.length === 1 ? selected.industries[0] : selected.industries?.length ? '' : 'all'} onValueChange={value => chooseCategory('industries', value === 'all' ? undefined : value)}>
               <MenuRadioItem value="all">{t('All industries')}</MenuRadioItem>
               {industries.map(value => <MenuRadioItem key={value} value={value}>{t(value)}</MenuRadioItem>)}
             </MenuRadioGroup>
-          </Menu>}
+          </Menu></div>}
           <Popover modal={false} open={filtersOpen} onOpenChange={openFilters} container={null} align="end" aria-label={t('Filters')} className={styles.filterPopover}
-            trigger={<button className={`${styles.dropdownButton} ${styles.filterIcon}`} aria-label={t('Filters')} title={t('Filters')}><MotionIcon name="sliders" size={17} />{(Object.values(selected).flat().length + Number(editableOnly)) > 0 && <span className={styles.filterIndicator} aria-hidden="true" />}</button>}>
-            <header className={styles.filterHeader}><strong>{t('Filters')}</strong><button role="checkbox" aria-checked={draftEditable} className={styles.editableChoice} onClick={() => setDraftEditable(!draftEditable)}>{t('Ready to edit')}<span className={styles.choiceCheck} aria-hidden="true">{draftEditable && <MotionIcon name="check" size={12} />}</span></button><button className={styles.iconButton} onClick={() => setFiltersOpen(false)} aria-label={t('Close filters')}><MotionIcon name="close" size={17} /></button></header>
+            trigger={<button className={`om-button om-icon-button ${styles.filterIcon}`} aria-label={t('Filters')} title={t('Filters')}><MotionIcon name="sliders" size={16} />{(Object.values(selected).flat().length + Number(editableOnly)) > 0 && <span className={styles.filterIndicator} aria-hidden="true" />}</button>}>
+            <header className={`om-control-row ${styles.filterHeader}`}><strong>{t('Filters')}</strong><button role="checkbox" aria-checked={draftEditable} className={styles.editableChoice} onClick={() => setDraftEditable(!draftEditable)}>{t('Ready to edit')}<span className={styles.choiceCheck} aria-hidden="true">{draftEditable && <MotionIcon name="check" size={12} />}</span></button><button className="om-button om-icon-button" onClick={() => setFiltersOpen(false)} aria-label={t('Close filters')}><MotionIcon name="close" size={16} /></button></header>
             <Tabs value={filterTab} onValueChange={value => { setFilterTab(value as Facet); setFacetQuery(''); }} orientation="vertical" className={styles.filterBody}>
               <TabsList className={styles.filterTabs} aria-label={t('Filter categories')}>
                 {available.map(facet => <Tab key={facet.key} value={facet.key} className={styles.filterTab} aria-label={t(facet.label)}><span>{t(facet.label)}</span>{Boolean(draftFilters[facet.key]?.length) && <span className={styles.tabCount}>{draftFilters[facet.key]!.length}</span>}</Tab>)}
               </TabsList>
               {available.map(facet => <TabPanel key={facet.key} value={facet.key} className={styles.filterPanel}>
                 <div className={styles.facetHeader}><strong>{t(facet.label)}</strong><button disabled={!draftFilters[facet.key]?.length} onClick={() => setDraftFilters(previous => ({ ...previous, [facet.key]: [] }))}>{t('Clear selection')}</button></div>
-                {facet.values.length > 12 && <label className={styles.facetSearch}><MotionIcon name="search" size={14} /><input type="search" value={facetQuery} onChange={event => setFacetQuery(event.target.value)} placeholder={t('Search options…')} aria-label={t('Search options…')} /></label>}
+                {facet.values.length > 12 && <label className={`om-field om-search-field ${styles.facetSearch}`}><MotionIcon name="search" size={14} /><input type="search" value={facetQuery} onChange={event => setFacetQuery(event.target.value)} placeholder={t('Search options…')} aria-label={t('Search options…')} /></label>}
                 <div className={styles.facetGrid}>
                   {(facet.key === 'uses' ? categories : facet.values).filter(value => t(value).toLocaleLowerCase().includes(facetQuery.trim().toLocaleLowerCase())).map(value => {
                     const checked = draftFilters[facet.key]?.includes(value) ?? false;
@@ -408,8 +411,8 @@ export function TemplateLibraryDialog(props: Props) {
             </Tabs>
             <footer className={styles.filterFooter}><button className={styles.clearFilters} disabled={!hasDraftFilters} onClick={() => { setDraftFilters({}); setDraftEditable(false); }}>{t('Clear filters')}</button><span role="status" aria-live="polite" aria-atomic="true">{t('{count} templates', { count: draftCount })}</span><button className={styles.applyFilters} onClick={applyFilters}>{t('Apply filters')}<MotionIcon name="arrow-right" size={14} /></button></footer>
           </Popover>
-          <div className={styles.sortControl}><Menu modal={false} container={null} align="end" aria-label={t('Sort')} className={styles.discoveryMenu}
-            trigger={<button className={styles.dropdownButton} aria-label={t('Sort')}><span>{t(sortOptions.find(([value]) => value === sort)![1])}</span><MotionIcon name="chevron-down" size={16} /></button>}>
+          <div className={`om-control-row ${styles.discoveryControl}`}><Menu modal={false} container={null} align="end" aria-label={t('Sort')} className={styles.discoveryMenu}
+            trigger={<button className={`om-button ${styles.dropdownButton}`} aria-label={t('Sort')}><span>{t(sortOptions.find(([value]) => value === sort)![1])}</span><MotionIcon name="chevron-down" size={16} /></button>}>
             <MenuRadioGroup value={sort} onValueChange={changeSort}>{sortOptions.map(([value, label]) => <MenuRadioItem key={value} value={value}>{t(label)}</MenuRadioItem>)}</MenuRadioGroup>
           </Menu></div>
         </div>
@@ -475,7 +478,7 @@ export function TemplateLibraryDialog(props: Props) {
               {preview.reviewFocus && <details><summary>{t('Production notes')}</summary><p>{preview.reviewFocus}</p></details>}
               {preview.motionGuideUrl && <details key={preview.id} onToggle={event => setGuideOpen(event.currentTarget.open)}><summary>{t('Motion guide')}</summary>{guideOpen && <TemplateMotionGuide url={preview.motionGuideUrl} title={t('Motion guide')} />}<a href={preview.motionGuideUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_full_page', detailView.current)}>{t('View full page')}<MotionIcon name="arrow-up-right" size={14} /></a></details>}
             </section>}
-            {related.length > 0 && <section className={styles.related}><h3>{t('Related templates')}</h3><div>{related.map((item, index) => <button key={item.id} onClick={() => openRelated(item, index + 1)} aria-label={t('Preview template {title}', { title: item.title })}><TemplatePoster template={item} /><span className={styles.relatedCaption}>{item.title}</span></button>)}</div></section>}
+            {related.length > 0 && <RelatedTemplatePreviews key={preview.id} templates={related} panel={detailInfo} onSelect={openRelated} />}
           </div>
         </div>
       </div>}

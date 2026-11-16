@@ -2,6 +2,8 @@
 
 Unchanged template delivery follows openmotion-template-to-video: confirm the template loaded and plays in the editor, without rendering, comparison or a fabricated export job. The fresh-export and job/revision checks below apply when a new render is required.
 
+For an unchanged template with explicit file delivery, [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md) supplies the complete verification sequence: preserve automatic technical verification and actual full-play/seek/replay evidence, inspect the final opening/main content/closing, and keep unavailable evidence explicit. Creative redesign, a new storyboard, full reference comparison and multiple prose reports are outside that unchanged branch. Modified content continues through the full relevant review below.
+
 Use separate evidence for creative quality, technical media integrity and playback. Each check is `passed`, `failed` or `not_run`; a missing tool or an unseen render cannot become `passed`. Scores are optional diagnostics, never the acceptance criterion.
 
 For dynamic creative work, also read the shared [Motion review](../../openmotion-director/references/motion-review.md); use it within the current route, without restarting director's full creation workflow. Local changes review the affected interval and adjacent joins; full-film delivery reviews the whole film. Export-only checks the requested file without authorizing creative rewrites. Apply the checks relevant to the requested stage: draft/review tasks do not trigger export.

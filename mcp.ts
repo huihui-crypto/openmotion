@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { normalizeInlineResult } from './shared/inline-video-result.js';
 import { inlineVideoUri } from './shared/inline-video.ts';
 import { publicToolName, legacyToolName, publicToolResult } from './shared/public-names.mjs';
+import { assetReadToolResult } from './shared/asset-library.ts';
 import { createInterface } from 'node:readline';
 import { readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +18,7 @@ import { isMain } from './shared/entry.ts';
 import type { Selection } from './editor-runtime.ts';
 import { createAppTracking, closeTracking, trackingError, type OmTracking } from './shared/tracking.ts';
 import { uuid } from './tracking/core.ts';
-import { toolNames } from './tracking/events.ts';
+import { assetToolAction, toolNames } from './tracking/events.ts';
 import { identifyHost, unknownHost } from './tracking/host.ts';
 import type { HostContext } from './tracking/host.ts';
 import { templateCatalogFor } from './prism-templates.ts';
@@ -36,7 +37,12 @@ const connectionContexts = new WeakMap<object, Map<string, string>>();
 
 function trackingFor(store: WorkspaceStore) {
   let tracking = trackingByStore.get(store);
-  if (!tracking) { tracking = createAppTracking(store.directory, 'mcp'); trackingByStore.set(store, tracking); }
+  if (!tracking) {
+    const created = createAppTracking(store.directory, 'mcp');
+    tracking = created; trackingByStore.set(store, tracking);
+    // Read paths close interrupted exports too, so they report through the same tracker.
+    void created.then(value => { store.tracking ??= value; });
+  }
   return tracking;
 }
 const runtimeRoot = fileURLToPath(new URL('./', import.meta.url));
@@ -65,8 +71,9 @@ export async function rpc(message: any, store = new WorkspaceStore(), registry =
     || registry.profile !== 'phase1' || !(toolNames as readonly unknown[]).includes(name)) return invokeRpc(message, store, registry, connection, host, trackingContext, clientState);
   const tracking = await trackingFor(store), started = performance.now(), callId = crypto.randomUUID();
   let accepted = false;
-  try { validateInput(phase1Tools.find(tool => tool.name === publicToolName(name))!.inputSchema, message.params.arguments ?? {}); accepted = true; } catch {}
-  const fields = { tool_name: name as typeof toolNames[number], call_id: callId, accepted,
+  try { validateInput(phase1Tools.find(tool => tool.name === publicToolName(message.params.name))!.inputSchema, message.params.arguments ?? {}); accepted = true; } catch {}
+  const action = assetToolAction(name, message.params.arguments);
+  const fields = { tool_name: name as typeof toolNames[number], call_id: callId, accepted, ...(action ? { action } : {}),
     ...(uuid.test(message.params.arguments?.requestId) ? { operation_id: message.params.arguments.requestId } : {}) };
   if (accepted) tracking.track('mcp_tool_started', fields, undefined, undefined, host);
   const response = await invokeRpc(message, store, registry, connection, host, trackingContext, clientState);
@@ -143,7 +150,7 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         const finalVideo = name === finalVideoTool.name;
         const definition = finalVideo ? finalVideoTool : phase1Tools.find(tool => tool.name === publicToolName(name))!;
         validateInput(definition.inputSchema, args);
-        if (internalName === 'motion_open_preview' && args.target !== 'templates' && !args.projectId && !args.sessionId && args.action !== 'record_review') args.sessionId = selections.get(store)?.sessionId;
+        if (internalName === 'motion_open_preview' && args.target !== 'templates' && args.target !== 'providers' && !args.projectId && !args.sessionId && args.action !== 'record_review') args.sessionId = selections.get(store)?.sessionId;
         if (args.sessionId === undefined) delete args.sessionId;
         if (templateConfig().source === 'repository' && ['motion_list_templates', 'motion_get_template'].includes(internalName)) {
           const catalog = templateCatalogFor(store.directory);
@@ -163,6 +170,7 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         if (finalVideo && (!value.inlineWork?.playable || value.inlineWork.state !== 'completed' || !normalized?._meta?.inlineVideo?.video))
           throw new Error('FINAL_VIDEO_NOT_READY: Display only after the MP4 export completes and passes verification');
         if (value.projectId && value.sessionId) selections.set(store, { projectId: value.projectId, sessionId: value.sessionId });
+        if (internalName === 'motion_assets' && args.action === 'read') return result(assetReadToolResult(value));
         const { _inlineMedia: legacyMedia, ...visible } = value;
         const _inlineMedia = normalized?._meta?.inlineVideo ?? legacyMedia;
         return result({ content: [{ type: 'text', text: JSON.stringify(visible) }], structuredContent: visible,

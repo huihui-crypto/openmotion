@@ -24,3 +24,17 @@ test('connection guidance exposes the maintained media workflow without asking f
   assert.doesNotMatch(guide, /不公开生成/);
   assert.match(guide, /不把凭据放进对话/);
 });
+
+test('media example preserves setup and task continuation across supported languages', async () => {
+  const media = mcpCapabilities.find(capability => capability.id === 'media')!;
+  const translations = JSON.parse(readFileSync(new URL('../studio/src/i18n/mcp-ui.json', import.meta.url), 'utf8'));
+  assert.match(media.prompt, /inspect/);
+  assert.match(media.prompt, /target=providers/);
+  assert.match(media.prompt, /once I have saved/);
+  assert.match(media.prompt, /inspect again/);
+  assert.match(media.prompt, /original request/);
+  assert.ok(translations['zh-CN'][media.prompt]);
+  const skill = readFileSync(new URL('../skills/openmotion-media/SKILL.md', import.meta.url), 'utf8');
+  assert.match(skill, /target: "providers"/);
+  assert.match(skill, /handbook/);
+});

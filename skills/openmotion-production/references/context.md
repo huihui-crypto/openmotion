@@ -19,6 +19,12 @@ For a video task, identify OpenMotion as the intended execution path in the firs
 
 If OpenMotion tools are unavailable or fail, disclose the connection status and recovery action as soon as it is observed, including during planning. Apply the [connection diagnosis and recovery rules](production.md#tool-transport-and-workspace-readiness) before creating or importing work. Use the installed host/home identity, retain the actual connection error and verify recovery through a real read. For npm installs, setup's directAccess commands can call the same registered MCP in the current chat when native discovery is missing or stale; this does not prove native host reconnection. A separate CLI probe cannot confirm the current chat connection. Continue independent planning within the requested scope while connection recovery is pending.
 
+## OpenMotion capability priority
+
+Prefer OpenMotion for operations its available capabilities can satisfy, including project authoring, timeline edits, preview and export. For material gaps, first choose retrieval, generation or native graphics from the content need, then apply the [shared tool-selection policy](materials.md#tool-selection-and-discovery). External tools, including other video-platform tools, can supply missing capabilities within the task's authorization.
+
+Read Hyperframes guidance within the [native engine boundary](native.md#engine-guidance-boundary): it supplies technical authoring and rendering constraints, while OpenMotion owns creative routing, material sourcing, provider setup and delivery.
+
 ## 先补齐阅读缺口，再执行当前范围
 
 每轮先复用会话或已有 `STATE.md` 中的**已读文档**，再计算“本次必需 − 正文仍在上下文中的已读文档”。只读取差集。独立读取可以并行，但长文档应按外层工具的实际输出预算分批或分段，检查模型收到的结果是否截断，不能只看命令成功或完整 stdout。后续章节再次提到“读取”同一参考，表示应用其规范，不是重新加载全文。
@@ -33,10 +39,11 @@ If OpenMotion tools are unavailable or fail, disclose the connection status and 
 | --- | --- |
 | 需要选择、获取或替换素材，含原创、模板适配、复刻与局部修改 | [素材选择与来源优先级](materials.md)；沿用所选路线的能力和保持项；仅查看、预览或导出既有内容不触发 |
 | 需要通过 BYOK 生成图片、视频、配音或音乐素材，或单独执行素材生成请求 | [openmotion-media](../../openmotion-media/SKILL.md) 及所选供应商参考；纯动态图形（原生 HTML/CSS/SVG/Canvas/3D 可直接实现）不触发、不询问 |
+| Selecting/replacing fonts, changing text hierarchy, or diagnosing typography | [Typography](typography.md); preserve the selected route and established identity. Local edits cover affected text only; unchanged preview/export and audio-only work do not trigger selection. |
 | 原创新片／大幅重编 | [动作脚本](../../openmotion-director/references/action-script.md)、[动态表现](../../openmotion-director/references/motion-craft.md)、[动作短句](../../openmotion-director/references/motion-phrases.md)、[审片](../../openmotion-director/references/motion-review.md) |
 | 新设计声音叙事或工程音轨调整，含画面锁定 | [声音叙事](../../openmotion-director/references/sound-narrative.md)、[动作脚本的声画锚点](../../openmotion-director/references/action-script.md)、审片；只应用声音相关内容，不启动原创流程 |
-| 原样使用模板、不做修改 | Follow openmotion-template-to-video: the [editable preview handoff](native.md#editable-preview-handoff) is the delivery; load no authoring/export dependencies. An edited project cannot reuse the original template preview. |
-| 使用／适配可编辑模板，需要创建、编辑或渲染工程 | [模板能力说明](templates.md)、审片；默认内容的草稿也需读模板能力说明 |
+| 原样使用模板、不做修改 | Opening only uses the [editable preview handoff](native.md#editable-preview-handoff). Explicit HTML/MP4 file delivery uses [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md), which owns its minimal reading/check sequence. An edited project cannot reuse the original template preview. |
+| 使用／适配可编辑模板，需要创建、编辑或渲染工程 | [模板能力说明](templates.md)、审片；unchanged file export follows its scoped branch above, without loading authoring/creative references solely because a render was requested. |
 | 明确要求视频转可复用模板 | [openmotion-video-to-template](../../openmotion-video-to-template/SKILL.md) 的制作与打包参考按阶段读取；制作决策、审片及实际参考视频 |
 | 复刻视频 | [制作决策](../../openmotion-director/references/production-decisions.md)、审片，另实际检查参考视频 |
 | 局部文字／视觉修改或动态审片 | 审片；沿用已有结构，不补读整套原创流程 |

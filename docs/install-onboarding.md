@@ -1,6 +1,6 @@
 # Shared installation onboarding
 
-Used by source installation, plugin setup and legacy installed applications.
+Used by source installation, npm application installation and plugin setup.
 
 <!-- installation-onboarding:start -->
 ## Installation-success reply
@@ -11,7 +11,7 @@ For Codex, complete the normal streamed welcome reply, three full-video cards an
 
 ### Codex inline document presentation without host hot reload
 
-Source setup and retained legacy npm setup return the prepared result directly to the installing Agent. Continue delivery in that turn; never inject internal instructions as a user message through `codex queue` or end early to await a follow-up. Plain `codex plugin add` still depends on the desktop invoking its packaged setup Skill. A standalone CLI without a renderer reports installed files and the real library link, without claiming visible onboarding.
+Source setup and npm setup return the prepared result directly to the installing Agent. Continue delivery in that turn; never inject internal instructions as a user message through `codex queue` or end early to await a follow-up. Plain `codex plugin add` still depends on the desktop invoking its packaged setup Skill. A standalone CLI without a renderer reports installed files and the real library link, without claiming visible onboarding.
 
 Source setup, npm setup and the desktop plugin setup Skill use the same default `prepareInstallationFlow`. Codex setup prepares a verified cards-only fragment and the separate welcomeMarkdown under the selected data directory's `onboarding/` folder without user presentation flags. `--onboarding-output` is an optional npm path override for hosts that need a particular readable artifact directory. The plugin Skill invokes `node --experimental-strip-types scripts/install-onboarding.mjs` from the installed root only when no setup result was provided; it preserves the connection's workspace and never reinstalls. Use this fragment only when the actual host supports inline HTML references; preparing a file does not add that capability or trigger a host callback. It does not reload, restart or alter host security settings.
 

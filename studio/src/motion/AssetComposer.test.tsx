@@ -21,6 +21,15 @@ const props: ComponentProps<typeof AssetComposer> = {
 };
 beforeEach(() => { vi.clearAllMocks(); loadGateway.mockResolvedValue({ models: [model], status: { providers: [{ id: 'codex', available: true }], routes: {} } }); container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
+it('temporarily hides the Agent tab and keeps direct generation available when viewing a conversation', async () => {
+  await act(async () => root.render(<AssetComposer {...props} mode="agent" />));
+  expect(container.querySelector('button[aria-label="Agent conversation"]')).toBeNull();
+  const direct = container.querySelector<HTMLButtonElement>('button[aria-label="Direct generation"]')!;
+  expect(direct.textContent).toBe('Generate');
+  expect(direct.getAttribute('aria-pressed')).toBe('false');
+  await act(async () => direct.click());
+  expect(props.onMode).toHaveBeenCalledExactlyOnceWith('direct');
+});
 it('restores native and custom parameters without submitting until explicitly requested', async () => {
   generate.mockResolvedValue({ job: { id: 'new-job' } });
   await act(async () => root.render(<AssetComposer {...props} />));
@@ -57,4 +66,19 @@ it.each([
   expect(latest).toBe(edited);
   expect(created).toHaveBeenCalledExactlyOnceWith({ id: 'submitted-job' });
   expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ prompt: props.draft.prompt, model: model.id, parameters: props.draft.parameters, references: [] }));
+});
+it('sends one reference to an account image model that reports editing support', async () => {
+  const account: Model = { id: 'account:image', provider: 'account', modelId: 'image', label: 'Account Image', modality: 'image', source: 'live', mode: 'text-to-image', supportsImageReference: true };
+  const basic: Model = { ...account, id: 'account:basic', modelId: 'basic', label: 'Account Basic', supportsImageReference: undefined };
+  loadGateway.mockResolvedValue({ models: [account, basic], status: { providers: [{ id: 'account', available: true }], routes: {} } });
+  generate.mockResolvedValue({ job: { id: 'edit-job' } });
+  const references = [{ name: 'Cup', reference: { assetId: 'asset', versionId: 'version' } }];
+  const draft = { ...props.draft, model: basic.id, parameters: {}, references };
+  await act(async () => root.render(<AssetComposer {...props} draft={draft} />));
+  expect(container.textContent).toContain('This model cannot use asset references');
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')?.disabled).toBe(true);
+  await act(async () => root.render(<AssetComposer {...props} draft={{ ...draft, model: account.id }} />));
+  expect(container.textContent).toContain('This model edits one image reference.');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ action: 'generate', model: account.id, mode: 'text-to-image', references: [references[0].reference] }));
 });

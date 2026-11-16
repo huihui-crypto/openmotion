@@ -12,7 +12,7 @@ import { repositoryCatalogRoot, readRepositoryFile } from '../shared/repository-
 import { WorkspaceStore } from '../workspace.ts';
 import { transport } from './http.ts';
 import { templatePrompt } from '../shared/integration.ts';
-import { repositoryTemplatePrompts } from '../shared/template-prompts.ts';
+import { templatePrompts } from '../shared/template-prompts.ts';
 import { templates as builtinTemplates } from '../template-library.ts';
 
 process.env.MOTION_TEMPLATE_SOURCE = 'repository';
@@ -111,7 +111,7 @@ test('transferred PR media appears in Studio and detail without downloading and 
   await assert.rejects(catalog.sourceFile(f.id, relative), /SHA-256 mismatch/);
 });
 
-test('HTTP gallery and guide routes use the same repository source; copied prompts use the connected plugin', async t => {
+test('HTTP gallery and guide routes use the same repository source; copied prompts use the shared creation brief', async t => {
   const work = await mkdtemp(path.join(tmpdir(), 'openmotion-local-http-')); t.after(() => rm(work, { recursive: true, force: true }));
   t.mock.method(globalThis, 'fetch', async () => { throw new Error('Unexpected network'); });
   const request = transport(new WorkspaceStore(work));
@@ -127,11 +127,14 @@ test('HTTP gallery and guide routes use the same repository source; copied promp
   const info = await (await request('/api/integration')).json();
   assert.equal(info.templateSource, 'repository'); assert.equal(info.transport.env.MOTION_TEMPLATE_SOURCE, 'repository');
   const prompt = templatePrompt(info, 'codex', { id: template.id, title: template.title });
-  assert(prompt.includes(firstId) && prompt.includes('openmotion_get_template'));
+  assert(prompt.includes(firstId) && prompt.includes(template.title));
+  assert(prompt.includes('https://github.com/nexu-io/openmotion'));
+  assert.match(prompt, /HTML.*MP4/);
+  assert.doesNotMatch(prompt, /openmotion_get_template|localSource/);
   assert(!prompt.includes('releases.open-design.ai'));
-  const localized = Object.keys(repositoryTemplatePrompts).map(locale => templatePrompt(info, 'codex', { id: firstId, title: '$& literal {name}' }, locale));
+  const localized = Object.keys(templatePrompts).map(locale => templatePrompt(info, 'codex', { id: firstId, title: '$& literal {name}' }, locale));
   assert.equal(new Set(localized).size, 11);
-  for (const message of localized) assert(message.includes('$& literal {name}') && message.includes(firstId) && message.includes('localSource'));
+  for (const message of localized) assert(message.includes('$& literal {name}') && message.includes(firstId) && message.includes('https://github.com/nexu-io/openmotion'));
 });
 
 test('the real stdio MCP resolves the loaded checkout from a different cwd without starting a backend', async t => {

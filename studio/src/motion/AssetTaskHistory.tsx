@@ -30,7 +30,8 @@ export function AssetTaskHistory({ tasks, selectedKey, loading, error, onRetry, 
   return <Popover modal={false} open={open} onOpenChange={setOpen} align="end" aria-label={t('Task history')} className="om-task-history om-selection-panel" trigger={trigger}>
     <div className="om-task-history-heading"><span className="om-creation-icon" data-tone="agent"><RemixIcon name="history-line" size={16} /></span><strong>{t('Task history')}</strong><span className="om-badge">{tasks.length}</span></div>
     <label className="om-field"><RemixIcon name="search-line" size={15} /><input aria-label={t('Search tasks')} placeholder={t('Search tasks')} value={query} onChange={event => setQuery(event.target.value)} /></label>
-    <div className="om-task-filters" role="group" aria-label={t('Task type')}>{(['all', 'direct', 'agent'] as const).map(value => <button className="om-nav-item" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{value !== 'all' && <RemixIcon name={value === 'direct' ? 'sparkling-line' : 'chat-1-line'} size={14} />}{t(value === 'all' ? 'All tasks' : value === 'direct' ? 'Generate' : 'Agent')}</button>)}</div>
+    {/* Temporarily hide the Agent filter; All tasks still preserves access to existing conversations. */}
+    <div className="om-task-filters" role="group" aria-label={t('Task type')}>{(['all', 'direct'] as const).map(value => <button className="om-nav-item" key={value} aria-pressed={filter === value} onClick={() => setFilter(value)}>{value !== 'all' && <RemixIcon name={value === 'direct' ? 'sparkling-line' : 'chat-1-line'} size={14} />}{t(value === 'all' ? 'All tasks' : value === 'direct' ? 'Generate' : 'Agent')}</button>)}</div>
     {error && <div className="om-task-history-notice" role="status"><p>{t('Could not load task history')}</p><button className="om-nav-item" onClick={onRetry}><RemixIcon name="refresh-line" size={14} />{t('Retry')}</button></div>}
     <div className="om-task-history-list" aria-label={t('Tasks')} aria-busy={loading}>
       {!visible.length && <p className="om-muted om-task-history-empty">{t(loading ? 'Loading tasks…' : query || filter !== 'all' ? 'No matching tasks' : 'Your creative tasks will appear here.')}</p>}
@@ -40,6 +41,6 @@ export function AssetTaskHistory({ tasks, selectedKey, loading, error, onRetry, 
         <span className="om-task-item-end"><time dateTime={new Date(task.updatedAt).toISOString()}>{formatDate(task.updatedAt, { month: 'short', day: 'numeric' })}</time>{task.key === selectedKey ? <RemixIcon name="check-line" size={14} /> : <RemixIcon name="arrow-right-up-line" size={13} />}</span>
       </button>)}
     </div>
-    <div className="om-task-history-footer"><RemixIcon name="stack-line" size={13} /><span>{t('Model and Agent tasks, together.')}</span></div>
+    <div className="om-task-history-footer"><RemixIcon name="stack-line" size={13} /><span>{t('Model generation tasks, together.')}</span></div>
   </Popover>;
 }

@@ -1,7 +1,7 @@
 {
   "ja": {
     "OpenMotion Sample Video": "OpenMotion サンプル動画",
-    "Join the OpenDesign community": "OpenDesign コミュニティに参加しませんか",
+    "Join OpenMotion on {platform}": "{platform} の OpenMotion コミュニティに参加",
     "Expand": "展開",
     "Collapse": "折りたたむ",
     "Expand left panel": "左パネルを展開",
@@ -326,7 +326,7 @@
   },
   "ko": {
     "OpenMotion Sample Video": "OpenMotion 예제 영상",
-    "Join the OpenDesign community": "OpenDesign 커뮤니티에 참여하세요",
+    "Join OpenMotion on {platform}": "{platform}에서 OpenMotion 커뮤니티 참여",
     "Expand": "펼치기",
     "Collapse": "접기",
     "Expand left panel": "왼쪽 패널 펼치기",
@@ -651,7 +651,7 @@
   },
   "de": {
     "OpenMotion Sample Video": "OpenMotion-Beispielvideo",
-    "Join the OpenDesign community": "Tritt der OpenDesign-Community bei",
+    "Join OpenMotion on {platform}": "OpenMotion auf {platform} beitreten",
     "Expand": "Erweitern",
     "Collapse": "Einklappen",
     "Expand left panel": "Linken Bereich öffnen",
@@ -976,7 +976,7 @@
   },
   "fr": {
     "OpenMotion Sample Video": "Vidéo d’exemple OpenMotion",
-    "Join the OpenDesign community": "Rejoignez la communauté OpenDesign",
+    "Join OpenMotion on {platform}": "Rejoindre OpenMotion sur {platform}",
     "Expand": "Développer",
     "Collapse": "Réduire",
     "Expand left panel": "Ouvrir le panneau gauche",
@@ -1301,7 +1301,7 @@
   },
   "ru": {
     "OpenMotion Sample Video": "Пример видео OpenMotion",
-    "Join the OpenDesign community": "Присоединяйтесь к сообществу OpenDesign",
+    "Join OpenMotion on {platform}": "Присоединиться к OpenMotion в {platform}",
     "Expand": "Развернуть",
     "Collapse": "Свернуть",
     "Expand left panel": "Развернуть левую панель",
@@ -1626,7 +1626,7 @@
   },
   "es": {
     "OpenMotion Sample Video": "Vídeo de ejemplo de OpenMotion",
-    "Join the OpenDesign community": "Únete a la comunidad de OpenDesign",
+    "Join OpenMotion on {platform}": "Únete a OpenMotion en {platform}",
     "Expand": "Expandir",
     "Collapse": "Contraer",
     "Expand left panel": "Abrir panel izquierdo",
@@ -1951,7 +1951,7 @@
   },
   "pt-BR": {
     "OpenMotion Sample Video": "Vídeo de exemplo do OpenMotion",
-    "Join the OpenDesign community": "Junte-se à comunidade OpenDesign",
+    "Join OpenMotion on {platform}": "Participe da comunidade OpenMotion no {platform}",
     "Expand": "Expandir",
     "Collapse": "Recolher",
     "Expand left panel": "Abrir painel esquerdo",
@@ -2276,7 +2276,7 @@
   },
   "it": {
     "OpenMotion Sample Video": "Video di esempio OpenMotion",
-    "Join the OpenDesign community": "Unisciti alla community OpenDesign",
+    "Join OpenMotion on {platform}": "Unisciti a OpenMotion su {platform}",
     "Expand": "Espandi",
     "Collapse": "Comprimi",
     "Expand left panel": "Apri pannello sinistro",
@@ -2601,7 +2601,7 @@
   },
   "tr": {
     "OpenMotion Sample Video": "OpenMotion Örnek Videosu",
-    "Join the OpenDesign community": "OpenDesign topluluğuna katılın",
+    "Join OpenMotion on {platform}": "{platform} üzerinden OpenMotion topluluğuna katıl",
     "Expand": "Genişlet",
     "Collapse": "Daralt",
     "Expand left panel": "Sol paneli aç",

@@ -63,3 +63,28 @@ it('distinguishes missing proxy credentials from general Codex authorization fai
   expect(container.querySelector('button')).toBeNull();
   expect(cancel).not.toHaveBeenCalled(); expect(view).not.toHaveBeenCalled();
 });
+
+it('retries only saving retained outputs, disables duplicate clicks and can inspect partial results', async () => {
+  let complete!: () => void;
+  const retrySave = vi.fn(() => new Promise<void>(resolve => { complete = resolve; }));
+  const job = { ...initial, state: 'failed' as const, phase: 'save_failed', savePending: true, error: 'Disk unavailable', libraryAssets: [{ assetId: 'asset', versionId: 'version' }] };
+  await act(async () => root.render(<AssetGenerationCard job={job} onCancel={cancel} onView={view} onRetrySave={retrySave} />));
+  expect(container.textContent).toContain('Saving needs attention');
+  expect(container.textContent).toContain('Generated files are kept locally');
+  const retry = Array.from(container.querySelectorAll('button')).find(button => button.textContent === 'Retry saving')!;
+  await act(async () => retry.click());
+  expect(retry.disabled).toBe(true); expect(retrySave).toHaveBeenCalledExactlyOnceWith(job);
+  await act(async () => retry.click()); expect(retrySave).toHaveBeenCalledTimes(1);
+  await act(async () => complete()); expect(retry.disabled).toBe(false);
+  expect(container.textContent).toContain('View asset'); expect(cancel).not.toHaveBeenCalled();
+});
+
+it('removes save recovery for unavailable retained files and explains that nothing was regenerated', async () => {
+  const retrySave = vi.fn();
+  const job = { ...initial, state: 'failed' as const, phase: 'save_unavailable', savePending: false, error: 'SAVE_NOT_AVAILABLE: retained data missing' };
+  await act(async () => root.render(<AssetGenerationCard job={job} onCancel={cancel} onView={view} onRetrySave={retrySave} />));
+  expect(container.textContent).toContain('Saving cannot be retried');
+  expect(container.textContent).toContain('No new generation was requested');
+  expect(container.textContent).not.toContain('Retry saving'); expect(container.textContent).not.toContain('SAVE_NOT_AVAILABLE');
+  expect(retrySave).not.toHaveBeenCalled();
+});

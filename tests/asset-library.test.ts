@@ -123,6 +123,7 @@ test('in-app Agent streams, confirms generation, persists threads, rejects dupli
   assert.equal(rpc.requests.find((r: any) => r.method === 'turn/start').params.effort, 'high');
   await assert.rejects(chats.start(chat.id, { requestId: 'invalid-effort', text: 'hello', reasoning: 'high' }), /Choose an Agent model/);
   assert.equal(rpc.requests.find((r: any) => r.method === 'thread/start').params.sandbox, 'read-only');
+  assert.ok(rpc.requests.find((r: any) => r.method === 'thread/start').params.dynamicTools.some((tool: any) => tool.name === 'openmotion_assets_use'));
   rpc.notify({ method: 'item/agentMessage/delta', params: { itemId: 'message', delta: 'Creating an image.' } });
   assert.equal((await chats.get(chat.id)).messages.at(-1)?.text, 'Creating an image.');
   await assert.rejects(chats.start(chat.id, { ...input, requestId: 'two' }), /already working/);
@@ -146,6 +147,19 @@ test('in-app Agent streams, confirms generation, persists threads, rejects dupli
   assert.equal(approvedJob.library.conversationId, chat.id);
   await gateway.tick(); await Promise.all([...gateway.active.values()].map(task => task.done));
   assert.equal((await gateway.getJob(approvedJob.id)).state, 'completed');
+  const pinned = (await gateway.getJob(approvedJob.id)).libraryAssets![0];
+  rpc.notify({ id: 92, method: 'item/tool/call', params: { tool: 'openmotion_assets_use', arguments: { action: 'read', ...pinned } } });
+  await until(() => rpc.sent.some((r: any) => r.id === 92));
+  const viewed = rpc.sent.find((r: any) => r.id === 92).result;
+  assert.equal(viewed.success, true);
+  assert.ok(viewed.contentItems.some((item: any) => item.type === 'inputImage' && item.imageUrl.startsWith('data:image/png;base64,')));
+  const tone = path.join(store.directory, 'chat-audio.wav');
+  assert.equal((await execute(verificationBinaries().ffmpeg, ['-v', 'error', '-f', 'lavfi', '-i', 'sine=duration=0.2', tone], store.directory)).code, 0);
+  const audio = await new AssetLibrary(store).importFile(tone, { requestId: 'chat-audio', name: 'Audio' });
+  rpc.notify({ id: 93, method: 'item/tool/call', params: { tool: 'openmotion_assets_use', arguments: { action: 'read', assetId: audio.id, versionId: audio.currentVersionId } } });
+  await until(() => rpc.sent.some((r: any) => r.id === 93));
+  assert.ok(rpc.sent.find((r: any) => r.id === 93).result.contentItems.some((item: any) => item.type === 'inputAudio' && item.audioUrl.startsWith('data:audio/wav;base64,')));
+  assert.doesNotMatch(JSON.stringify((await chats.get(chat.id)).messages), /base64|"data":/);
   rpc.notify({ method: 'turn/completed', params: { turn: { status: 'completed' } } });
   await until(() => !chats.active.size);
   assert.equal(chats.pending, 0);

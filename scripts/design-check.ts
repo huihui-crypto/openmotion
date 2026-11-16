@@ -6,6 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { designTokens } from './design-tokens.ts';
 import { providerIcons, providerIconFiles } from '../packages/design-system/provider-icons.js';
 import { publicDesignFiles, designSystemRuntimeFiles } from '../packages/design-system/index.js';
+import { providerRegistry } from '../shared/provider-registry.ts';
 
 const root = new URL('../', import.meta.url);
 const luminance = (hex: string) => {
@@ -15,8 +16,7 @@ const luminance = (hex: string) => {
 };
 export async function checkDesign() {
   const tokens = await designTokens(true);
-  const presets = JSON.parse(await readFile(new URL('shared/provider-presets.json', root), 'utf8')) as { id: string }[];
-  for (const id of [...presets.map(provider => provider.id), 'account', 'opendesign', 'codex', 'fal', 'atlascloud', 'wavespeed']) {
+  for (const { id } of providerRegistry) {
     assert.ok(Object.hasOwn(providerIcons, id), `Built-in provider ${id} needs an explicit brand or generic icon.`);
   }
   for (const file of providerIconFiles) {

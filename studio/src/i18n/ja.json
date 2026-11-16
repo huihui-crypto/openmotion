@@ -1813,5 +1813,6 @@
   "Unlock track": "トラックのロックを解除",
   "Delete track": "トラックを削除",
   "Unlock the track before deleting it": "削除する前にトラックのロックを解除してください",
-  "Open the composition to delete this track": "このトラックを削除するにはコンポジションを開いてください"
+  "Open the composition to delete this track": "このトラックを削除するにはコンポジションを開いてください",
+  "Screen too small to expand this panel": "画面が小さすぎるため、パネルを展開できません"
 }
