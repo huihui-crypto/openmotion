@@ -250,16 +250,16 @@ describe("computeStackingPatches — only the moved clip changes", () => {
     expect(patchMap(elements, ["caption"], "up")).toEqual({ caption: 6 });
   });
 
-  it("moved down under a z-0 clip earlier in the file: drops to 0 and the neighbour stays", () => {
+  it("moved down under an earlier z-0 clip rebases the scope without negative z", () => {
     // z never goes negative (it could paint behind the composition's background),
-    // and neighbours never move, so this order cannot be fully expressed.
+    // so raise the paint scope uniformly to make room for the bottom clip.
     const elements = [el("r", 0, 0, 10, 0, false, 0), el("v", 1, 0, 10, 2, false, 1)];
-    expect(patchMap(elements, ["v"], "down")).toEqual({ v: 0 });
+    expect(patchMap(elements, ["v"], "down")).toEqual({ r: 1, v: 0 });
   });
 
-  it("moved down when it cannot go lower → no patch", () => {
+  it("moved down at the zero floor raises the earlier sibling", () => {
     const elements = [el("r", 0, 0, 10, 0, false, 0), el("v", 1, 0, 10, 0, false, 1)];
-    expect(patchMap(elements, ["v"], "down")).toEqual({});
+    expect(patchMap(elements, ["v"], "down")).toEqual({ r: 1 });
   });
 
   it("moved down never goes under a clip on a lower row it paints over now", () => {
@@ -282,14 +282,14 @@ describe("computeStackingPatches — only the moved clip changes", () => {
     expect(patchMap(elements, ["v"], "down")).toEqual({});
   });
 
-  it("#2198: an untouched pair keeps its order because neighbours never move", () => {
+  it("#2198: uniform rebasing preserves an untouched pair across time", () => {
     // e overlaps n [5,10); n overlaps m [12,15); e does not overlap m.
     const elements = [
       el("m", 0, 12, 8, 1, false, 0),
       el("n", 1, 5, 10, 0, false, 1),
       el("e", 2, 0, 10, 2, false, 2),
     ];
-    expect(patchMap(elements, ["e"], "down")).toEqual({ e: 0 });
+    expect(patchMap(elements, ["e"], "down")).toEqual({ m: 2, n: 1, e: 0 });
   });
 
   it("equal z broken by file order: the clip later in the file already paints above", () => {
@@ -301,4 +301,11 @@ describe("computeStackingPatches — only the moved clip changes", () => {
     const elements = [el("b", 1, 0, 10, 3), el("e", 0, 0, 10, 3)];
     expect(patchMap(elements, ["e"], "up")).toEqual({ e: 4 });
   });
+});
+
+
+it("rebases untouched same-scope neighbours equally and leaves other scopes alone", () => {
+  const elements = [el("top", 0, 0, 10, 0, false, 0), el("moving", 2, 0, 10, 0, false, 1),
+    el("later", 1, 20, 10, 4), { ...el("foreign", 0, 0, 10, 0), sourceFile: "other.html" }];
+  expect(patchMap(elements, ["moving"], "down")).toEqual({ top: 1, later: 5 });
 });

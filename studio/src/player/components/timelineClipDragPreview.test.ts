@@ -567,32 +567,32 @@ describe("computeDragPreview — the ghost start is the committed start", () => 
     expect(committedStart(ghost, lower, elements)).toBe(10);
   });
 
-  it("a move onto an occupied row lands at its nearest free time, ghost and commit alike", () => {
+  it("a vertical move onto an occupied row opens a lane without retiming, ghost and commit alike", () => {
     const blocker = clip("blocker", 0, 8, 4, 5);
     const elements = [blocker, lower];
     const ghost = preview(lower, elements, 1, 0.5);
-    expect(ghost.insertRow).toBeNull();
+    expect(ghost.insertRow).toBe(0);
     expect(ghost.previewTrack).toBe(0);
-    expect(ghost.previewStart).toBe(12);
-    expect(committedStart(ghost, lower, elements)).toBe(12);
+    expect(ghost.previewStart).toBe(10);
+    expect(committedStart(ghost, lower, elements)).toBe(10);
   });
 
-  describe("a drop onto an occupied row stays on that row", () => {
+  describe("a vertical drop onto an occupied row preserves the scene time", () => {
     const title = clip("title", 0, 0, 10, 3, "text");
     const subtitle = clip("subtitle", 1, 0, 6, 2, "text");
     const tag = clip("tag", 2, 2, 5, 1, "text");
     const rows = [title, subtitle, tag];
 
-    it("Tag dropped on the Subtitle row lands right after Subtitle, with no new track", () => {
+    it("Tag dropped on the Subtitle row opens a lane above Subtitle", () => {
       const ghost = preview(tag, rows, 2, 1.5);
-      expect(ghost).toMatchObject({ insertRow: null, previewTrack: 1, previewStart: 6 });
-      expect(committedStart(ghost, tag, rows)).toBe(6);
+      expect(ghost).toMatchObject({ insertRow: 1, previewTrack: 1, previewStart: 2 });
+      expect(committedStart(ghost, tag, rows)).toBe(2);
     });
 
-    it("Tag dropped on the top Title row stays on track 0 after Title, not snapped to 0", () => {
+    it("Tag dropped on the top Title row opens a top lane at its original time", () => {
       const ghost = preview(tag, rows, 2, 0.5);
-      expect(ghost).toMatchObject({ insertRow: null, previewTrack: 0, previewStart: 10 });
-      expect(committedStart(ghost, tag, rows)).toBe(10);
+      expect(ghost).toMatchObject({ insertRow: 0, previewTrack: 0, previewStart: 2 });
+      expect(committedStart(ghost, tag, rows)).toBe(2);
     });
 
     it("a clip aimed at a seam opens a new track at that boundary", () => {
@@ -639,8 +639,8 @@ describe("computeDragPreview — the ghost start is the committed start", () => 
 
   it("drops the snap guide when the row moves the clip off the snapped time", () => {
     const a = clip("a", 0, 0, 6, 1);
-    const b = clip("b", 1, 3, 2, 1);
-    const { drag, clientX } = horizontalDrag(b, 1.5, 0);
+    const b = clip("b", 1, 2, 2, 1);
+    const { drag, clientX } = horizontalDrag(b, 1.5, 1);
     const ghost = computeDragPreview(drag, clientX, yForRow(0.5), {
       ...ctx(undefined, [a, b]),
       buildSnapTargets: () => [{ time: 3, type: "beat" }],

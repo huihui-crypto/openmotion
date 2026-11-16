@@ -291,3 +291,16 @@ describe("pasteElementHtml", () => {
     expect(hfIdsIn(ensureHfIds(content))).toHaveLength(ids.length);
   });
 });
+
+
+it("reports the reminted pasted element identity without moving its authored position", () => {
+  const source = ensureHfIds('<div data-composition-id="main"><h1 id="title" style="left:10px">Title</h1></div>');
+  const html = new DOMParser().parseFromString(source, "text/html").querySelector("h1")!.outerHTML;
+  let inserted = "";
+  const content = pasteElementHtml(source, { html, originSelector: "#title" }, true, (id) => { inserted = id; });
+  const titles = new DOMParser().parseFromString(content, "text/html").querySelectorAll("h1");
+  expect(titles).toHaveLength(2);
+  expect(inserted).toBe(titles[1]!.getAttribute("data-hf-id"));
+  expect(inserted).not.toBe(titles[0]!.getAttribute("data-hf-id"));
+  expect(titles[1]!.style.left).toBe("10px");
+});

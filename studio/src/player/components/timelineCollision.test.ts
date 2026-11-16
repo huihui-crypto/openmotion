@@ -314,3 +314,31 @@ describe("resolveZoneDropPlacement (a drop on a row stays on that row, no overla
     });
   });
 });
+
+
+describe("vertical visual drops preserve scene timing", () => {
+  const base = {
+    order: [0, 1, 2, 3], audioTracks: new Set([3]),
+    elements: [el("a", 0, 0, 10), el("b", 1, 0, 10), el("c", 2, 0, 10)],
+    desiredTrack: 1, deliberateInsertRow: null, start: 2, duration: 5,
+    dragKey: "moving", isAudio: false,
+  };
+  it("opens above an occupied lane when moving upward", () => {
+    expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 2 } }))
+      .toEqual({ track: 1, insertRow: 1, start: 2 });
+  });
+  it("opens below an occupied lane when moving downward", () => {
+    expect(resolveZoneDropPlacement({ ...base, origin: { track: 0, start: 2 } }))
+      .toEqual({ track: 1, insertRow: 2, start: 2 });
+  });
+  it("preserves audio collision placement and horizontal visual retiming", () => {
+    expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 1 } }).start).toBe(10);
+    expect(resolveZoneDropPlacement({ ...base, isAudio: true, desiredTrack: 3,
+      elements: [el("audio", 3, 0, 10)], origin: { track: 4, start: 2 } }))
+      .toEqual({ track: 3, insertRow: null, start: 10 });
+  });
+  it("does not insert into a protected group boundary", () => {
+    expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 2 },
+      allowedInsertRows: new Set([0, 3, 4]) })).toEqual({ track: 1, insertRow: null, start: 10 });
+  });
+});

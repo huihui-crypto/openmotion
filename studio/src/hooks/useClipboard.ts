@@ -181,9 +181,13 @@ export function pasteElementHtml(
   content: string,
   payload: { html: string; originSelector?: string; originSelectorIndex?: number },
   fromThisFile = false,
+  onInserted?: (hfId: string) => void,
 ): string {
   const reminted = remintHfIds(payload.html, new DOMParser(), hfIdsInFile(content));
   const deduped = deduplicateIds(reminted, collectHtmlIds(content));
+  const pastedRoot = new DOMParser().parseFromString(deduped, "text/html").body.firstElementChild;
+  const hfId = pastedRoot?.getAttribute("data-hf-id");
+  if (hfId) onInserted?.(hfId);
   const result = insertAsSibling(
     content,
     deduped,
@@ -264,6 +268,7 @@ export function useClipboard({
   waitForPendingDomEditSaves,
 }: UseClipboardOptions) {
   const clipboardRef = useRef<Promise<ClipboardPayload | null> | null>(null);
+  const pastedDomElementRef = useRef<{ projectId: string; path: string; hfId: string } | null>(null);
   const projectIdRef = useRef(projectId);
   projectIdRef.current = projectId;
 
@@ -366,7 +371,15 @@ export function useClipboard({
   const copyToClipboard = useCallback((): Promise<ClipboardPayload | null> | null => {
     const domSelection = domEditSelectionRef.current;
     let pending: Promise<ClipboardPayload> | null;
-    if (usePlayerStore.getState().selectedElementId) pending = copyTimelineSelection();
+    const selectedClips = getSelectedElements();
+    const selectedDom = domSelection && getSelectedDomElement(previewIframeRef, domSelection, activeCompPath);
+    // Selecting a nested or untimed canvas element can leave its owning clip
+    // selected in the timeline. Copy the actual canvas target in that case.
+    const isClipTarget = selectedClips.some((element) =>
+      findTimelineElementInIframe(previewIframeRef.current, element, activeCompPath) === selectedDom,
+    );
+    if (domSelection && !isClipTarget) pending = copyDomSelection(domSelection);
+    else if (selectedClips.length > 0) pending = copyTimelineSelection();
     else if (domSelection) pending = copyDomSelection(domSelection);
     else {
       showToast("Nothing selected to copy.", "info");
@@ -384,7 +397,7 @@ export function useClipboard({
       if (!payload && clipboardRef.current === settled) clipboardRef.current = null;
     });
     return own;
-  }, [copyDomSelection, copyTimelineSelection, domEditSelectionRef, showToast]);
+  }, [activeCompPath, copyDomSelection, copyTimelineSelection, domEditSelectionRef, previewIframeRef, showToast]);
 
   const handleCopy = useCallback((): boolean => copyToClipboard() !== null, [copyToClipboard]);
 
@@ -403,10 +416,11 @@ export function useClipboard({
       const targetPath = activeCompPath || "index.html";
       try {
         let pastedIds: string[] = [];
+        let pastedHfId: string | null = null;
         const fromThisFile = payload.sourceFile === targetPath && payload.projectId === pid;
         const paste = (originalContent: string) => {
           if (payload.kind !== "timeline-clip")
-            return pasteElementHtml(originalContent, payload, fromThisFile);
+            return pasteElementHtml(originalContent, payload, fromThisFile, (hfId) => { pastedHfId = hfId; });
           const { currentTime, elements } = usePlayerStore.getState();
           const pasted = pasteTimelineClips(
             originalContent,
@@ -440,6 +454,7 @@ export function useClipboard({
         if (pastedIds.length > 0) {
           usePlayerStore.getState().setSelection(pastedIds.map((id) => elementKey(id, targetPath)));
         }
+        pastedDomElementRef.current = pastedHfId ? { projectId: pid, path: targetPath, hfId: pastedHfId } : null;
         reloadPreview();
         showToast(toast, "info");
       } catch (error) {
@@ -525,9 +540,10 @@ export function useClipboard({
     const selected = getSelectedElements();
     const domSelection = domEditSelectionRef.current;
     const copied = copyToClipboard();
-    if (!copied || !(await copied)) return false;
+    const payload = copied && await copied;
+    if (!payload) return false;
 
-    if (selected.length > 0) {
+    if (payload.kind === "timeline-clip" && selected.length > 0) {
       // One call for the whole selection, not one per element: the batched
       // delete writes and records history once, so a multi-clip Cmd+X undoes
       // in a single Cmd+Z instead of needing one per clip.
@@ -549,5 +565,5 @@ export function useClipboard({
 
   const canPaste = useCallback(() => clipboardRef.current !== null, []);
 
-  return { handleCopy, handlePaste, handleCut, handleDuplicate, canPaste };
+  return { pastedDomElementRef, handleCopy, handlePaste, handleCut, handleDuplicate, canPaste };
 }

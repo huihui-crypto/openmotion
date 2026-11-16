@@ -109,6 +109,7 @@ function mountClipboard(
   const iframe = mountPreview(sub, bundle, saved);
   const writes: string[] = [];
   const deleted: string[] = [];
+  const domDeleted: DomEditSelection[] = [];
   const writeProjectFile = async (_path: string, content: string) => {
     writes.push(content);
   };
@@ -126,7 +127,7 @@ function mountClipboard(
         deleted.push(...elements.map((el) => el.id));
         files["index.html"] = SAVED.replace(/<h1[\s\S]*<\/h1>/, "");
       },
-      handleDomEditElementDelete: async () => {},
+      handleDomEditElementDelete: async (selection) => { domDeleted.push(selection); },
       previewIframeRef: { current: iframe },
       waitForPendingDomEditSaves: () => domEditSave.pending,
     });
@@ -141,6 +142,7 @@ function mountClipboard(
     clipboard,
     writes,
     deleted,
+    domDeleted,
     files,
     fail,
     writeProjectFile,
@@ -297,6 +299,9 @@ describe("paste of an element styled by its id", () => {
     };
     expect(look("badge")).toEqual({ color: "rgb(200, 30, 40)", letterSpacing: "3px" });
     expect(look("badge-2")).toEqual(look("badge"));
+    expect(clipboard().pastedDomElementRef.current).toEqual({
+      projectId: "p", path: "index.html", hfId: doc.getElementById("badge-2")!.getAttribute("data-hf-id"),
+    });
   });
 });
 
@@ -545,4 +550,29 @@ describe("with no DOM edit session", () => {
     expect(await clipboard().handleDuplicate()).toBe(false);
     expect(deleted).toEqual([]);
   });
+});
+
+
+it("copies the selected untimed canvas element even if a previous timeline clip stays selected", async () => {
+  selectTitle();
+  const saved = SAVED.replace("</h1>", '</h1><p id="badge">New</p>');
+  const selection = { hfId: stampedHfId(saved, "#badge"), selector: "#badge", selectorIndex: 0, sourceFile: "index.html" } as DomEditSelection;
+  const { clipboard, writes } = mountClipboard(selection, SUB, () => {}, saved);
+  clipboard().handleCopy();
+  await clipboard().handlePaste();
+  const doc = new DOMParser().parseFromString(writes[0]!, "text/html");
+  expect(doc.querySelectorAll("h1")).toHaveLength(1);
+  expect(doc.querySelectorAll("p")).toHaveLength(2);
+  expect(clipboard().pastedDomElementRef.current?.hfId).toBe(doc.querySelector("#badge-2")?.getAttribute("data-hf-id"));
+});
+
+
+it("cuts the copied canvas target without deleting the lingering timeline selection", async () => {
+  selectTitle();
+  const saved = SAVED.replace("</h1>", '</h1><p id="badge">New</p>');
+  const selection = { hfId: stampedHfId(saved, "#badge"), selector: "#badge", selectorIndex: 0, sourceFile: "index.html" } as DomEditSelection;
+  const { clipboard, deleted, domDeleted } = mountClipboard(selection, SUB, () => {}, saved);
+  expect(await clipboard().handleCut()).toBe(true);
+  expect(deleted).toEqual([]);
+  expect(domDeleted).toEqual([selection]);
 });

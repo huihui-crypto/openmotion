@@ -1,10 +1,11 @@
 /**
  * timelineStackingSync — lane ↔ stacking unification (pure).
  *
- * A row move restacks the moved clip only: moved up, it rises above every clip
+ * A row move restacks the moved clip: moved up, it rises above every clip
  * it overlaps in time on the rows now below it; moved down, it sinks below every
- * such clip on the rows now above it. Neighbours never change, so a clip nobody
- * moved never goes behind anything (a full-frame scene on the top row stays put).
+ * such clip on the rows now above it. At the zero floor a bottom move rebases
+ * the other scope members uniformly, preserving their order. Otherwise neighbours
+ * never change, so a clip nobody moved never goes behind anything (a full-frame scene on the top row stays put).
  *
  * Lane → screen mapping (see Timeline.tsx trackOrder / TimelineCanvas rows):
  * tracks are sorted ASCENDING and rendered top → bottom, so a LOWER `track`
@@ -153,8 +154,9 @@ function loweredZ(clip: StackingElement, overlapping: StackingElement[]): number
 }
 
 /**
- * The z-index patches for a row move: each edited clip, and only it, is raised (`up`) or lowered (`down`) against the
- * clips it overlaps in time in its own paint scope. Clips whose live z is unresolved (non-finite) and audio clips take
+ * The z-index patches for a row move: each edited clip is raised (`up`) or lowered (`down`) against the
+ * clips it overlaps in time in its own paint scope. A bottom move may uniformly
+ * raise the other scope members to make room at z=0. Clips whose live z is unresolved (non-finite) and audio clips take
  * no part. Several edited clips resolve against each other's new z: the bottom one first when moving up, the top one
  * first when moving down.
  */
@@ -171,15 +173,27 @@ export function computeStackingPatches(
     .filter((e) => editedSet.has(e.key))
     .sort((a, b) => (direction === "up" ? b.track - a.track : a.track - b.track));
 
-  const patches: StackingPatch[] = [];
+  const originalZ = new Map(live.map((element) => [element.key, element.zIndex]));
   for (const clip of edited) {
     const overlapping = live.filter(
       (o) => o.key !== clip.key && overlapsInTime(clip, o) && samePaintScope(clip, o),
     );
     const zIndex = direction === "up" ? raisedZ(clip, overlapping) : loweredZ(clip, overlapping);
-    if (zIndex === null) continue;
-    clip.zIndex = zIndex;
-    patches.push({ key: clip.key, zIndex });
+    if (zIndex !== null) clip.zIndex = zIndex;
+    // At the bottom, z=0 may still paint above an earlier z=0 sibling.
+    // Rebase every other node in the paint scope equally: their relative
+    // order stays intact and the moved clip never goes behind the background.
+    const above = overlapping.filter((other) => laneIsAbove(other, clip));
+    if (direction === "down" && above.length > 0 &&
+        overlapping.every((other) => laneIsAbove(other, clip)) &&
+        !above.every((other) => paintsAbove(other, clip))) {
+      const shift = Math.max(0, 1 - Math.min(...above.map((other) => other.zIndex)));
+      for (const other of live) {
+        if (other.key !== clip.key && samePaintScope(clip, other)) other.zIndex += shift;
+      }
+      clip.zIndex = 0;
+    }
   }
-  return patches;
+  return live.filter((element) => element.zIndex !== originalZ.get(element.key))
+    .map(({ key, zIndex }) => ({ key, zIndex }));
 }

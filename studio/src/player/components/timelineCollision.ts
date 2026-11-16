@@ -185,6 +185,20 @@ export function resolveZoneDropPlacement(input: {
       insertRow--;
     return { track: desired, insertRow, start };
   }
+  // A vertical visual move changes paint order, not timing. When the aimed
+  // lane is occupied, open a lane beyond it in the direction of travel instead
+  // of moving the clip to a different scene in time. Horizontal and audio moves
+  // keep the existing nearest-free-time behavior.
+  if (
+    !isAudio && input.origin && input.origin.track !== desired &&
+    Math.abs(start - input.origin.start) < 0.001 &&
+    !isLaneFree(elements, desired, start, start + duration, dragKey)
+  ) {
+    const row = order.indexOf(desired);
+    const insertRow = row + (desired > input.origin.track ? 1 : 0);
+    if (isInsertAllowedForZone(insertRow, audioRow, false, input.allowedInsertRows))
+      return { track: desired, insertRow, start };
+  }
   const origin = input.origin?.track === desired ? input.origin.start : null;
   const freeStart = resolveNearestFreeStart(
     elements,
