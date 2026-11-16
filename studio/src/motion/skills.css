@@ -85,7 +85,6 @@
 .om-skill-detail { padding-bottom: 0; }
 /* The copy and connect actions stay pinned to the panel bottom while the brief scrolls. */
 .om-skill-footer { position: sticky; bottom: 0; z-index: 1; display: grid; gap: var(--motion-space-8); margin-top: auto; margin-inline: calc(var(--motion-space-20) * -1); padding: var(--motion-space-12) var(--motion-space-20) var(--motion-space-16); background: var(--library-bg); border-top: 1px solid var(--library-line); }
-.om-skill-footer .om-muted { margin: 0; }
 .om-skill-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--motion-space-8); }
 [data-motion-studio] .om-skill-actions .om-button { justify-content: center; }
 

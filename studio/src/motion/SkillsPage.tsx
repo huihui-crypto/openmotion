@@ -101,7 +101,6 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
           <button className="om-button" data-primary onClick={() => void copy()}><RemixIcon name="file-copy-line" size={16} />{t('Copy for Agent')}</button>
           {chrome && <button className="om-button" onClick={chrome.openConnections}><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</button>}
         </div>
-        <p className="om-muted">{t('Paste it into Codex, Claude Code or another Agent connected to OpenMotion MCP. Not connected yet? Use Connect Agent first.')}</p>
       </footer>
     </aside>}
   </div>;
