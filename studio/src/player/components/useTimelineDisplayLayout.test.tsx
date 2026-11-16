@@ -8,7 +8,7 @@ import type { DraggedClipState } from "./timelineClipDragTypes";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
-it("keeps interior pointer seams stable, appends a bottom preview, and expands keyboard pickup", () => {
+it("keeps interior pointer seams stable, previews top and bottom lanes, and expands keyboard pickup", () => {
   const order = [7, 3, 9];
   const geometry = createTimelineRowGeometry(order, [48, 104, 48], { top: 0 });
   const host = document.createElement("div");
@@ -49,6 +49,12 @@ it("keeps interior pointer seams stable, appends a bottom preview, and expands k
   expect(pointer.order).toEqual(order);
   expect(pointer.heights).toEqual([48, 104, 48]);
   expect(pointer.below).toBe(176);
+  act(() => root.render(<Probe active={{ ...drag, insertRow: 0 }} />));
+  const top = JSON.parse(host.textContent!);
+  expect(top.order).toEqual([-1, ...order]);
+  expect(top.pinned).toBe(-1);
+  expect(top.heights).toEqual([48, 48, 104, 48]);
+  expect(top.below).toBe(120);
   act(() => root.render(<Probe active={{ ...drag, insertRow: order.length }} />));
   const bottom = JSON.parse(host.textContent!);
   expect(bottom.order.slice(0, order.length)).toEqual(order);

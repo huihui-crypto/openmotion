@@ -318,8 +318,8 @@ function useDisplayTrackOrder(draggedClip: DraggedClipState | null, trackOrder: 
     if (!started || previewTrack === undefined) return trackOrder;
     if (insertRow !== null) {
       // Interior pointer seams must not move existing rows under the pointer.
-      // Appending below every row is safe and keeps the new-lane preview visible.
-      if (!keyboardPickup && insertRow < trackOrder.length) return trackOrder;
+      // Inserting above or below every row is safe and keeps the new-lane preview visible.
+      if (!keyboardPickup && insertRow > 0 && insertRow < trackOrder.length) return trackOrder;
       const pendingKey = trackOrder.reduce((lowest, key) => Math.min(lowest, key), 0) - 1;
       const displayOrder = [...trackOrder];
       displayOrder.splice(insertRow, 0, pendingKey);
