@@ -87,6 +87,7 @@ function renderAudioClip(
   const { start, end } = trimFractions(el);
   const waveform = createElement(AudioWaveform, {
     audioUrl,
+    sourceKind: el.tag === "video" ? "video" : "audio",
     waveformUrl,
     label: "",
     labelColor,

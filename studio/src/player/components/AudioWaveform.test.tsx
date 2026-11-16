@@ -73,6 +73,7 @@ const mounted: Array<ReturnType<typeof createRoot>> = [];
 afterEach(() => {
   act(() => mounted.splice(0).forEach((root) => root.unmount()));
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
   leaseSpy.mockReset();
   leaseSpy.mockImplementation(() => ({ status: "loading" as const }));
@@ -208,7 +209,37 @@ describe("AudioWaveform", () => {
       expect.arrayContaining([expect.stringContaining("/waveform/voice.wav"), expect.stringContaining("/media/voice.wav")]),
     );
     expect(close).toHaveBeenCalled();
-    vi.unstubAllGlobals();
+  });
+
+  it.each([409, 500, undefined])("never downloads a video container when server peaks are unavailable (%s)", async (status) => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: status ?? 500 }));
+    const audioContext = vi.fn();
+    vi.stubGlobal("AudioContext", audioContext);
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    mounted.push(root);
+    act(() => root.render(
+      <I18nProvider initialLocale="zh-CN">
+        <AudioWaveform
+          audioUrl="/media/long-video.mp4"
+          sourceKind="video"
+          waveformUrl={status === undefined ? undefined : "/waveform/long-video.mp4"}
+          label=""
+          labelColor="#fff"
+          projectId="project-a"
+          sessionEpoch={1}
+          priority="visible"
+        />
+      </I18nProvider>,
+    ));
+    const request = leaseSpy.mock.calls.at(-1)?.[0] as ThumbnailRequest;
+    await expect(request.load(new AbortController().signal)).rejects.toThrow(
+      status === undefined ? "Video waveform requires server peaks" : `Waveform request failed (${status})`,
+    );
+    expect(fetchSpy).toHaveBeenCalledTimes(status === undefined ? 0 : 1);
+    expect(fetchSpy.mock.calls.map(([input]) => String(input))).not.toContain("/media/long-video.mp4");
+    expect(audioContext).not.toHaveBeenCalled();
   });
 
   it("paints a baseline and peak bar for every mapped waveform bin", () => {
