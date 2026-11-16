@@ -77,3 +77,27 @@ test('project instruction pins the exact project and composes only public MCP op
   }
   assert.equal(projectEditorUrl({ ...info, previewUrl: 'http://127.0.0.1:49937/' }, 'project'), 'http://127.0.0.1:49937/?project=project#project/project');
 });
+
+test('project handoff checks returned identity fields and supplies retry-safe write identities in both locales', () => {
+  for (const locale of ['en', 'zh-CN'] as const) {
+    for (const integration of [info, null]) {
+      const prompt = projectEditPrompt(integration, { id: 'project-a', title: 'Launch film' }, locale);
+      const steps = prompt.split('\n');
+      const check = steps.find(line => line.startsWith('2.'))!;
+      const write = steps.find(line => line.startsWith('3.'))!;
+      assert.match(check, /projectId/);
+      assert.match(check, /dataDirectory/);
+      assert.doesNotMatch(check, /title|标题/);
+      assert.match(write, /openmotion_open_preview.*requestId=beginRequestId/);
+      assert.match(write, /openmotion_edit_project.*requestId=saveRequestId/);
+      assert.match(write, /expectedRevision.*expectedVersionId/);
+      assert.match(write, locale === 'en' ? /distinct.*each round.*stable.*retrying/ : /每轮生成不同.*重试时保持对应值不变/);
+      if (integration) {
+        assert.match(check, locale === 'en' ? /Data directory lines above/ : /上面的 projectId 和数据目录/);
+      } else {
+        assert.doesNotMatch(prompt, /data directory above|Data directory:|Editor:|上面的数据目录|数据目录：|编辑器：/);
+        assert.match(check, locale === 'en' ? /confirmed workspace data directory/ : /已确认的工作区数据目录/);
+      }
+    }
+  }
+});

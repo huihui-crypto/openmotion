@@ -5,6 +5,7 @@ import { useStudioShellContext } from '../contexts/StudioContext';
 import { Button, Tooltip } from '../components/ui';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';
+import { SettingsError, SettingsLoading } from './settingsPrimitives';
 import { useIntegrationInfo } from './useIntegrationInfo';
 import { useOptionalWorkspaceChrome } from './WorkspaceFrame';
 
@@ -45,9 +46,10 @@ function ProjectInstructionBody({ projectId, title, locale, copyRef, showToast, 
   showToast: (message: string, tone?: 'error' | 'info') => void; onConnect?: () => void;
 }) {
   const { t } = useI18n();
-  const { info } = useIntegrationInfo();
+  const { info, failed, retry } = useIntegrationInfo();
   const prompt = projectEditPrompt(info, { id: projectId, title }, locale);
   async function copy() {
+    if (!info) return;
     try {
       await navigator.clipboard.writeText(prompt);
       showToast(t('Project instruction copied. Paste it into another Agent session.'), 'info');
@@ -64,10 +66,10 @@ function ProjectInstructionBody({ projectId, title, locale, copyRef, showToast, 
       <span className="truncate font-medium text-text-1" title={title || t('Untitled')}>{title || t('Untitled')}</span>
       <code className="truncate rounded-md bg-bg-2 px-1.5 py-0.5 font-mono text-step-11" title={projectId}>{projectId}</code>
     </div>
-    <pre className="om-code-block max-h-[220px] overflow-auto whitespace-pre-wrap break-words" aria-label={t('MCP instruction')}>{prompt}</pre>
+    {failed ? <SettingsError retry={retry} /> : !info ? <SettingsLoading /> : <pre className="om-code-block max-h-[220px] overflow-auto whitespace-pre-wrap break-words" aria-label={t('MCP instruction')}>{prompt}</pre>}
     <div className="flex items-center justify-between gap-2">
       {onConnect ? <button type="button" className="om-text-link cursor-pointer border-0 bg-transparent p-0" onClick={onConnect}>{t('Not connected yet? Connect Agent')}</button> : <span />}
-      <Button ref={copyRef} variant="primary" size="sm" icon={<RemixIcon name="file-copy-line" size={15} />} onClick={() => void copy()}>{t('Copy instruction')}</Button>
+      <Button ref={copyRef} variant="primary" size="sm" disabled={!info} icon={<RemixIcon name="file-copy-line" size={15} />} onClick={() => void copy()}>{t('Copy instruction')}</Button>
     </div>
   </>;
 }
