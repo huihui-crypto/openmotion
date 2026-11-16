@@ -66,8 +66,8 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
         </div>
       </div>
       <main className={styles.results}>
+        <section className={`${styles.intro} om-skills-intro`}><span className={styles.eyebrow}>{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p></section>
         <div className={`${styles.grid} om-skills-grid`}>
-          <section className={styles.intro}><span className={styles.eyebrow}>{t('Teach your Agent new moves.')}</span><h1>{t('Pick a skill. Let your Agent make it.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project through OpenMotion MCP.')}</p></section>
           {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
         </div>
         {!visible.length && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
@@ -108,9 +108,21 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
 
 /** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
 function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; category: string; selected: boolean; onSelect: () => void }) {
-  const [active, setActive] = useState(false);
+  const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false);
+  const card = useRef<HTMLElement>(null);
+  // Autoplay while at least half the card is on screen (paused off screen, so only the visible few load).
+  // Reduced-motion users keep hover-to-play.
+  useEffect(() => {
+    const element = card.current;
+    if (!element || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.5 });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const active = hovered || visible;
+  const setActive = setHovered;
   // Keep the cover clean; the task name and what it makes sit under it, so a glance says what the skill does.
-  return <article className="om-gallery-card om-skill-gallery-card" data-skill-id={skill.id} data-selected={selected}
+  return <article ref={card} className="om-gallery-card om-skill-gallery-card" data-skill-id={skill.id} data-selected={selected}
     onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)}>
     <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: skill.cover?.aspect ?? coverAspect[skill.motif.length % coverAspect.length] }} onClick={onSelect} aria-pressed={selected} aria-label={name}
       onFocus={() => setActive(true)} onBlur={() => setActive(false)}>

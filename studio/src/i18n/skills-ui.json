@@ -93,7 +93,6 @@
     "Cover for my video “I rebuilt my app in 7 days”": "我的视频《7 天重写我的 App》的封面",
     "Teach your Agent new moves.": "给 Agent 加点新本事",
     "Pick a skill. Let your Agent make it.": "挑一个 Skill，让 Agent 动手做",
-    "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project through OpenMotion MCP.": "挑一个 Skill，填好需求、复制指令，Agent 会通过 OpenMotion MCP 做出可继续编辑的项目。",
     "A product promo cut from your real page screenshots, with beat-synced shots and sound effects": "用你产品的真实页面截图，剪成一支卡点、带音效的产品宣传片",
     "A short product reel: studio shot, lifestyle shot and hero banner of your product": "一段产品短片：你的产品棚拍图、生活场景图和首屏横幅依次出现",
     "An e-commerce listing video: main image, selling points, specs and comparison cards": "一支电商商品视频：主图、卖点、参数、对比卡片逐张讲解",
@@ -181,6 +180,7 @@
     "When showing a physical product on a lit 3D turntable": "实物产品要在带光照的 3D 转台上展示",
     "When you want confetti, sparks or an ambient particle background": "要彩纸、火花庆祝效果，或粒子氛围背景",
     "When to use": "什么时候用",
-    "Remove the AI look": "去 AI 味"
+    "Remove the AI look": "去 AI 味",
+    "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "挑一个 Skill，填好需求、复制指令，Agent 会通过 OpenMotion 做出可继续编辑的项目。"
   }
 }
