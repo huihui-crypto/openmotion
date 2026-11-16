@@ -127,10 +127,13 @@ export function SkillMedia({ skill, playing = false, large = false }: { skill: M
     if (play) void element.play().catch(() => {}); else { element.pause(); }
   }, [play, cover?.video]);
   if (!cover) return <SkillCover motif={skill.motif} name={skill.name} large={large} />;
+  // GIF demos only animate while the card is active, like template videos; the poster (or the GIF itself) shows otherwise.
+  const still = cover.poster ?? (cover.video ? undefined : cover.gif);
   return <span className="om-skill-media" data-large={large}>
-    {cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" onError={() => !cover.video && setFailed(true)} />}
-    {cover.video && <video ref={video} src={cover.video} muted playsInline loop preload={large ? 'auto' : 'none'} aria-hidden="true"
-      onPlaying={() => setReady(true)} onError={() => setFailed(true)} style={{ opacity: play && (ready || !cover.poster) ? 1 : 0 }} />}
+    {cover.gif && <img src={play ? cover.gif : still} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />}
+    {!cover.gif && cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" />}
+    {cover.video && <video ref={video} src={cover.video} muted playsInline loop preload={large || !cover.poster ? 'metadata' : 'none'} aria-hidden="true"
+      onPlaying={() => setReady(true)} onError={() => setFailed(true)} style={{ opacity: !cover.poster || (play && ready) ? 1 : 0 }} />}
   </span>;
 }
 

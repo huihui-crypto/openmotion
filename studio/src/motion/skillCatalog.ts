@@ -21,7 +21,7 @@ export type MotionSkill = {
   repository?: string;
   license: string;
   /** Real upstream demo media (hotlinked from the source); the card falls back to an illustration. */
-  cover?: { video?: string; poster?: string; aspect?: number; source: string };
+  cover?: { video?: string; gif?: string; poster?: string; aspect?: number; source: string };
   /** The workflow needs generated images, video or audio from configured providers. */
   media?: boolean;
   /** What the Agent should borrow from the upstream project. */
@@ -47,25 +47,25 @@ export const motionSkills: MotionSkill[] = [
     technique: 'Follow its routing: pick the right model per asset (image, image-to-video, sound effect, music), generate only the assets the storyboard needs, then place them on the timeline with motion and captions.', example: 'A 15-second ad with generated product shots and a sound effect on each cut' },
   { id: 'higgsfield-soul-id', name: 'Consistent Character', tagline: 'Keep the same person across shots.', category: 'People & AI media', motif: 'identity', repository: 'https://github.com/higgsfield-ai/skills/tree/main/higgsfield-soul-id', license: 'MIT', media: true,
     technique: 'Borrow its identity-consistency approach: use the photos I provide as references for every generated shot so the same person appears throughout. Only use faces I have the right to use.', example: 'A short story video starring me, using my three photos' },
-  { id: 'video-shotcraft', name: 'video-shotcraft', tagline: 'Product promos from shot recipes.', category: 'Product promos', motif: 'promo', repository: 'https://github.com/Vincentwei1021/video-shotcraft', license: 'Apache-2.0',
+  { id: 'video-shotcraft', name: 'video-shotcraft', tagline: 'Product promos from shot recipes.', category: 'Product promos', motif: 'promo', repository: 'https://github.com/Vincentwei1021/video-shotcraft', license: 'Apache-2.0', cover: { gif: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/assets/readme/workflow.gif', poster: 'https://raw.githubusercontent.com/Vincentwei1021/video-shotcraft/main/assets/readme/cover.webp', aspect: 1.78, source: 'https://github.com/Vincentwei1021/video-shotcraft#readme' },
     technique: 'Follow its product-promo workflow: capture real product pages, pick shot recipe cards, storyboard, cut to the beat with sound design and check every frame. Build it as native OpenMotion HTML instead of Remotion.', example: 'A promo for my product built from real page screenshots' },
   { id: 'motion-canvas', name: 'Motion Canvas', tagline: 'Animated explainers.', category: 'Explainers', motif: 'scene', repository: 'https://github.com/motion-canvas/motion-canvas', license: 'MIT',
     technique: 'Use its explainer style: sequential scenes, code-driven tweens, highlighted diagrams and synchronized captions.', example: 'Explain how an API request travels through a system' },
   { id: 'remotion-skills', name: 'Remotion Skills', tagline: 'Agent guidance for video.', category: 'Motion techniques', motif: 'agent', repository: 'https://github.com/remotion-dev/skills', license: 'See repository',
     technique: 'Follow its Agent guidance for structuring a video as scenes, timing with frames, and reusing typed components.', example: 'A 3-scene product launch with a logo reveal' },
-  { id: 'motion', name: 'Motion', tagline: 'Layout transitions.', category: 'Motion techniques', motif: 'layout', repository: 'https://github.com/motiondivision/motion', license: 'MIT',
+  { id: 'motion', name: 'Motion', tagline: 'Layout transitions.', category: 'Motion techniques', motif: 'layout', repository: 'https://github.com/motiondivision/motion', license: 'MIT', cover: { video: 'https://images.motion.dev/examples/stage/react/app-store/v-85ef4ca3e814/thumb.mp4', aspect: 1.35, source: 'https://motion.dev/examples' },
     technique: 'Use shared-layout transitions: cards that morph position and size, spring physics and smooth enter/exit.', example: 'A dashboard where cards rearrange to reveal a new feature' },
-  { id: 'ola', name: 'Ola', tagline: 'Smooth value interpolation.', category: 'Motion techniques', motif: 'curve', repository: 'https://github.com/franciscop/ola', license: 'MIT',
+  { id: 'ola', name: 'Ola', tagline: 'Smooth value interpolation.', category: 'Motion techniques', motif: 'curve', repository: 'https://github.com/franciscop/ola', license: 'MIT', cover: { gif: 'https://raw.githubusercontent.com/franciscop/ola/master/docs/dots.gif', aspect: 1.78, source: 'https://github.com/franciscop/ola#readme' },
     technique: 'Interpolate numbers smoothly: counters, progress bars and chart values that glide to new targets.', example: 'Revenue counter climbing from 0 to 1M with a progress ring' },
-  { id: 'anime-js', name: 'Anime.js', tagline: 'Timelines and stagger.', category: 'Motion techniques', motif: 'stagger', repository: 'https://github.com/juliangarnier/anime', license: 'MIT',
+  { id: 'anime-js', name: 'Anime.js', tagline: 'Timelines and stagger.', category: 'Motion techniques', motif: 'stagger', repository: 'https://github.com/juliangarnier/anime', license: 'MIT', cover: { gif: 'https://raw.githubusercontent.com/juliangarnier/anime/master/assets/images/usage-example-result.gif', aspect: 1.78, source: 'https://github.com/juliangarnier/anime#readme' },
     technique: 'Build one master timeline with staggered elements, offsets and expressive easing.', example: 'A grid of icons that ripple in from the center' },
-  { id: 'manim', name: 'Manim', tagline: 'Math in motion.', category: 'Explainers', motif: 'math', repository: 'https://github.com/ManimCommunity/manim', license: 'MIT',
+  { id: 'manim', name: 'Manim', tagline: 'Math in motion.', category: 'Explainers', motif: 'math', repository: 'https://github.com/ManimCommunity/manim', license: 'MIT', cover: { video: 'https://docs.manim.community/en/stable/OpeningManim-1.mp4#t=3', aspect: 1.78, source: 'https://docs.manim.community/en/stable/examples.html' },
     technique: 'Recreate its mathematical style in HTML/SVG: plotted functions, transforming equations and step-by-step proofs. Do not install Python or Manim.', example: 'Visualize how a sine wave builds from a rotating circle' },
   { id: 'shifty', name: 'Shifty', tagline: 'Tween playback and easing.', category: 'Motion techniques', motif: 'playback', repository: 'https://github.com/jeremyckahn/shifty', license: 'MIT',
     technique: 'Treat each property change as a tween with explicit easing, pause/seek points and chained steps.', example: 'A loading sequence with three chained easing styles' },
   { id: 'two-js', name: 'Two.js', tagline: 'Animated 2D vector scenes.', category: 'Motion techniques', motif: 'vector', repository: 'https://github.com/jonobr1/two.js', license: 'MIT',
     technique: 'Draw a 2D vector scene of simple shapes and paths, and animate their geometry, stroke and grouping.', example: 'Flat geometric shapes assembling into a logo' },
-  { id: 'lottie-web', name: 'Lottie Web', tagline: 'Vector animation playback.', category: 'Motion techniques', motif: 'icon', repository: 'https://github.com/airbnb/lottie-web', license: 'MIT',
+  { id: 'lottie-web', name: 'Lottie Web', tagline: 'Vector animation playback.', category: 'Motion techniques', motif: 'icon', repository: 'https://github.com/airbnb/lottie-web', license: 'MIT', cover: { gif: 'https://raw.githubusercontent.com/airbnb/lottie-web/master/gifs/Example1.gif', aspect: 1.78, source: 'https://github.com/airbnb/lottie-web#readme' },
     technique: 'Use designer-made Lottie animations as layers, or match their crisp vector icon-animation style.', example: 'Animated checkmark and icons for an onboarding video' },
   { id: 'tween-js', name: 'TweenJS', tagline: 'Sequenced property animation.', category: 'Motion techniques', motif: 'sequence', repository: 'https://github.com/CreateJS/TweenJS', license: 'MIT',
     technique: 'Sequence property animations in order with waits and callbacks so each beat lands on time.', example: 'A step-by-step feature walkthrough with timed callouts' },
