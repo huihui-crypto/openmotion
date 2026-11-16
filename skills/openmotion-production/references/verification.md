@@ -43,7 +43,7 @@ Recheck: changed frames, neighboring cuts and new result
 Status: open or resolved with evidence
 ```
 
-Prioritize up to three defects per pass. Reinspect after each repair. Two unsuccessful local repairs of the same defect require a blocker report and user direction or a concrete capability fix. Do not automatically do three rounds when the first result passes; do not lower the criteria to finish. Minor intentional tradeoffs can be documented; blocking defects must be resolved before claiming final completion.
+Prioritize a small set of consequential defects per pass and reinspect after each repair. When repeated local changes fail, record what each attempt changed and reassess the cause, source control, material or representation before trying again. Continue repairs within the user's authorization. Request user direction when progress depends on missing user information, a changed requirement or additional authorization; report a concrete capability gap when available methods cannot resolve it. Stop iterating when the requested result passes. Document minor intentional tradeoffs and resolve blocking defects before claiming final completion.
 
 Local source edits are supported; each OpenMotion export renders a fresh snapshot of the whole composition. Reuse unaffected design decisions, not stale exported-file verification.
 
