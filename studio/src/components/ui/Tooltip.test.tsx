@@ -93,8 +93,8 @@ it("keeps a tooltip inside its nearest native dialog and dismisses it independen
   expect(detail.open).toBe(true);
 });
 
-it("preserves the body portal for existing consumers without modal opt-in", async () => {
-  const host = mountHost(<dialog open><Tooltip label="Existing control" delay={0}><button>Control</button></Tooltip></dialog>);
+it("supports an explicit body portal opt-out", async () => {
+  const host = mountHost(<dialog open><Tooltip label="Existing control" delay={0} withinDialog={false}><button>Control</button></Tooltip></dialog>);
   act(() => host.querySelector("button")?.focus());
   await settle();
 
@@ -188,7 +188,7 @@ it("wraps a long label at a reading width and cuts it at its lines", async () =>
   const tip = bubble();
   expect(tip?.className).toContain("whitespace-normal");
   expect(tip?.className, "a long URL or path breaks too").toContain("break-words");
-  expect(tip?.className).toContain("max-w-[300px]");
+  expect(tip?.className).toContain("max-w-[min(300px,calc(100vw-16px))]");
   expect(tip?.className).not.toContain("whitespace-nowrap");
   const text = tip?.querySelector<HTMLElement>("span");
   expect(text?.textContent).toBe(label);
@@ -205,4 +205,40 @@ it("reveals a complete wrapped label without a line clamp", async () => {
   expect(bubble()?.textContent).toBe(label);
   expect(bubble()?.className).toContain("whitespace-normal");
   expect(bubble()?.querySelector('[style*="--tooltip-lines"]')).toBeNull();
+});
+
+it("portals into the nearest native modal without closing it on Escape", async () => {
+  const host = mountHost(<dialog open><dialog open aria-label="Detail">
+    <Tooltip label="Copy template" delay={0}><button>Copy</button></Tooltip>
+  </dialog></dialog>);
+  const trigger = host.querySelector("button")!;
+  act(() => trigger.focus());
+  await settle();
+  expect(bubble()?.closest("dialog")).toBe(host.querySelector('[aria-label="Detail"]'));
+  act(() => trigger.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  await settle();
+  expect(bubble()).toBeNull();
+  expect(host.querySelector<HTMLDialogElement>('[aria-label="Detail"]')?.open).toBe(true);
+});
+
+it("retains an existing description and reveals the complete wrapped label", async () => {
+  const label = "A long project filename ".repeat(20);
+  const host = mountHost(<><p id="help">Existing instructions</p>
+    <Tooltip label={label} wrap><button aria-describedby="help">Filename</button></Tooltip></>);
+  const trigger = host.querySelector("button")!;
+  act(() => trigger.focus());
+  await settle();
+  expect(bubble()?.textContent).toBe(label);
+  expect(bubble()?.querySelector('[style*="--tooltip-lines"]')).toBeNull();
+  expect(trigger.getAttribute("aria-describedby")).toBe(`help ${bubble()?.id}`);
+  act(() => trigger.blur());
+  await settle();
+  expect(trigger.getAttribute("aria-describedby")).toBe("help");
+});
+
+it("does not open an empty conditional hint", async () => {
+  const host = mountHost(<Tooltip><button>No hint</button></Tooltip>);
+  act(() => host.querySelector("button")?.focus());
+  await settle();
+  expect(bubble()).toBeNull();
 });

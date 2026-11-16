@@ -17,12 +17,13 @@ body { margin: 0; padding: 6px; }
 .omtc-cover video { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
 .omtc-card[data-media-ready="true"] .omtc-cover video { opacity: 1; }
 .omtc-preview-label { position: absolute; bottom: 5px; right: 5px; padding: 3px 5px; border-radius: 5px; color: #fff; background: rgb(0 0 0 / .75); font-size: 11px; }
+.omtc-category-label { position: absolute; top: var(--motion-space-6); left: var(--motion-space-6); max-width: calc(100% - var(--motion-space-12)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; pointer-events: none; }
 .omtc-info { display: grid; gap: 6px; padding: 9px; }
 .omtc-heading { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
 .omtc-position { color: light-dark(#60636e, #b7bac5); font-size: 12px; }
 .omtc-title { min-width: 0; border: 0; padding: 0; text-align: left; color: inherit; background: transparent; font-weight: 600 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .omtc-title:hover { text-decoration: underline; }
-.omtc-description, .omtc-status, .omtc-feedback, .omtc-hint { margin: 0; font-size: 12px; color: light-dark(#535660, #b7bac5); }
+.omtc-description, .omtc-status, .omtc-feedback { margin: 0; font-size: 12px; color: light-dark(#535660, #b7bac5); }
 .omtc-description { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 11px; min-height: 2.8em; }
 .omtc-clone, .omtc-back { min-height: 36px; border-radius: 7px; padding: 6px 8px; }
 .omtc-clone { width: 100%; border: 1px solid light-dark(#252733, #dddfe8); color: light-dark(#fff, #20222a); background: light-dark(#252733, #dddfe8); }
@@ -31,6 +32,5 @@ body { margin: 0; padding: 6px; }
 .omtc-detail { display: grid; gap: 12px; }
 .omtc-detail-title { font: inherit; font-weight: 600; margin: 0; }
 .omtc-player { width: 100%; display: block; aspect-ratio: 16 / 9; background: #15161a; border-radius: 12px; }
-.omtc-hint { margin-top: 10px; }
 @media (max-width: 399px) { .omtc-info { padding: 7px; } .omtc-description { display: none; } .omtc-preview-label { font-size: 10px; } }
 @media (pointer: coarse) { .omtc-clone, .omtc-back { min-height: 44px; } }

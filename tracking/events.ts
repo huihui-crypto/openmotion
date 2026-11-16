@@ -18,6 +18,7 @@ export const webMcpToolNames = ['openmotion_assets_use', 'openmotion_assets', 'o
   'openmotion_export_cancel', 'openmotion_studio_look', 'openmotion_studio_select', 'openmotion_studio_seek',
   'openmotion_studio_frame', 'openmotion_studio_inspect'] as const;
 const webMcp = { tool_name: webMcpToolNames, transport: ['webmcp'] } as const;
+const generation = { modality: ['image', 'video', 'audio'] } as const;
 const business = { outcome, project_id: 'uuid', operation_id: 'uuid', replayed: 'boolean', error_code: 'code' } as const;
 // A template is identified by its catalogue id only; titles, authors and URLs are never fields.
 const template = { template_id: 'slug' } as const;
@@ -54,6 +55,10 @@ export const omEvents = {
   asset_import_result: { producers: ['mcp'], fields: { ...business, requested_count: 'integer', added_count: 'integer', reused_count: 'integer', failed_count: 'integer' }, required: ['outcome'] },
   export_request_result: { producers: ['mcp'], fields: { ...business, job_id: 'uuid', queue_state: ['pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'] }, required: ['outcome'] },
   export_cancel_result: { producers: ['mcp'], fields: { ...business, job_id: 'uuid', state_after: ['pending', 'running', 'cancelling', 'cancelled', 'completed', 'failed'] }, required: ['outcome'] },
+  media_generation_requested: { producers: ['worker'], fields: generation, required: ['modality'] },
+  media_generation_submitted: { producers: ['worker'], fields: { ...generation, job_id: 'uuid' }, required: ['modality', 'job_id'] },
+  media_generation_result: { producers: ['worker'], fields: { ...generation, job_id: 'uuid',
+    job_state: ['completed', 'failed', 'cancelled'], asset_count: 'integer' }, required: ['modality', 'job_id', 'job_state', 'asset_count'] },
   export_result: { producers: ['worker'], fields: { job_id: 'uuid', job_state: ['completed', 'failed', 'cancelled'], duration_ms: 'integer', technical_check: ['passed', 'failed', 'unknown'] }, required: ['job_id', 'job_state', 'duration_ms', 'technical_check'] },
   // One per finished OpenDesign sign-in attempt. `replaced` is an interrupted attempt the service refused; the same
   // sign-in continues with a new attempt. Times are milliseconds since the click. Stage values come from the connector

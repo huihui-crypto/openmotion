@@ -35,7 +35,7 @@
 .wordmark { display: flex; align-items: center; gap: var(--motion-space-8); flex-shrink: 0; }
 .libraryLabel { font-size: var(--motion-text-md); color: var(--library-muted); padding-left: var(--motion-space-16); margin-left: var(--motion-space-8); border-left: 1px solid var(--library-line); }
 .headerActions { display: flex; align-items: center; gap: var(--motion-space-8); flex: 0 1 448px; min-width: 0; margin-left: auto; }
-.headerActions > a { flex: 0 0 80px; width: 80px; }
+.headerActions > a, .headerActions > :where(:global(.contents)) > a { flex: 0 0 80px; width: 80px; }
 .search { flex: 1; min-width: 0; }
 .library .iconButton { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 var(--motion-control); width: var(--motion-control); height: var(--motion-control); padding: 0; border-radius: 50%; }
 .iconButton:hover:not(:disabled) { background: var(--color-template-hover); }

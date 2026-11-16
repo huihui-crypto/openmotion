@@ -7,6 +7,8 @@ import { usePlayerStore } from "../../player/store/playerStore";
 import { useAssetPreviewStore } from "../../utils/assetPreviewStore";
 import { AssetPreviewOverlay } from "./AssetPreviewOverlay";
 
+vi.mock("../../player/lib/mediaProbe", () => ({ probeMediaUrl: vi.fn(async () => null) }));
+
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
 let root: Root | null = null;
@@ -107,6 +109,22 @@ describe("AssetPreviewOverlay playback dismissal", () => {
 
 
 describe("modal shared media preview", () => {
+  it.each(["mp3", "wav", "ogg", "m4a", "aac", "flac"])("opens %s assets in the compact audio preview", async extension => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => {
+      root!.render(<AssetPreviewOverlay modal />);
+      useAssetPreviewStore.getState().setPreviewAsset(`assets/music.${extension}`, "p1");
+    });
+    const dialog = document.querySelector('[role="dialog"]')!;
+    expect(dialog.getAttribute("data-preview-kind")).toBe("audio");
+    expect(dialog.className).toContain("280px");
+    expect(dialog.querySelector("audio")?.getAttribute("src")).toContain(`music.${extension}`);
+    expect(dialog.querySelector(".motion-audio-preview-waveform")).not.toBeNull();
+    expect(dialog.querySelector("video")).toBeNull();
+  });
+
   it("pauses the composition, replaces sources, and returns without moving its playhead", async () => {
     const host = document.createElement("div");
     document.body.append(host);

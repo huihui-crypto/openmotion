@@ -301,8 +301,8 @@ export class Phase1Service {
     return { projectId: args.projectId, review: record, changed: false };
   }
   async dispatch(name: string, args: any, host?: HostContext): Promise<any> {
-    if (name === 'motion_assets') return assetOperation(this.store, args, input => this.importAssets(input));
-    if (name === 'motion_media_use') return mediaUse(this.store, args);
+    if (name === 'motion_assets') return assetOperation(this.store, args, input => this.importAssets(input), this.context.tracking);
+    if (name === 'motion_media_use') return mediaUse(this.store, args, this.context.tracking);
     if (name === 'motion_get_project' && !args.projectId) {
       if (args.file || args.exportJobId || args.expectedRevision || args.workId || args.includeVideo) throw new Error('INVALID_ARGUMENT: projectId is required for details');
       const scope = args.sessionId ?? 'workspace';

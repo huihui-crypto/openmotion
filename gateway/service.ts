@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
 import { copyFile, link, lstat, mkdir, open, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import type { OmTracking } from '../shared/tracking.ts';
 import { WorkspaceStore } from '../workspace.ts';
 import { mediaProviders, modalities, type Agent, type GenerateInput, type GenerationJob, type GatewayStatus, type Model, type Modality, type ProviderId, type ProviderState } from '../shared/gateway.ts';
 import { builtinModels, discoverModels, modelKey, providerIds, providerLabels, validModelId } from './catalog.ts';
@@ -18,7 +19,7 @@ import { requireLibraryMediaRuntime } from './asset-probe.ts';
 import { generationOptions, validateGenerationOptions } from '../shared/generation-options.ts';
 import { MAX_ASSET_BYTES } from '../shared/asset-limits.ts';
 
-type Options = { fetcher?: Fetcher; detect?: () => Promise<Agent[]>; codex?: typeof generateCodexImage; download?: typeof downloadMedia; pollMs?: number };
+type Options = { tracking?: OmTracking; fetcher?: Fetcher; detect?: () => Promise<Agent[]>; codex?: typeof generateCodexImage; download?: typeof downloadMedia; pollMs?: number };
 type SavedOutput = { path: string; mimeType: string; bytes: number; sha256: string };
 const saveUnavailable = 'SAVE_NOT_AVAILABLE: retained outputs are missing, changed or unreadable; no model request was made';
 const hash = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
@@ -187,9 +188,18 @@ export class ModelGateway {
     return jobs.filter(job => !projectId || job.projectId === projectId).sort((a, b) => b.createdAt - a.createdAt);
   }
   private saveJob(job: GenerationJob) { return atomic(path.join(this.root, 'jobs', job.id + '.json'), job); }
+  private async saveResult(job: GenerationJob) {
+    if (job.state === 'queued' || job.state === 'running') throw new Error('Expected a terminal generation job');
+    await this.saveJob(job);
+    this.options.tracking?.track('media_generation_result', {
+      modality: job.modality, job_id: job.id, job_state: job.state,
+      asset_count: Math.max(job.assets.length, job.libraryAssets?.length ?? 0),
+    }, undefined, 'worker');
+  }
   async submit(input: GenerateInput): Promise<GenerationJob> {
     if (!input || typeof input !== 'object') throw new Error('Generation input required');
     modality(input.modality);
+    this.options.tracking?.track('media_generation_requested', { modality: input.modality }, undefined, 'worker');
     if (typeof input.prompt !== 'string' || !input.prompt.trim() || input.prompt.length > 20_000) throw new Error('Prompt must contain 1–20000 characters');
     const params = parameters(input.parameters);
     if (input.library && input.projectId) throw new Error('Choose either an asset library or a project destination');
@@ -253,14 +263,16 @@ export class ModelGateway {
           await mkdir(work, { recursive: true, mode: 0o700 });
           await writeFile(path.join(work, 'reference.' + media.extension), bytes, { flag: 'wx', mode: 0o600 });
         }
-        await this.saveJob(job); return job;
+        await this.saveJob(job);
+        this.options.tracking?.track('media_generation_submitted', { modality: job.modality, job_id: job.id }, undefined, 'worker');
+        return job;
       } catch (error) { await rm(work, { recursive: true, force: true }); throw error; }
     });
   }
   async cancel(id: unknown) {
     const job = await this.store.lock(async () => {
       const job = await this.getJob(id);
-      if (job.state === 'queued' || job.state === 'running') { job.state = 'cancelled'; job.phase = 'cancelled'; job.updatedAt = Date.now(); await this.saveJob(job); }
+      if (job.state === 'queued' || job.state === 'running') { job.state = 'cancelled'; job.phase = 'cancelled'; job.updatedAt = Date.now(); await this.saveResult(job); }
       return job;
     });
     this.active.get(job.id)?.controller.abort();
@@ -308,8 +320,11 @@ export class ModelGateway {
       return this.store.lock(async () => {
         const job = await this.getJob(id);
         if (['completed', 'queued', 'running'].includes(job.state)) return job;
+        const alreadyFailed = job.state === 'failed';
         job.state = 'failed'; job.phase = 'save_unavailable'; job.savePending = false; job.error = error.message; job.updatedAt = Date.now();
-        await this.saveJob(job); throw error;
+        if (alreadyFailed) await this.saveJob(job);
+        else await this.saveResult(job);
+        throw error;
       });
     }
     return this.store.lock(async () => {
@@ -328,7 +343,7 @@ export class ModelGateway {
         const jobs = await this.listJobs();
         for (const job of jobs.filter(j => j.state === 'running' && !alive(j.workerPid))) {
           job.savePending = !!job.savePending || await lstat(path.join(this.root, 'work', job.id, 'outputs.json')).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error; });
-          job.state = 'failed'; job.phase = job.savePending ? 'save_failed' : 'interrupted'; job.error = job.savePending ? 'Saving was interrupted. Local outputs are retained; retry_save saves them without another model request.' : 'Worker stopped; request was not automatically resubmitted. Check provider history before retrying.'; job.updatedAt = Date.now(); await this.saveJob(job);
+          job.state = 'failed'; job.phase = job.savePending ? 'save_failed' : 'interrupted'; job.error = job.savePending ? 'Saving was interrupted. Local outputs are retained; retry_save saves them without another model request.' : 'Worker stopped; request was not automatically resubmitted. Check provider history before retrying.'; job.updatedAt = Date.now(); await this.saveResult(job);
           if (!job.savePending) await rm(path.join(this.root, 'work', job.id), { recursive: true, force: true });
         }
         const capacity = Math.max(0, 2 - jobs.filter(j => j.state === 'running').length);
@@ -449,7 +464,7 @@ export class ModelGateway {
             }
           }
           current.state = 'completed'; current.phase = 'completed'; current.savePending = false; delete current.error; current.updatedAt = Date.now();
-          await this.saveJob(current);
+          await this.saveResult(current);
           retained = false;
         });
       } finally { await Promise.all(prepared.map(file => rm(file.file, { force: true }))); }
@@ -461,14 +476,21 @@ export class ModelGateway {
         current.state = 'failed'; current.phase = unavailable ? 'save_unavailable' : retained ? 'save_failed' : 'failed'; current.savePending = retained && !unavailable; current.updatedAt = Date.now();
         let message = controller.signal.aborted ? 'Generation stopped or timed out; no automatic retry was made' : error instanceof Error ? error.message : 'Generation failed';
         if (key) message = message.replaceAll(key, '[redacted]');
-        current.error = message.slice(0, 500); await this.saveJob(current);
+        current.error = message.slice(0, 500); await this.saveResult(current);
       });
     } finally { clearTimeout(timeout); clearInterval(cancelPoll); if (!retained) await rm(dir, { recursive: true, force: true }); }
   }
   async close() { this.closed = true; this.account.close(); for (const task of this.active.values()) task.controller.abort(); await Promise.allSettled([...this.active.values()].map(task => task.done)); }
 }
 const gateways = new WeakMap<WorkspaceStore, ModelGateway>();
-export function gatewayFor(store: WorkspaceStore) {
+export function gatewayFor(store: WorkspaceStore, tracking?: OmTracking) {
   store = store.workspaceStore ?? store;
-  let gateway = gateways.get(store); if (!gateway) { gateway = new ModelGateway(store); gateways.set(store, gateway); } return gateway;
+  let gateway = gateways.get(store);
+  if (!gateway) {
+    gateway = new ModelGateway(store, { tracking });
+    gateways.set(store, gateway);
+  } else if (tracking) {
+    gateway.options.tracking = tracking;
+  }
+  return gateway;
 }

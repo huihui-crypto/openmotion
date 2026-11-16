@@ -99,6 +99,7 @@ export function resolveNearestFreeStart(
   excludeKey: string | null,
   minStart = 0,
   origin: number | null = null,
+  previous?: { start: number; switchMargin: number },
 ): number {
   const busy = collisionLane(elements, track);
   let best = Number.POSITIVE_INFINITY;
@@ -113,11 +114,24 @@ export function resolveNearestFreeStart(
     }
     if (el) gapStart = Math.max(gapStart, ceilCenti(el.start + el.duration));
   }
-  if (origin === null || origin < minStart || !isNearer(origin, best, start)) return best;
-  // Float slack at both ends: 0.333 + 1.733 is 2.0660000000000003, a hair past a neighbour at 2.066.
-  const [from, to] = [origin + 1e-6, origin + duration - 1e-6];
-  const clear = busy.every((el) => (el.key ?? el.id) === excludeKey || !timeRangesOverlap(from, to, el.start, el.start + el.duration));
-  return clear ? origin : best;
+  if (origin !== null && origin >= minStart && isNearer(origin, best, start) && clearAt(origin))
+    best = origin;
+  // A tiny pointer reversal around the midpoint between distant gaps must not
+  // throw the actor back across the occupied span. Free space still follows the
+  // pointer exactly; only competing collision landings retain their last side.
+  if (
+    previous && best !== start && previous.start >= minStart &&
+    Math.abs(previous.start - start) <= Math.abs(best - start) + previous.switchMargin &&
+    clearAt(previous.start)
+  ) return previous.start;
+  return best;
+
+  function clearAt(candidate: number): boolean {
+    // Float slack at both ends: 0.333 + 1.733 is 2.0660000000000003, a hair past a neighbour at 2.066.
+    const [from, to] = [candidate + 1e-6, candidate + duration - 1e-6];
+    return busy.every((el) =>
+      (el.key ?? el.id) === excludeKey || !timeRangesOverlap(from, to, el.start, el.start + el.duration));
+  }
 }
 
 function groupHeaderAim(
@@ -136,7 +150,7 @@ function groupHeaderAim(
   return { kind: "origin", ...input.origin };
 }
 
-// A deliberate seam opens a track; other aims land at the nearest free time on a row of the clip's kind.
+// A deliberate seam opens a track. Only the magnetic main track resolves collisions in time.
 export function resolveZoneDropPlacement(input: {
   order: number[];
   audioTracks: ReadonlySet<number>;
@@ -153,6 +167,10 @@ export function resolveZoneDropPlacement(input: {
   minStart?: number;
   /** Where the dragged clip sits now. */
   origin?: { track: number; start: number };
+  /** Enabled main track, resolved from the full gesture source before filtering movers. */
+  magneticMainTrack?: number | null;
+  /** Gesture-local collision landing; ignored when changing rows or inserting. */
+  previous?: { track: number; start: number; switchMargin: number };
 }): { track: number; insertRow: number | null; start: number } {
   const { order, audioTracks, elements, desiredTrack, deliberateInsertRow } = input;
   const { start, duration, dragKey, isAudio, minStart } = input;
@@ -185,6 +203,20 @@ export function resolveZoneDropPlacement(input: {
       insertRow--;
     return { track: desired, insertRow, start };
   }
+  if (!isAudio && input.magneticMainTrack === desired) {
+    const origin = input.origin?.track === desired ? input.origin.start : null;
+    const freeStart = resolveNearestFreeStart(
+      elements,
+      desired,
+      start,
+      duration,
+      dragKey,
+      minStart,
+      origin,
+      input.previous?.track === desired ? input.previous : undefined,
+    );
+    return { track: desired, insertRow: null, start: freeStart };
+  }
   // Collision changes the lane, never the pointer's horizontal time. Search
   // upward inside the same kind zone, then open a lane above the aimed row.
   const safeStart = Math.max(minStart ?? 0, start);
@@ -205,7 +237,7 @@ export function resolveZoneDropPlacement(input: {
     return { track: desired, insertRow, start: safeStart };
   // A protected group boundary cannot be split. Keep the origin lane and time
   // rather than silently moving the clip to a different time.
-  return { track: input.origin?.track ?? desired, insertRow: null, start: safeStart };
+  return { track: input.origin?.track ?? desired, insertRow: null, start: input.origin?.start ?? safeStart };
 }
 
 /**

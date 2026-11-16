@@ -19,9 +19,9 @@ export const managedBy = '@openmotion/installer';
 const bundledManifest = fileURLToPath(new URL('../payload/release-npm.json', import.meta.url));
 const contains = (parent, child) => { const rel = path.relative(parent, child); return rel === '' || (!rel.startsWith('..' + path.sep) && rel !== '..' && !path.isAbsolute(rel)); };
 const usage = `Usage:
-  openmotion setup --host <${hosts.join('|')}> [options]
+  openmotion setup --host <${hosts.join('|')}|AGENT> [options]
   openmotion prepare [--home DIR]
-  openmotion diagnose --host <${hosts.join('|')}> [--home DIR] [host options]
+  openmotion diagnose --host <${hosts.join('|')}|AGENT> [--home DIR] [host options]
   openmotion tools --host HOST [--home DIR]
   openmotion call TOOL --args-file FILE.json --host HOST [--home DIR]
   openmotion diagnostics [--home DIR] [--data-dir DIR] [--output FILE.zip]
@@ -29,10 +29,12 @@ const usage = `Usage:
 
 Select the current Agent host explicitly; installed CLIs do not identify the current host.
 Setup options:
-  --host HOST        Supported hosts: ${hosts.join(', ')} (default: codex)
+  --host HOST        Registration adapters: ${hosts.join(', ')} (default: codex)
+                     Any other Agent (for example opencode) gets the same application and Skills;
+                     setup returns agentRegistration for that Agent to add to its own MCP configuration
   --home DIR         Managed application home; reuse for prepare and upgrades
   --data-dir DIR     Project data outside application/cache directories
-  --skills-dir DIR   Skills root for Codex, Claude Code or WorkBuddy
+  --skills-dir DIR   Skills root for Codex, Claude Code, WorkBuddy or another Agent (default for other Agents: ~/.agents/skills)
   --codex FILE       Codex executable or JavaScript CLI entry
   --claude FILE      Claude Code executable
   --dsh FILE         Harness executable (macOS Desktop CLI is detected automatically)
@@ -105,7 +107,7 @@ export async function setup(options) {
     assert(!plan.metadata.configFile || !['apps', 'cache', 'hosts'].some(name => contains(path.join(home, name), plan.metadata.configFile)), 'Keep host configuration outside managed application/cache/host directories');
     if (plan.layout !== 'deepseek') assert(!contains(dataDirectory, plan.skillsDirectory) && !contains(plan.skillsDirectory, dataDirectory)
       && !contains(plan.skillsDirectory, home) && !contains(home, plan.skillsDirectory), 'Keep user data, installed Skills and application/cache directories separate');
-    if (plan.layout === 'bundle') await checkSkillOwner(path.join(plan.skillsDirectory, 'openmotion'), home, plan.host, plan.layout);
+    if (plan.layout === 'bundle') await checkSkillOwner(path.join(plan.skillsDirectory, 'openmotion'), home, plan.skillOwner || plan.host, plan.layout);
     const appRoot = path.join(home, 'apps', manifest.version + '-' + manifest.application.sha256.slice(0, 16));
     if (!await readJSON(path.join(appRoot, '.npm-install.json'))) {
       const archive = path.join(home, 'cache/downloads', manifest.application.sha256 + '.tar.gz');
@@ -139,7 +141,7 @@ export async function setup(options) {
     const { prepareInstallationFlow, installationInstructions } = await import(pathToFileURL(path.join(appRoot, 'scripts/install-onboarding.mjs')).href);
     await installationInstructions(appRoot);
     const targets = await skillTargets(plan, appRoot), directories = [];
-    for (const target of targets) directories.push({ target, existed: await checkSkillOwner(target, home, plan.host, plan.layout), movedOld: false, movedNew: false });
+    for (const target of targets) directories.push({ target, existed: await checkSkillOwner(target, home, plan.skillOwner || plan.host, plan.layout), movedOld: false, movedNew: false });
     for (const target of await obsoleteSkills(plan, home, targets)) directories.push({ target, existed: true, removeOnly: true, movedOld: false, movedNew: false });
     let wroteState = false, wroteLauncher = false, state;
     try {
@@ -170,7 +172,8 @@ export async function setup(options) {
       const onboarding = await prepareInstallationFlow({ appRoot, dataDirectory, templateEnvironment,
         host: plan.host, onboardingOutput: options.onboardingOutput, codex: options.codex, expectedVersion: manifest.version });
       onboarding.directAccess = directAccess(home, plan.host, appRoot, options);
-      return { ...state, host: plan.host, hostInstallation: plan.metadata, nativeDependencies: 'background-preparation; status and retry available in Studio', onboarding };
+      return { ...state, host: plan.host, hostInstallation: plan.metadata, nativeDependencies: 'background-preparation; status and retry available in Studio',
+        ...(plan.agentRegistration ? { agentRegistration: { ...plan.agentRegistration, instructions: agentRegistrationInstructions } } : {}), onboarding };
     } catch (error) {
       if (plan.host === 'deepseek') {
         // Registration can update the profile before throwing. Never delete a referenced bundle.
@@ -192,6 +195,9 @@ export async function setup(options) {
 
   });
 }
+
+// Hosts without an adapter: the Agent applies its own documented MCP format, so the installer never guesses a config file.
+const agentRegistrationInstructions = 'No registration adapter exists for this host, so its configuration was not changed. Add a local stdio MCP server named serverName with exactly transport.command and transport.args (no shell, no extra environment; the launcher sets the workspace and native tools) using this host\'s documented MCP configuration, and make sure the host reads Skills from skillsDirectory. Preserve unrelated settings. Then refresh or reconnect MCP and verify with an actual openmotion_get_project call. Until native tools load, use onboarding.directAccess in this same chat. Report the exact step if the host cannot add a local stdio MCP server.';
 
 export function checkBundledDependencyTarget(info) {
   if (!info) return;
@@ -227,8 +233,8 @@ async function installedConnection(options) {
   const home = await canonical(options.home || defaultHome(environment));
   const state = await readJSON(path.join(home, 'install.json'));
   assert(state?.managedBy === managedBy, 'Run setup for the selected host and installation home first.');
-  assert(state.hosts?.[host] || host === 'codex' && state.skillsDirectory, 'This installation is not registered for the selected host.');
-  const saved = state.hosts?.[host];
+  assert(Object.hasOwn(state.hosts ?? {}, host) || host === 'codex' && state.skillsDirectory, 'This installation is not registered for the selected host.');
+  const saved = Object.hasOwn(state.hosts ?? {}, host) ? state.hosts[host] : undefined;
   try {
     const plan = await hostPlan({ ...options, skillsDirectory: saved?.skillsDirectory, profile: options.profile || saved?.profile }, home, state.launcher, state);
     const connection = plan.readConnection ? await plan.readConnection() : plan.connection;

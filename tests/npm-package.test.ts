@@ -10,6 +10,7 @@ import { protocolClient } from '../scripts/smoke-test-package.mjs';
 import { packagedSkills } from '../shared/workflow.ts';
 import { mcpRegistry } from '../mcp.ts';
 import { stableReports } from '../.github/scripts/motion-release.mjs';
+import { onboardingSourceFiles, onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const json = async (file: string) => JSON.parse(await readFile(file, 'utf8'));
 async function verifyTrackingPolicy(application: string, mode: 'test' | 'stable' | 'local') {
@@ -89,6 +90,11 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const sourceMode = await runFile(process.execPath, ['--input-type=module', '-e', `import {templateConfig} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/template-config.ts')).href)}; process.stdout.write(templateConfig().source);`], { env: sourceEnv });
     assert.equal(sourceMode, 'cms', 'An npm application without repository templates must retain its CMS source');
     await assert.rejects(readFile(path.join(application, 'library/templates/catalog/catalog.json')), { code: 'ENOENT' });
+    for (const file of onboardingSourceFiles) assert.equal(await sha256(path.join(application, file)), await sha256(file));
+    const cards = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e',
+      `import {loadTemplatePresentation,showTemplateRecommendations} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/mcp-template-recommendations.ts')).href)}; console.log(JSON.stringify(showTemplateRecommendations(loadTemplatePresentation(),{templateIds:${JSON.stringify(onboardingTemplateIds.slice(-3))}})));`]));
+    assert.deepEqual(cards.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(-3));
+    assert(cards.cards.every((card: any) => card.templateKind === 'reference' && !card.createArgs));
     const readme = await readFile(path.join(installer, 'package/README.md'), 'utf8');
     const media = new Map<string, string>((await json('repository-media.json')).files.map((file: { path: string; url: string }) => [file.path, file.url]));
     const hero = media.get('docs/readme/brand-hero.jpg');

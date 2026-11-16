@@ -8,7 +8,7 @@ import type { LibraryAsset } from '../../../shared/asset-library';
 
 vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ t: (text: string, values?: { count: number }) => text.replace('{count}', String(values?.count)), formatDate: () => 'Nov 15' }) }));
 vi.mock('./ResizablePane', () => ({ ResizablePane: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
-vi.mock('./AssetComposer', () => ({ AssetComposer: ({ onReference }: { onReference: () => void }) => <button onClick={onReference}>References</button> }));
+vi.mock('./AssetComposer', () => ({ AssetComposer: ({ onReference }: { onReference: () => void }) => <><input aria-label="Creation draft" /><button onClick={onReference}>References</button></> }));
 vi.mock('./AssetTaskHistory', () => ({ AssetTaskMenu: () => null }));
 vi.mock('./assetClient', () => ({ assetRequest: vi.fn(), uploadLibraryAsset: vi.fn() }));
 vi.mock('./gatewayClient', () => ({ gatewayRequest: async () => ({ conversations: [] }) }));
@@ -59,8 +59,43 @@ async function flush() { await act(async () => { await vi.advanceTimersByTimeAsy
 async function render(active = true) { await act(async () => root.render(<AssetsPage active={active} />)); await flush(); }
 const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find(node => node.textContent === text || node.getAttribute('aria-label') === text)!;
 async function click(text: string) { await act(async () => button(text).click()); await flush(); }
-const previewName = () => container.querySelector('.om-asset-workspace-header > strong')?.textContent;
+const previewName = () => container.querySelector('.om-asset-workspace-header strong')?.textContent;
 const updates = () => vi.mocked(assetRequest).mock.calls.map(([args]) => args).filter(args => args.action === 'update');
+
+it('opens the compact asset navigation during creation and selects a category without losing the draft', async () => {
+  await render(); await click('AI Create');
+  const draft = container.querySelector<HTMLInputElement>('[aria-label="Creation draft"]')!;
+  draft.value = 'Keep this draft';
+  await click('Asset types');
+  expect(button('Asset types').getAttribute('aria-expanded')).toBe('true');
+  const drawer = document.querySelector('[role="dialog"]')!;
+  expect(drawer.textContent).toContain('Trash');
+  const audio = [...drawer.querySelectorAll('nav button')].find(node => node.textContent === 'Audio') as HTMLButtonElement;
+  await act(async () => audio.click()); await flush();
+  expect(button('Asset types').getAttribute('aria-expanded')).toBe('false');
+  expect(container.querySelector('.om-assets-main h2')?.textContent).toBe('Audio');
+  expect(container.querySelector('.om-assets-page')?.getAttribute('data-mobile-view')).toBe('library');
+  expect(container.querySelector('[aria-label="Creation draft"]')).toBe(draft);
+  expect(draft.value).toBe('Keep this draft');
+});
+
+it('switches between the narrow gallery and creator without remounting the draft or losing gallery state', async () => {
+  await render(); await click('AI Create');
+  const draft = container.querySelector<HTMLInputElement>('[aria-label="Creation draft"]')!;
+  draft.value = 'Keep this draft';
+  const gallery = container.querySelector<HTMLElement>('.om-assets-main')!;
+  gallery.scrollTop = 240;
+  const listCount = vi.mocked(assetRequest).mock.calls.filter(([args]) => args.action === 'list').length;
+  const switcher = container.querySelector('.om-assets-view-switch')!;
+  await act(async () => switcher.querySelectorAll('button')[0].click());
+  expect(container.querySelector('.om-assets-page')?.getAttribute('data-mobile-view')).toBe('library');
+  await act(async () => switcher.querySelectorAll('button')[1].click());
+  expect(container.querySelector('.om-assets-page')?.getAttribute('data-mobile-view')).toBe('create');
+  expect(container.querySelector('[aria-label="Creation draft"]')).toBe(draft);
+  expect(draft.value).toBe('Keep this draft');
+  expect(gallery.scrollTop).toBe(240);
+  expect(vi.mocked(assetRequest).mock.calls.filter(([args]) => args.action === 'list')).toHaveLength(listCount);
+});
 
 it('removes only the selected asset, exits its preview and restores the exact asset with Undo', async () => {
   await render(); await click('Picture A'); await click('Move to trash');

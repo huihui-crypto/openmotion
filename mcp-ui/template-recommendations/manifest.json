@@ -355,6 +355,348 @@
           "bytes": 3642
         }
       ]
+    },
+    {
+      "id": "motion-664184d9-593e-4984-b473-701248b69cfe",
+      "kind": "reference",
+      "title": "Bolt Skills｜团队能力展示",
+      "description": "把重复交代的要求变成可调用的技能；用一次配色变化证明技能真正作用于页面。",
+      "durationSeconds": 42.966667,
+      "width": 1280,
+      "height": 720,
+      "videoUrl": "https://r.open-design.ai/files/7bb522dcf5f636429c0988573e15ebe8ff0c65b4d954e4b47abd9679913fc512",
+      "posterUrl": "https://r.open-design.ai/files/eda31e4605b582946e321d5324a108bc97c07ca60013baf0d85a80bfd5321e1e",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-664184d9-593e-4984-b473-701248b69cfe/template.json",
+          "sha256": "d24e8135a2ff43850bab64d4cd9b13b0c75f5fa6d0ac585274f21e93d43af2f9",
+          "bytes": 26789
+        },
+        {
+          "path": "library/templates/catalog/motion-664184d9-593e-4984-b473-701248b69cfe/TEMPLATE.md",
+          "sha256": "60ff64ca120408ca7085cb28b3d09bc130793e751b5d7be3c13d5b18580eaffd",
+          "bytes": 1136
+        },
+        {
+          "path": "library/templates/catalog/motion-664184d9-593e-4984-b473-701248b69cfe/source/motion.md",
+          "sha256": "7518b675f5b5e5d22d9f61fd385c16066b8103a4eff0818bd0bc7230b6b843be",
+          "bytes": 6851
+        },
+        {
+          "path": "library/templates/catalog/motion-664184d9-593e-4984-b473-701248b69cfe/source/preview.html",
+          "sha256": "b612bc78de81c94e950d0e392bc9e3d9d1f9273cae335e455490b46b0fb6d5b4",
+          "bytes": 24475
+        },
+        {
+          "path": "library/templates/catalog/motion-664184d9-593e-4984-b473-701248b69cfe/source/manifest.json",
+          "sha256": "69ecb13cd81669e47510cf17e4141beee96fd4213a16b5b34288c0fb79f40655",
+          "bytes": 7203
+        }
+      ]
+    },
+    {
+      "id": "motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93",
+      "kind": "reference",
+      "title": "A New Era of No-Code",
+      "description": "以球体作为视觉向导，在分层网页、表单和流程空间中穿行。界面不只是截图，而是具有前后距离的可组合平面。",
+      "durationSeconds": 103.533333,
+      "width": 1280,
+      "height": 720,
+      "videoUrl": "https://r.open-design.ai/files/91203186458d57604f8cdab7d3d1c89a94286a6e5e7c487833a6436b3044ded5",
+      "posterUrl": "https://r.open-design.ai/files/8204962a0db13d83cdb66f20df40b4ee61a8cdd283de7dec57b0f2abee574b88",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93/template.json",
+          "sha256": "54f3e02b542d575b5a427bd65f513edd0f88b3e9e08cbeb0e67bae3ec78e1388",
+          "bytes": 28193
+        },
+        {
+          "path": "library/templates/catalog/motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93/TEMPLATE.md",
+          "sha256": "2df2cab27d75a253465d7c6d4bebafdaf84369bc4895ce706ef061b5febd152e",
+          "bytes": 1146
+        },
+        {
+          "path": "library/templates/catalog/motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93/source/motion.md",
+          "sha256": "2c0f92108a0196459337ad47289d98443bd9d1eb3804c072f795e2c99715988b",
+          "bytes": 6961
+        },
+        {
+          "path": "library/templates/catalog/motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93/source/preview.html",
+          "sha256": "fe5138c4c40952ec2f874dd06b54c90eed31d83096539419f8de453afa284813",
+          "bytes": 22333
+        },
+        {
+          "path": "library/templates/catalog/motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93/source/manifest.json",
+          "sha256": "cfc61b69e8d72e3c7b4f49d6002a6bc5b81ac731dbc35245f6a0985d10ee999e",
+          "bytes": 6950
+        }
+      ]
+    },
+    {
+      "id": "motion-1e48dea5-903d-48f6-b10e-99a70f1c183d",
+      "kind": "reference",
+      "title": "Magic Share",
+      "description": "同一份工作在桌面、平板与手机之间流动；把文档、图表和协作者保留在转场中，最后收成品牌纸飞机。",
+      "durationSeconds": 36.6,
+      "width": 1280,
+      "height": 720,
+      "videoUrl": "https://r.open-design.ai/files/f7a1c405c195dc7ceb846fe2db2bed553798dc23f7b040ad6453d091e719f5fe",
+      "posterUrl": "https://r.open-design.ai/files/7ecdaebf747c90570f72fbc6e1cb275097b6c80bbbcac922979e4f2276c28120",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-1e48dea5-903d-48f6-b10e-99a70f1c183d/template.json",
+          "sha256": "096907bab99b41da9da61b59170630cc9d86b5e1aae89e8e27ea00b534f1cceb",
+          "bytes": 28664
+        },
+        {
+          "path": "library/templates/catalog/motion-1e48dea5-903d-48f6-b10e-99a70f1c183d/TEMPLATE.md",
+          "sha256": "ceceeb77ff8065609cfa859da3d8bfd8eac142772d367c24bcf467fffdfde63a",
+          "bytes": 1269
+        },
+        {
+          "path": "library/templates/catalog/motion-1e48dea5-903d-48f6-b10e-99a70f1c183d/source/motion.md",
+          "sha256": "278a2a7e108d082258f40f0096ef0b12b06992a35511ffc7affe69c31a96ae52",
+          "bytes": 7302
+        },
+        {
+          "path": "library/templates/catalog/motion-1e48dea5-903d-48f6-b10e-99a70f1c183d/source/preview.html",
+          "sha256": "765d69b8256317debdf2ed82c7be1508fde2c9cfb340d71c6d2e1d8ee61c90ae",
+          "bytes": 25082
+        },
+        {
+          "path": "library/templates/catalog/motion-1e48dea5-903d-48f6-b10e-99a70f1c183d/source/manifest.json",
+          "sha256": "71ce774c0467824aaaedf22f40e845a03d4e015a9176d577533c2dfe81f32134",
+          "bytes": 7345
+        }
+      ]
+    },
+    {
+      "id": "motion-f6f244d1-c549-4081-8a5d-f0e1e3660044",
+      "kind": "reference",
+      "title": "Glean Agents 发布",
+      "description": "从一个输入框展开到跨部门工作流。任务卡、人物和数据源通过连线建立关系，结果回到可读的界面。",
+      "durationSeconds": 61.0,
+      "width": 1280,
+      "height": 720,
+      "videoUrl": "https://r.open-design.ai/files/82cada1c091bda4b6e5d82284dc956df7857acaabaff600ccad14854a4b53361",
+      "posterUrl": "https://r.open-design.ai/files/854aa66fd5000057c47ce3be26090044e3bca870c81cc3b0534a77424937a135",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044/template.json",
+          "sha256": "6532fdd3e53ff1c0ae49de5ccb293f038a2292c634fb887fb84e1aa6550d4c77",
+          "bytes": 28309
+        },
+        {
+          "path": "library/templates/catalog/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044/TEMPLATE.md",
+          "sha256": "55c5e03337f9c891a0f85a9613e56f97dd347ec06889597e24666ed7a6838618",
+          "bytes": 1182
+        },
+        {
+          "path": "library/templates/catalog/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044/source/motion.md",
+          "sha256": "a3defc50c39e03f6cab3a6de5900a392da2236b6420636e43805654414dd51e8",
+          "bytes": 7246
+        },
+        {
+          "path": "library/templates/catalog/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044/source/preview.html",
+          "sha256": "b47422c0ad433245c125d88dfa3005852fb0437722e4cbc5845c56162e3be913",
+          "bytes": 22736
+        },
+        {
+          "path": "library/templates/catalog/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044/source/manifest.json",
+          "sha256": "4280dcc4615fb74be190aa6460acb3b6da4a3dc6f5ee9500caf9d713ca7c1820",
+          "bytes": 6949
+        }
+      ]
+    },
+    {
+      "id": "motion-d8eea6d9-b25b-4727-823d-d102070ea694",
+      "kind": "reference",
+      "title": "HyperOS 官网界面动效 1",
+      "description": "从材质特写进入手机界面，再把相同圆角和透明层扩展到图标、小组件与多设备。",
+      "durationSeconds": 47.2,
+      "width": 1546,
+      "height": 870,
+      "videoUrl": "https://r.open-design.ai/files/e33f62926a154934565bb2e94201b3bd067476b17275900bfd450e6cfa349484",
+      "posterUrl": "https://r.open-design.ai/files/8d38128f52ef71f468787e810cc6aca7981cc965c7389639787075dd3d91a824",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-d8eea6d9-b25b-4727-823d-d102070ea694/template.json",
+          "sha256": "8019339ca91c8e7d47550284928d8b4a0d9255c9c82715781462c08b77455225",
+          "bytes": 26270
+        },
+        {
+          "path": "library/templates/catalog/motion-d8eea6d9-b25b-4727-823d-d102070ea694/TEMPLATE.md",
+          "sha256": "61768f8d8977cb7949dd9940630d889bfe8fcc8f9191b7141bffa1ff409f79f7",
+          "bytes": 1240
+        },
+        {
+          "path": "library/templates/catalog/motion-d8eea6d9-b25b-4727-823d-d102070ea694/source/motion.md",
+          "sha256": "3e70e4ecb849075793a22736ce0db56a719e7a63b5a17b60ddaefa75fd6ff75c",
+          "bytes": 7985
+        },
+        {
+          "path": "library/templates/catalog/motion-d8eea6d9-b25b-4727-823d-d102070ea694/source/preview.html",
+          "sha256": "ef8da03c9084c77b82bf64da349ddb7cd8e2d4a6a441c878562712f8ee3cc0d9",
+          "bytes": 24153
+        },
+        {
+          "path": "library/templates/catalog/motion-d8eea6d9-b25b-4727-823d-d102070ea694/source/manifest.json",
+          "sha256": "b5b20c769c0b8d8b6da3cbfb270179dee878f2bc4519c21d94d9914ea6956725",
+          "bytes": 7196
+        }
+      ]
+    },
+    {
+      "id": "motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc",
+      "kind": "reference",
+      "title": "Salsa｜音乐主题 Doodle",
+      "description": "用圆形唱片、喇叭口、花瓣把音乐演奏与舞步串联。",
+      "durationSeconds": 48.458333,
+      "width": 406,
+      "height": 720,
+      "videoUrl": "https://r.open-design.ai/files/befcf97dbe47e47f5ad26d4c0f085526182f26ead85bb2eb88a2d205337d3b04",
+      "posterUrl": "https://r.open-design.ai/files/06a5c90348b264b8cb1aa3462da2f74e8cd53f755faa0be428eb9cfd16252b57",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc/template.json",
+          "sha256": "a82b1c6f278c97a5578ded8a312a2d7bb4a3fc8f8d717a10ceb829109a30ed30",
+          "bytes": 22143
+        },
+        {
+          "path": "library/templates/catalog/motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc/TEMPLATE.md",
+          "sha256": "b8559424e538fe8bc311c6c5b631d6b235e6f59b2f3c3b02c983d69b63164881",
+          "bytes": 1147
+        },
+        {
+          "path": "library/templates/catalog/motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc/source/motion.md",
+          "sha256": "8768cd2f7deb3e84cbc71f907ad68b91793b93dfab20122f7f8680e43f774c26",
+          "bytes": 6703
+        },
+        {
+          "path": "library/templates/catalog/motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc/source/preview.html",
+          "sha256": "2edd724701d793ad3a33cc6dcabb0a569e372af57d9a5a123e3f640deeede492",
+          "bytes": 21847
+        },
+        {
+          "path": "library/templates/catalog/motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc/source/manifest.json",
+          "sha256": "fd2a4baf4e4040c70145dc94d83858b819e390165e7e439966ce5029b970b9b9",
+          "bytes": 6925
+        }
+      ]
+    },
+    {
+      "id": "motion-dac924da-010f-4445-baf3-a39cb033e48f",
+      "kind": "reference",
+      "title": "功能更新｜Voice mode",
+      "description": "同一中心圆从按钮扩张为影像窗口，再收回按钮；保持空间身份连续。",
+      "durationSeconds": 11.458333,
+      "width": 1280,
+      "height": 720,
+      "videoUrl": "https://r.open-design.ai/files/9c917b1f71d6e3d95682b968d7254b4fe52e81dc6d9e89f5ff1c5d147ab0d27a",
+      "posterUrl": "https://r.open-design.ai/files/df553b34b4d715a159a64ca5332b38e46c0b7ccee5d1dd8867e6146bd70487c6",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/template.json",
+          "sha256": "787bd8466ad6c81552545772b88be2a54e2b5f12b0961a2cc9d18fcf5e51dbcb",
+          "bytes": 23366
+        },
+        {
+          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/TEMPLATE.md",
+          "sha256": "4140db686e5b97e1fc30275f33ec66e3430fb625f830dafffae5e29cf54107c2",
+          "bytes": 1125
+        },
+        {
+          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/source/motion.md",
+          "sha256": "7e95e271aa9e2e4d2d5a8ee7384b5df3a8877f09f8ea68ca0063c3222d30e8d1",
+          "bytes": 5976
+        },
+        {
+          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/source/preview.html",
+          "sha256": "1db2661b900788477158a90efce27b1938a0fbf69363d58fe4d268292aaa93bd",
+          "bytes": 20138
+        },
+        {
+          "path": "library/templates/catalog/motion-dac924da-010f-4445-baf3-a39cb033e48f/source/manifest.json",
+          "sha256": "24bf5a4c15d008dd99e9d31ad52baa5398b346dbf9b177045bc50fe744c22282",
+          "bytes": 6923
+        }
+      ]
+    },
+    {
+      "id": "motion-0ad92fd0-b2fb-4885-957c-b71152df15fd",
+      "kind": "reference",
+      "title": "Dia 开放给 Arc 会员",
+      "description": "发光图形从底部升起并缩小，随后变为发送箭头；输入框沿水平方向展开，让品牌介绍自然进入操作。",
+      "durationSeconds": 24.016667,
+      "width": 1156,
+      "height": 720,
+      "videoUrl": "https://r.open-design.ai/files/ee7a7dacc9ed4fdb4f14b4537a015b896a02d7d585cb2dc5a020c43654ee7218",
+      "posterUrl": "https://r.open-design.ai/files/cc56b969aef17d042e0ab427243aa496d843bd76b6f5e8082c0cf8f1f40fc7a8",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/template.json",
+          "sha256": "100adc32efd5ddac863f9ede135344221d09022d29deb6f2a4f9a0d56430f7b6",
+          "bytes": 26440
+        },
+        {
+          "path": "library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/TEMPLATE.md",
+          "sha256": "4ddedc22ca95460bd6bcb2218b7bb7982ffda227f21b18041915f73188ccbee3",
+          "bytes": 1146
+        },
+        {
+          "path": "library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/source/motion.md",
+          "sha256": "775dd03eab1b823b9a0523e50b7def7e1cd98ee5d620fa76b00c64982bc6936c",
+          "bytes": 6277
+        },
+        {
+          "path": "library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/source/preview.html",
+          "sha256": "d22b7089347c15d82c4f4eda724870d07a1a7c6c63566b974a4f753c8be6a2cb",
+          "bytes": 20676
+        },
+        {
+          "path": "library/templates/catalog/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd/source/manifest.json",
+          "sha256": "378970a1353b369f23c878a91d7bec3f4ef43317686218411b42e0c53fc86f87",
+          "bytes": 7006
+        }
+      ]
+    },
+    {
+      "id": "motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b",
+      "kind": "reference",
+      "title": "免费语音输入",
+      "description": "标志键帽与文字键帽落下排成一行，再向两边散开，露出发光的黑色声波胶囊。胶囊成为后续演示的共同锚点。",
+      "durationSeconds": 21.0,
+      "width": 1280,
+      "height": 720,
+      "videoUrl": "https://r.open-design.ai/files/7afb51d9324bfb62b6a85517671ea314d481894b53ad1bf89b6dadce87c4877c",
+      "posterUrl": "https://r.open-design.ai/files/92bc0164642c1fce13a9b7ae5898f06687144a5b7b86acc12512b3ff797dcfa8",
+      "sourceFiles": [
+        {
+          "path": "library/templates/catalog/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b/template.json",
+          "sha256": "fb983a5c91bc3550c8d8596700b5d6cdc499368cd067919008195ccc06580a21",
+          "bytes": 25032
+        },
+        {
+          "path": "library/templates/catalog/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b/TEMPLATE.md",
+          "sha256": "2b2926c201818266ce5859c99ac7f99f2f62c43254332524ee61054cbfc2e0fd",
+          "bytes": 1141
+        },
+        {
+          "path": "library/templates/catalog/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b/source/motion.md",
+          "sha256": "a46132698c68f8bee7360e00f2b31d9d194c47330e7579784150908f9b72231b",
+          "bytes": 5676
+        },
+        {
+          "path": "library/templates/catalog/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b/source/preview.html",
+          "sha256": "fe4fa4fa1de1eba715ab024cef363c7f754946c9c0c78bf0248f92dc23ce0c24",
+          "bytes": 19541
+        },
+        {
+          "path": "library/templates/catalog/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b/source/manifest.json",
+          "sha256": "08d9beca3f142e5e9535a7b74733849e98033fa736c6158ac92768282bfe7f33",
+          "bytes": 6916
+        }
+      ]
     }
   ]
 }

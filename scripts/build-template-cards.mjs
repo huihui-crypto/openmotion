@@ -13,9 +13,11 @@ const sourceInputs = [
   'mcp-ui/template-recommendations/types.ts',
   'mcp-ui/tsconfig.json',
   'scripts/build-template-cards.mjs',
+  'shared/onboarding-templates.ts',
   'packages/design-system/inline-feedback.ts',
   'packages/design-system/tokens.css',
   'packages/design-system/studio/feedback.css',
+  'packages/design-system/studio/template-cards.css',
 ].sort();
 const buildOutputs = ['mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/app.css'].sort();
 const identityPath = 'mcp-ui/template-recommendations/build/identity.json';
@@ -85,6 +87,7 @@ export async function buildTemplateCards() {
     },
   });
   const styles = await Promise.all(['packages/design-system/tokens.css', 'packages/design-system/studio/feedback.css',
+    'packages/design-system/studio/template-cards.css',
     'mcp-ui/template-recommendations/app.css'].map(file => readFile(path.join(applicationRoot, file), 'utf8')));
   await writeFile(path.join(directory, 'build/app.css'), styles.join('\n'));
   await writeFile(path.join(applicationRoot, identityPath), JSON.stringify(await buildIdentity(applicationRoot), null, 2) + '\n');

@@ -154,6 +154,11 @@ test('the sealed candidate detects tgz, guide, identity and provenance tampering
   await assert.rejects(verifyDownloaded(directory, candidate.tgzSHA256, '0.6.4-test.100'), /version/);
   assert(checklist.includes('NOT RUN'), 'Generated identity must not fabricate human acceptance');
   await assert.rejects(verifyDownloaded(directory, '0'.repeat(64)));
+  const notesFile = path.join(directory, 'release-notes.md'), notes = await readFile(notesFile);
+  assert.equal(candidate.schemaVersion, 3);
+  await writeFile(notesFile, 'changed notes');
+  await assert.rejects(verifyDownloaded(directory, candidate.tgzSHA256), /Candidate file changed/);
+  await writeFile(notesFile, notes);
   const file = path.join(directory, 'install.md'), original = await readFile(file);
   await writeFile(file, 'changed'); await assert.rejects(verifyDownloaded(directory, candidate.tgzSHA256), /Candidate file changed/);
   await writeFile(file, original); await writeFile(path.join(directory, 'provenance.json'), JSON.stringify({ head_sha: 'f'.repeat(40), runId: 123, attempt: 1 }));

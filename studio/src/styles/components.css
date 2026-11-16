@@ -12,6 +12,12 @@
   min-height: 28px;
 }
 
+/* A row whose middle column hosts a larger primary action. Its responsive fallbacks stay here
+ * beside the base recipe so no consumer has to redeclare the tracks outside these queries. */
+.motion-player-control-row-lg {
+  grid-template-columns: minmax(0, 1fr) var(--motion-space-40) minmax(0, 1fr);
+}
+
 .motion-player-secondary { gap: 6px; }
 
 @container motion-player (max-width: 420px) {
@@ -20,10 +26,12 @@
     grid-template-columns: minmax(0, 1fr) 32px auto;
     column-gap: var(--motion-space-4);
   }
+  .motion-player-control-row-lg { grid-template-columns: minmax(0, 1fr) var(--motion-space-40) auto; }
 }
 
 @container motion-player (max-width: 300px) {
   .motion-player-control-row { grid-template-columns: minmax(0, 1fr) 32px; }
+  .motion-player-control-row-lg { grid-template-columns: minmax(0, 1fr) var(--motion-space-40); }
   .motion-player-secondary { grid-column: 1 / -1; }
 }
 

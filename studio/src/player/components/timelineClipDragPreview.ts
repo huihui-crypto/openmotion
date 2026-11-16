@@ -18,6 +18,7 @@ import {
   isStillImageTimelineElement,
 } from "../../utils/timelineInspector";
 import {
+  TIMELINE_SNAP_PX,
   stickyTimelineTime,
   snapMoveToTargets,
   type TimelineSnapTarget,
@@ -32,6 +33,7 @@ import { groupMoveFloor, resolveGroupMovers } from "./timelineMultiDragPreview";
 import type { DraggedClipState, ResizingClipState } from "./timelineClipDragTypes";
 import { useLinkedClipPreferences } from "../../utils/linkedClipPreferences";
 import { heldAudioShiftRange, heldPartnerVideoBounds } from "./audioClipLink";
+import { mainVisualTrack } from "./timelineLinkage";
 import { isPendingTimelineRow } from "./timelinePendingRows";
 
 /** Snap-target builder closure supplied by the hook (closes over refs + store). */
@@ -61,6 +63,8 @@ export interface DragPreviewContext {
   audioTracks?: ReadonlySet<number>;
   /** Seconds between the ruler's lines; 0 or absent when snapping is off. */
   gridStep?: number;
+  /** Main-track magnet preference; omitted contexts use ordinary lane placement. */
+  rippleEditEnabled?: boolean;
 }
 
 export function createKeyboardClipDrag(
@@ -137,7 +141,9 @@ function dragRowAim(
   geometry: TimelineRowGeometry,
 ) {
   let y = clientY - (ctx.scroll?.getBoundingClientRect().top ?? 0) + (ctx.scroll?.scrollTop ?? 0);
-  if (drag.started && drag.insertRow !== null) {
+  // Pointer seams are line-only: crossing them never opens or captures a row.
+  // Keyboard pickup still reserves a lane, so retain its expanded geometry.
+  if (drag.pointerId === null && drag.started && drag.insertRow !== null) {
     const top = geometry.getRowTop(drag.insertRow);
     if (y >= top - INSERT_SEAM_PX && y <= top + TRACK_H + INSERT_SEAM_PX)
       return { rowFloat: drag.insertRow, insertRow: drag.insertRow };
@@ -167,6 +173,7 @@ function resolveDropPlacement(
     order: trackOrder,
     audioTracks,
     elements: group.obstacles,
+    magneticMainTrack: ctx.rippleEditEnabled ? mainVisualTrack(elements) : null,
     desiredTrack,
     deliberateInsertRow: aim.insertRow,
     allowedInsertRows: ctx.allowedInsertRows,
@@ -177,6 +184,9 @@ function resolveDropPlacement(
     isAudio: isAudioTimelineElement(drag.element),
     minStart: group.floor,
     origin: { track: drag.element.track, start: drag.element.start },
+    previous: drag.started && drag.insertRow === null && ctx.pps > 0
+      ? { track: drag.previewTrack, start: drag.previewStart, switchMargin: TIMELINE_SNAP_PX / ctx.pps }
+      : undefined,
   });
 }
 

@@ -35,7 +35,7 @@ async function setupFixture(t: any) {
   const directory = await fixture(t), application = path.join(directory, 'source'), home = path.join(directory, 'install'), skillsDirectory = path.join(directory, 'skills');
   for (const name of ['scripts', 'shared', 'studio/build', 'skills/openmotion-production', 'docs']) await mkdir(path.join(application, name), { recursive: true });
   for (const name of ['mcp.ts', 'scripts/npm-runtime.mjs', 'studio/build/index.html', 'README.md', 'AGENTS.md', 'CLAUDE.md']) await writeFile(path.join(application, name), 'fixture');
-  for (const file of ['docs/install-onboarding.md', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/runtime-assets.mjs', 'scripts/open-template-library.ts', 'shared/workspace-url.ts']) await cp(new URL('../' + file, import.meta.url), path.join(application, file));
+  for (const file of ['docs/install-onboarding.md', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs', 'scripts/open-template-library.ts', 'shared/workspace-url.ts']) await cp(new URL('../' + file, import.meta.url), path.join(application, file));
   await writeFile(path.join(application, 'workspace.ts'), 'export class WorkspaceStore { constructor(directory = process.env.MOTION_DATA_DIR) { this.directory = directory; } }');
   await writeFile(path.join(application, 'preview.ts'), `export async function ensureService(store) { if (store.directory !== process.env.MOTION_DATA_DIR) throw new Error('Wrong workspace'); return { previewUrl: 'http://127.0.0.1:4173' }; }`);
   await writeFile(path.join(application, 'skills/openmotion-production/SKILL.md'), '---\nname: openmotion-production\ndescription: fixture\n---\nFixture');
@@ -696,4 +696,57 @@ test('a partially registered first Harness installation retains its launcher and
   await rm(fail);
   const retried = await setup(options);
   assert.equal(retried.dataDirectory, state.dataDirectory);
+});
+
+test('an Agent without an adapter gets the same application, launcher and Skills and registers MCP itself', { skip: process.platform === 'win32' }, async t => {
+  const options = await setupFixture(t);
+  const codexConfig = await readFile(options.config, 'utf8');
+  const installed: any = await setup({ ...options, host: 'opencode', codex: undefined });
+  assert.equal(installed.host, 'opencode');
+  assert.deepEqual(installed.hosts.opencode, { skillsDirectory: await canonical(options.skillsDirectory), layout: 'flat', registration: 'agent' });
+  assert.deepEqual(installed.agentRegistration.transport, { type: 'stdio', command: process.execPath, args: [installed.launcher] });
+  assert.equal(installed.agentRegistration.serverName, 'openmotion');
+  assert.equal(installed.agentRegistration.skillsDirectory, await canonical(options.skillsDirectory));
+  assert.match(installed.agentRegistration.instructions, /configuration was not changed/);
+  assert.match(installed.agentRegistration.instructions, /openmotion_get_project/);
+  assert.deepEqual(installed.onboarding.directAccess.toolsArgs.slice(-4), ['--home', installed.launcher.replace(/[/\\]run-mcp.mjs$/, ''), '--host', 'opencode']);
+  assert.equal(await readFile(options.config, 'utf8'), codexConfig, 'no other host configuration is touched');
+  const marker = JSON.parse(await readFile(path.join(options.skillsDirectory, 'openmotion-production/openmotion-install.json'), 'utf8'));
+  assert.equal(marker.host, 'agents'); assert.equal(marker.runtimeRoot, installed.appRoot);
+  // A second adapter-less Agent shares the same Skills root instead of being refused as a foreign owner.
+  const cursor: any = await setup({ ...options, host: 'cursor-agent', codex: undefined });
+  assert.equal(cursor.appRoot, installed.appRoot);
+  assert.deepEqual(Object.keys(cursor.hosts).sort(), ['cursor-agent', 'opencode']);
+  assert.equal((await readdir(path.join(options.home, 'apps'))).length, 1);
+  // Adapter hosts keep their own ownership and still refuse Skills managed for other Agents.
+  await assert.rejects(setup({ ...options, host: 'workbuddy' }), /not owned by this installation/);
+});
+
+test('invalid Agent names are rejected before any download or state change', async t => {
+  const options = await setupFixture(t);
+  for (const host of ['Open Code', '../opencode', 'OPENCODE', '-x', 'a'.repeat(33), 'constructor']) {
+    await assert.rejects(setup({ ...options, host }), /current Agent name/, host);
+  }
+  await assert.rejects(readdir(path.join(options.home, 'apps')), { code: 'ENOENT' });
+  await assert.rejects(readFile(path.join(options.home, 'install.json')), { code: 'ENOENT' });
+});
+
+test('adapter-less Agents can diagnose and call the installed MCP directly', { skip: process.platform === 'win32' }, async t => {
+  const options = await setupFixture(t), installed: any = await setup({ ...options, host: 'opencode', codex: undefined });
+  const tools = JSON.parse(await readFile(path.join(installed.appRoot, 'shared/mcp-profiles.json'), 'utf8')).phase1.tools;
+  await writeFile(installed.launcher, `import { createInterface } from 'node:readline';
+    for await (const line of createInterface({ input: process.stdin })) {
+      const q=JSON.parse(line); if(q.id===undefined) continue;
+      const result=q.method==='initialize'?{serverInfo:{version:'1.2.3'}}:q.method==='tools/list'?{tools:${JSON.stringify(tools.map((name: string) => ({ name, inputSchema: { type: 'object' } })))}}:{structuredContent:{dataDirectory:${JSON.stringify(installed.dataDirectory)}}};
+      console.log(JSON.stringify({jsonrpc:'2.0',id:q.id,result}));
+    }`);
+  const result = await diagnose({ home: options.home, host: 'opencode' });
+  assert.equal(result.status, 'passed', JSON.stringify(result));
+  assert.equal(result.dataDirectory, installed.dataDirectory);
+  const cli = fileURLToPath(new URL('../scripts/npm-installer.mjs', import.meta.url));
+  const listed = JSON.parse(await runFile(process.execPath, [cli, 'tools', '--home', options.home, '--host', 'opencode']));
+  assert.equal(listed.tools.length, tools.length);
+  assert.equal((await diagnose({ home: options.home, host: 'gemini' })).status, 'failed', 'an Agent that was never set up is not reported as installed');
+  await assert.rejects(runFile(process.execPath, [cli, 'tools', '--home', options.home, '--host', 'constructor']), /not registered/, 'an Object.prototype key is never an installed Agent');
+  assert.match((await diagnose({ home: options.home, host: 'constructor' })).message, /not registered/);
 });

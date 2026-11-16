@@ -289,7 +289,7 @@ export function AssetCard({
             </span>
           </Tooltip>}
           <CopyChip feedback={copyFeedback} asset={asset} />
-          <button type="button" className="motion-asset-menu-button" aria-label={t("Actions for {value0}", { value0: fullName })} title={t("Actions for {value0}", { value0: fullName })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
+          <Tooltip label={t("Actions for {value0}", { value0: fullName })} wrap><button type="button" className="motion-asset-menu-button" aria-label={t("Actions for {value0}", { value0: fullName })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button></Tooltip>
         </div>
       </div>
 

@@ -44,6 +44,42 @@ it("keeps type filters and search without usage filters", async () => {
   expect(host.querySelectorAll("[data-asset]")).toHaveLength(3);
 });
 
+it("collapses media groups independently and reveals results after filtering or searching", async () => {
+  const host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const assets = ["assets/tone-1.wav", "assets/tone-2.wav", "assets/tone-3.wav", "assets/logo.png", "assets/other.png", "assets/clip.mp4"];
+  const onDelete = vi.fn(), onRename = vi.fn();
+  await act(async () => root.render(<AssetsTab projectId="test" assets={assets} onDelete={onDelete} onRename={onRename} />));
+  const group = (category: string) => host.querySelector(`[data-assets-category="${category}"]`)!;
+  const toggle = (category: string) => group(category).querySelector<HTMLButtonElement>("h3 button")!;
+  const chip = (label: string) => [...host.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find(node => node.textContent?.trim() === label)!;
+  expect(toggle("audio").getAttribute("aria-expanded")).toBe("true");
+  expect(group("audio").querySelectorAll("[data-asset]")).toHaveLength(3);
+  act(() => toggle("audio").click());
+  expect(toggle("audio").getAttribute("aria-expanded")).toBe("false");
+  expect(group("audio").querySelectorAll("[data-asset]")).toHaveLength(0);
+  expect(toggle("audio").textContent).toContain("3");
+  expect(group("images").querySelectorAll("[data-asset]")).toHaveLength(2);
+  act(() => toggle("images").click());
+  act(() => toggle("audio").click());
+  expect(group("audio").querySelectorAll("[data-asset]")).toHaveLength(3);
+  expect(group("images").querySelectorAll("[data-asset]")).toHaveLength(0);
+  expect(group("video").querySelectorAll("[data-asset]")).toHaveLength(1);
+  act(() => toggle("audio").click());
+  act(() => chip("Audio 3").click());
+  expect(host.querySelectorAll("[data-asset]")).toHaveLength(3);
+  act(() => chip("All 6").click());
+  expect(host.querySelectorAll("[data-asset]")).toHaveLength(6);
+  act(() => toggle("audio").click());
+  act(() => {
+    const input = host.querySelector("input")!;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "tone");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(host.querySelectorAll("[data-asset]")).toHaveLength(3);
+  expect(toggle("audio").getAttribute("aria-expanded")).toBe("true");
+  expect(onDelete).not.toHaveBeenCalled(); expect(onRename).not.toHaveBeenCalled();
+});
+
 it("finds a renamed image by its full filename, including extension and case-insensitively", async () => {
   const host = document.createElement("div");
   document.body.append(host);

@@ -1,5 +1,6 @@
 import { buildProjectApiPath } from "../utils/projectRouting";
 import { resolvePreviewRelative } from "../utils/previewRelativePath";
+import { VIDEO_EXT } from "../utils/mediaTypes";
 import { useCallback, type ReactNode } from "react";
 import { createElement } from "react";
 import { CompositionThumbnail, VideoThumbnail } from "../player";
@@ -87,6 +88,8 @@ function renderAudioClip(
   const { start, end } = trimFractions(el);
   const waveform = createElement(AudioWaveform, {
     audioUrl,
+    // Detached audio keeps the original video file as its src, so classify by the file too.
+    sourceKind: el.tag === "video" || VIDEO_EXT.test((el.src ?? "").split(/[?#]/)[0]) ? "video" : "audio",
     waveformUrl,
     label: "",
     labelColor,

@@ -1,11 +1,12 @@
+import type { OmTracking } from '../shared/tracking.ts';
 import type { WorkspaceStore } from '../workspace.ts';
 import type { GenerateInput } from '../shared/gateway.ts';
 import { isMediaProvider, registeredProvider } from '../shared/provider-registry.ts';
 import { gatewayFor } from './service.ts';
 import { getWorkflow } from '../shared/workflow.ts';
 
-export async function mediaUse(store: WorkspaceStore, args: any) {
-  const gateway = gatewayFor(store);
+export async function mediaUse(store: WorkspaceStore, args: any, tracking?: OmTracking) {
+  const gateway = gatewayFor(store, tracking);
   const connections = await gateway.connections.list();
   const supported = (id: string) => isMediaProvider(id) || registeredProvider(id)?.integration === 'account' || connections.some(p => p.id === id && p.protocol === 'openai' && !p.setupRequired);
   const referenceSection = (id: string) => registeredProvider(id)?.reference ?? 'compatible';

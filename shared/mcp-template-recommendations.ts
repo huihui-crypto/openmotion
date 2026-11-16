@@ -3,6 +3,7 @@ import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { templates } from '../template-library.ts';
+import { builtinRecommendationIds, onboardingSourceFiles, onboardingTemplateIds, recommendationTemplateIds } from './onboarding-templates.ts';
 
 export const templatePresentationName = 'openmotion_show_template_recommendations';
 export const templatePresentationMime = 'text/html;profile=mcp-app';
@@ -10,15 +11,16 @@ export const templatePresentationCapability = 'io.modelcontextprotocol/ui';
 export const templatePresentationLimit = 1.5 * 1024 * 1024;
 const applicationRoot = fileURLToPath(new URL('../', import.meta.url));
 const uiDirectory = path.join(applicationRoot, 'mcp-ui/template-recommendations');
-const supportedIds = ['product-promo', 'nyt-graph', 'decision-tree'];
+const supportedIds: readonly string[] = recommendationTemplateIds;
 const supportedLanguages = ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'];
 const digest = (value: string | Buffer) => createHash('sha256').update(value).digest('hex');
 
 type AssetFile = { path: string; sha256: string; bytes: number; mimeType?: string };
 type PreviewTemplate = {
   id: string; title: string; description: string; durationSeconds: number;
-  width: number; height: number; video: AssetFile; poster: AssetFile; sourceFiles: AssetFile[];
-};
+  width: number; height: number; sourceFiles: AssetFile[];
+} & ({ kind?: 'builtin'; video: AssetFile; poster: AssetFile }
+  | { kind: 'reference'; videoUrl: string; posterUrl: string });
 type ToolDefinition = {
   name: string; title: string; description: string; inputSchema: any;
   annotations: { readOnlyHint: boolean; openWorldHint: boolean };
@@ -70,14 +72,47 @@ export function loadTemplatePresentation(options: { directory?: string; applicat
   const directory = options.directory ?? uiDirectory;
   const appRoot = options.applicationRoot ?? applicationRoot;
   const manifest = JSON.parse(regularFile(directory, 'manifest.json').toString('utf8'));
-  requireValue(manifest.schemaVersion === 1 && Array.isArray(manifest.templates) && manifest.templates.length === 3, 'invalid manifest');
+  requireValue(manifest.schemaVersion === 1 && Array.isArray(manifest.templates)
+    && manifest.templates.length === supportedIds.length, 'invalid manifest');
   const packageInfo = JSON.parse(regularFile(appRoot, 'package.json').toString('utf8'));
   requireValue(manifest.runtime?.hyperframes === packageInfo.dependencies.hyperframes
     && manifest.runtime?.gsap === packageInfo.dependencies.gsap, 'preview runtime differs');
   const seen = new Set<string>();
   const previews = (manifest.templates as PreviewTemplate[]).map(template => {
+    if (template.kind === 'reference') {
+      requireValue((onboardingTemplateIds as readonly string[]).includes(template.id) && !seen.has(template.id), 'unsupported or duplicate reference');
+      seen.add(template.id);
+      const prefix = 'library/templates/catalog/' + template.id + '/';
+      const sourcePaths = new Set<string>();
+      requireValue(Array.isArray(template.sourceFiles), 'missing reference source identity');
+      for (const source of template.sourceFiles) {
+        requireValue(typeof source.path === 'string' && source.path.startsWith(prefix) && !sourcePaths.has(source.path), 'invalid reference source identity');
+        sourcePaths.add(source.path);
+        verifiedFile(appRoot, source);
+      }
+      for (const file of onboardingSourceFiles.filter(file => file.startsWith(prefix)))
+        requireValue(sourcePaths.has(file), 'incomplete reference source identity');
+      const record = JSON.parse(regularFile(appRoot, prefix + 'template.json').toString('utf8'));
+      const entry = record.entry;
+      requireValue(record.templateId === template.id && entry?.templateId === template.id
+        && template.title === entry.original?.templateName && template.description === entry.original?.summary
+        && template.durationSeconds === Number(entry.original?.durationSeconds)
+        && template.width === entry.width && template.height === entry.height, 'reference metadata differs');
+      const approvedMedia = /^https:\/\/r\.open-design\.ai\/files\/[a-f0-9]{64}$/;
+      requireValue(typeof template.videoUrl === 'string' && approvedMedia.test(template.videoUrl)
+        && template.videoUrl === entry.previewUrl && typeof template.posterUrl === 'string'
+        && approvedMedia.test(template.posterUrl) && template.posterUrl === entry.coverUrl, 'reference media differs');
+      const descriptions = Object.fromEntries(supportedLanguages.map(language => [language,
+        record.locales[language === 'zh' ? 'zh-CN' : language === 'pt' ? 'pt-br' : language]?.original?.summary || entry.original.summary]));
+      const videoCategories = Object.fromEntries(supportedLanguages.map(language => [language,
+        (record.locales[language === 'zh' ? 'zh-CN' : language === 'pt' ? 'pt-br' : language]?.original?.promotionalUseCases
+          ?? entry.original.promotionalUseCases ?? '').trim()]));
+      return { id: template.id, title: template.title, description: template.description,
+        durationSeconds: template.durationSeconds, kind: 'reference', descriptions, videoCategories,
+        videoUrl: template.videoUrl, posterUrl: template.posterUrl };
+    }
     const canonical = templates.find(item => item.id === template.id);
-    requireValue(canonical && supportedIds.includes(template.id) && !seen.has(template.id), 'unsupported or duplicate template');
+    requireValue(canonical && (builtinRecommendationIds as readonly string[]).includes(template.id) && !seen.has(template.id), 'unsupported or duplicate template');
     seen.add(template.id);
     requireValue(template.title === canonical.title && template.durationSeconds === canonical.duration
       && typeof template.description === 'string' && template.width === 960 && template.height === 540, 'template metadata differs');
@@ -103,7 +138,7 @@ export function loadTemplatePresentation(options: { directory?: string; applicat
   });
   const script = regularFile(directory, 'build/app.js').toString('utf8');
   const css = regularFile(directory, 'build/app.css').toString('utf8');
-  const metadata = { ui: { prefersBorder: false, csp: { connectDomains: [], resourceDomains: ['blob:'] } },
+  const metadata = { ui: { prefersBorder: false, csp: { connectDomains: [], resourceDomains: ['blob:', 'https://r.open-design.ai'] } },
     'openai/ui': { preferredDisplayMode: 'inline' } };
   const skeleton = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>{{css}}</style></head><body><main id="openmotion-template-cards"></main><script>window.__OPENMOTION_TEMPLATE_CARDS__={{bootstrap}};</script><script>{{script}}</script></body></html>';
   // This identity precedes HTML injection, avoiding a self-referential content hash.
@@ -121,7 +156,7 @@ export function loadTemplatePresentation(options: { directory?: string; applicat
     inputSchema: { type: 'object', properties: { templateIds: { type: 'array', minItems: 3, maxItems: 3,
       items: { type: 'string', enum: supportedIds }, uniqueItems: true },
       language: { type: 'string', enum: supportedLanguages, description: 'Language of the latest user request, or their explicit requested output language. Always supply this field; do not infer it from the host UI locale.' },
-      onboarding: { type: 'boolean', description: 'Include the persistent first-run welcome. Use only after the right-hand template library is visibly open.' } }, required: ['templateIds'], additionalProperties: false },
+      onboarding: { type: 'boolean', description: 'Include the persistent first-run welcome. Use only after the right-hand template library is visibly open. Use the three prepared curated-pool IDs in their supplied order; never resample an existing presentation.' } }, required: ['templateIds'], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: false },
     _meta: { ui: { resourceUri: uri }, 'openai/ui': { preferredModelDisplayMode: 'inline' } },
   };
@@ -145,16 +180,20 @@ export function showTemplateRecommendations(presentation: TemplatePresentation, 
   if (args.language !== undefined && !supportedLanguages.includes(args.language)) throw new Error('INVALID_ARGUMENT: unsupported presentation language');
   if (args.templateIds.length !== 3 || new Set(args.templateIds).size !== 3
     || args.templateIds.some(id => !supportedIds.includes(id))) throw new Error('INVALID_ARGUMENT: choose three distinct approved template IDs');
+  if (args.onboarding === true && args.templateIds.some(id => !(onboardingTemplateIds as readonly string[]).includes(id)))
+    throw new Error('INVALID_ARGUMENT: onboarding requires three distinct curated reference IDs; preserve the prepared order and accepted template during recovery');
   const cards = args.templateIds.map((templateId, index) => {
     const template = presentation.templates.find(item => item.id === templateId)!;
     const actionRequestId = randomUUID();
-    return { position: index + 1, templateId, title: template.title, description: template.description,
-      durationSeconds: template.durationSeconds, actionRequestId,
+    const card = { position: index + 1, templateId, title: template.title, description: template.description,
+      durationSeconds: template.durationSeconds, actionRequestId };
+    if (template.kind === 'reference') return { ...card, templateKind: 'reference' as const };
+    return { ...card,
       createArgs: { requestId: actionRequestId, projectType: 'template' as const, templateId,
         title: template.title, requirements: `Use the ${template.title} template with its unchanged sample content. Preserve its structure and animation. Do not export a video unless requested.` } };
   });
   return { schemaVersion: 1, resourceVersion: presentation.resourceVersion, recommendationId: randomUUID(), cards,
     ...(args.language !== undefined ? { language: args.language } : {}),
     ...(args.onboarding === true ? { onboarding: true as const } : {}),
-    selectionGuide: 'Previewing is read-only. The Recreate template button only appends an editable prompt to the active composer through the negotiated OpenAI message extension with send=false; it never submits a task. Wait for the user to send their brief and attachments before creating or exporting. Follow the existing template Skill with the exact chosen template ID and the complete submitted requirements, including requested HTML/MP4 delivery. The legacy frozen createArgs apply only to an explicitly accepted unchanged sample copy; never substitute them for a customized submitted brief. Reuse confirmed projects and stable operation IDs for the same intent, and reconcile an unknown write before retrying. A numbered reply maps to this result order; redisplaying cards never authorizes another copy.' };
+    selectionGuide: 'Previewing is read-only. The Recreate template button prepares or copies an unsent brief; it never submits a task. A user-sent yes to one named recommendation accepts that exact template ID; continue without asking them to choose again. A numbered reply selects the corresponding card in this result order. If several cards were offered without one named recommendation, ask which card; a generic yes alone does not identify one. If the user delegates selection for onboarding, recommend the first card in this prepared result by name before creating. Carry the accepted ID, source and requirements into creation, route changes, retries and recovery until the user explicitly changes their selection. Rendering speed, duration or builtin availability never authorizes substitution. Follow the exact chosen template and complete submitted requirements, including requested HTML/MP4 delivery. Legacy createArgs apply only to an explicitly accepted unchanged builtin sample; never substitute them for a customized brief or reference. For templateKind=reference, call openmotion_get_template with the accepted ID, read instructions and motionDocument and follow openmotion-recreate to build that reference in an editable project. References intentionally have no builtin createArgs. If the selected source or workflow is unavailable, preserve the selection and report the blocker; do not create a different example. Reuse confirmed projects and stable operation IDs for the same intent, and reconcile an unknown write before retrying. Redisplaying cards never authorizes another project or export.' };
 }

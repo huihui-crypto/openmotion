@@ -321,3 +321,22 @@ or permanent collector rejection may lose events. Add durable delivery if produc
 decisions require guaranteed counts. Public ingest tokens are not read/admin keys,
 but forged events and quota abuse still require collector-side rate limiting and
 monitoring; this package is not an anti-fraud boundary.
+
+## AI asset generation
+
+The shared model gateway owns three worker events for Studio and MCP. Each carries
+`modality` (`image`, `video`, or `audio`); speech and music both use `audio`.
+
+| Event | Emission point | Additional fields |
+| --- | --- | --- |
+| `media_generation_requested` | A generation submission reaches the gateway with a recognized modality, before validation and routing. | None |
+| `media_generation_submitted` | The gateway persists a new queued job. Replaying its idempotency key returns the original job. | `job_id` |
+| `media_generation_result` | The gateway persists a completed, failed, cancelled or interrupted job. Interrupted workers produce a failed result. | `job_id`, `job_state`, `asset_count` |
+
+Count distinct anonymous installations per modality and window, and distinct
+submitted jobs. Attribute results to the original submission date. A job succeeds
+when it completes with at least one saved asset. The success rate divides those
+jobs by all submitted jobs, including cancelled, failed and unresolved jobs at
+the report cutoff. Inspect, list and status calls do not enter this cohort.
+A local save retry can update the terminal result for the same job. Use the latest result per job at the report cutoff. It does not add a model request or submission. Count outputs saved to the workspace library or project once per output.
+Generation uses the existing telemetry preference and installation identity.

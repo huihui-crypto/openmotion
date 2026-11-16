@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packagedSkills } from '../shared/workflow.ts';
 import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/design-system/index.js';
+import { onboardingSourceFiles } from '../shared/onboarding-templates.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -562,6 +563,7 @@ export const distributionDocuments = [
 export async function distributionFiles(profile: string, include: (file: string) => boolean = () => true): Promise<string[]> {
   if (!['phase1', 'legacy'].includes(profile)) throw new Error('Unknown distribution profile: ' + profile);
   const files = [
+    ...onboardingSourceFiles,
     ...designSystemRuntimeFiles.map(file => 'packages/design-system/' + file),
     ...distributionDocuments, 'LICENSE', '.codex-plugin/plugin.json', '.codex-plugin/onboarding/SKILL.md', '.mcp.json', 'marketplace.example.json',
     'package.json', 'package-lock.json',

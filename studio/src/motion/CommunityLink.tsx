@@ -3,8 +3,8 @@ import { Tooltip } from '../components/ui/Tooltip';
 import discordLogo from './community-discord.svg';
 import feishuLogo from '../../../packages/design-system/brand/community-feishu.svg';
 
-const discord = { platform: 'Discord', href: 'https://discord.com/invite/M7NnHS9gNa', icon: discordLogo };
-const feishu = { platform: '飞书', href: 'https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841', icon: feishuLogo };
+export const discord = { platform: 'Discord', href: 'https://discord.com/invite/M7NnHS9gNa', icon: discordLogo };
+export const feishu = { platform: '飞书', href: 'https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841', icon: feishuLogo };
 
 export function useCommunityLink() {
   const { t, locale } = useI18n();

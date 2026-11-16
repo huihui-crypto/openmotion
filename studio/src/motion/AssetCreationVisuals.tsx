@@ -1,3 +1,4 @@
+import { Tooltip } from "../components/ui/Tooltip";
 import { useState } from 'react';
 import type { GenerationJob, Modality } from '../../../shared/gateway';
 import { assetMediaUrl } from '../../../shared/asset-library';
@@ -35,7 +36,7 @@ export function AssetGenerationCard({ job, onCancel, onView, onRetrySave }: { jo
       <div className="om-creation-job-thumbnail" aria-hidden="true">
         {done && preview && preview !== failedPreview && job.modality === 'image' ? <img src={preview} onError={() => setFailedPreview(preview)} alt="" /> : working ? <WorkingIndicator /> : <RemixIcon name={done ? 'checkbox-circle-line' : job.state === 'failed' ? 'error-warning-line' : 'pause-line'} size={18} />}
       </div>
-      <div className="om-creation-job-copy"><div className="om-creation-job-title"><span className="om-creation-status" role="status" title={title}>{t(saving && working ? 'Saving to assets' : job.state)}</span><span className="om-eyebrow">{job.model.label}</span></div><p className="om-muted om-creation-job-prompt" title={job.prompt}>{job.prompt}</p><span className="om-sr-only">{title}</span></div>
+      <div className="om-creation-job-copy"><div className="om-creation-job-title"><Tooltip label={title} wrap><span className="om-creation-status" role="status">{t(saving && working ? 'Saving to assets' : job.state)}</span></Tooltip><span className="om-eyebrow">{job.model.label}</span></div><Tooltip label={job.prompt} wrap><p className="om-muted om-creation-job-prompt">{job.prompt}</p></Tooltip><span className="om-sr-only">{title}</span></div>
       {working ? <button className="om-nav-item" onClick={() => onCancel(job)}>{t('Cancel')}</button> : <>
         {job.savePending && onRetrySave && <button className="om-nav-item" disabled={retrying} onClick={() => void retrySave()}>{t(retrying ? 'Retrying save…' : 'Retry saving')}</button>}
         {result && <button className="om-nav-item" onClick={() => onView(job)}>{t('View asset')}<RemixIcon name="arrow-right-up-line" size={14} /></button>}

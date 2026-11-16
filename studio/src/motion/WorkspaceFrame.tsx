@@ -196,7 +196,7 @@ function WorkspaceSidebar({ currentId, close, expand, query, setQuery, onNavigat
     <div className="motion-sidebar-brand">
       <strong className="om-subtitle">{t('Home')}</strong>
       {/* Collapsing the docked navigation toggles it back with the workspace menu button, so this icon-only control keeps a state-aware tooltip in both states. */}
-      <button type="button" className="motion-icon-button" onClick={expand ?? close} aria-expanded={!expand} aria-controls="om-project-navigation" aria-label={t(expand ? 'Open project list' : 'Close project list')} title={t(expand ? 'Open project list' : 'Close project list')}><MotionIcon name="sidebar" size={16} /></button>
+      <Tooltip label={t(expand ? 'Open project list' : 'Close project list')} wrap><button type="button" className="motion-icon-button" onClick={expand ?? close} aria-expanded={!expand} aria-controls="om-project-navigation" aria-label={t(expand ? 'Open project list' : 'Close project list')}><MotionIcon name="sidebar" size={16} /></button></Tooltip>
     </div>
     <div className="motion-session-heading">
       <span>{t('Projects')}</span>
@@ -216,15 +216,14 @@ function WorkspaceSidebar({ currentId, close, expand, query, setQuery, onNavigat
         <Skeleton style={{ width, height: 'var(--motion-space-16)' }} />
       </div>)}
       {workspace.status && !filtered.length && <p className="motion-session-empty">{t(query ? 'No matching projects' : 'Create a project with your Agent to start editing.')}</p>}
-      {filtered.map(project => <button key={project.id} className="motion-session" aria-current={currentId === project.id ? 'page' : undefined}
-        title={project.title} disabled={switchingDisabled} onClick={event => {
+      {filtered.map(project => <Tooltip label={project.title} wrap key={project.id}><button aria-label={project.title} className="motion-session" aria-current={currentId === project.id ? 'page' : undefined} disabled={switchingDisabled} onClick={event => {
           if (project.id === currentId) return;
           void trackMotion('ui_click', { page_name: 'studio', area: 'workspace', element: 'open_project', interaction_method: event.detail === 0 ? 'keyboard' : 'pointer' });
           void workspace.open('projects', project.id);
           onNavigate?.();
         }}>
         <span className="motion-session-dot" aria-hidden="true" /><span><strong>{project.title}</strong></span>
-      </button>)}
+      </button></Tooltip>)}
     </nav>
   </aside>;
 }
@@ -235,5 +234,5 @@ export function WorkspaceMenuButton() {
   const visible = sidebarOpen && !navigationCollapsed;
   // Collapsing the docked navigation is a toggle, not a dismiss, so the icon-only
   // control keeps its tooltip in both states like the app-sidebar toggle.
-  return <button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={visible} title={t(visible ? 'Collapse project list' : 'Open project list')} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button>;
+  return <Tooltip label={t(visible ? 'Collapse project list' : 'Open project list')} wrap><button className="motion-icon-button motion-workspace-menu" onClick={toggleSidebar} aria-expanded={visible} aria-label={t(visible ? 'Collapse project list' : 'Open project list')}><MotionIcon name="sidebar" size={16} /></button></Tooltip>;
 }

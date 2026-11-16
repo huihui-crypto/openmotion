@@ -1,3 +1,4 @@
+import { onboardingSourceFiles } from '../shared/onboarding-templates.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { zip } from '../scripts/package.ts';
@@ -45,7 +46,7 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(![...files].some(file => file.startsWith('packages/design-system/react/')), 'React source is compiled into Studio');
     assert(files.has('docs/release-guide.md'), 'The public test/stable manual must ship');
     assert(files.has('docs/template-repository.md'), 'Repository guidance must ship');
-    assert(![...files].some(file => file.startsWith('library/templates/catalog/') || /scripts\/(?:template-library|check-template-library)\.ts$/.test(file)), 'The source catalog and contribution tools must not inflate application packages');
+    assert(![...files].some(file => (file.startsWith('library/templates/catalog/') && !onboardingSourceFiles.includes(file)) || /scripts\/(?:template-library|check-template-library)\.ts$/.test(file)), 'The source catalog and contribution tools must not inflate application packages');
     for (const file of ['docs/assets.md', 'docs/generation-options.md', 'gateway/asset-library.ts', 'gateway/asset-chat.ts', 'gateway/asset-read.ts', 'shared/asset-tools.ts', 'shared/generation-options.ts']) assert(files.has(file), 'Missing asset runtime or guide: ' + file);
     for (const file of ['scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'shared/font-catalog.ts', 'shared/import-font.ts', 'skills/openmotion-production/fonts/catalog.json']) assert(files.has(file), 'Missing font dependency: ' + file);
     assert(files.has('shared/asset-limits.ts'), 'The shared asset import limit must ship');

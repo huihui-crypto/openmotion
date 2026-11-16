@@ -22,6 +22,8 @@ This workflow currently covers motion graphics only. For live action, talking he
 
 ## 0. Shared context
 
+For an accepted onboarding recommendation, follow [accepted template selection](../openmotion-production/references/templates.md#accepted-template-selection). Retrieve the accepted ID through `openmotion_get_template` and use that reference's instructions and motionDocument. An accepted sample experience retains the reference's content and motion unless the user requests adaptation; incidental workspace branding does not restart intake or change the template. Preserve the ID and source in project working notes and recovery.
+
 Read the [shared context](../openmotion-production/references/context.md) before working; it lists the references a recreation needs and how to reuse documents already read. When the work changes an existing draft or project, also apply the [shared edit workflow](../openmotion-production/references/edit.md). If the reference turns out to be only loose inspiration for an original film, switch to [openmotion-director](../openmotion-director/SKILL.md).
 
 ## 1. Read the user's context before anything else

@@ -12,6 +12,8 @@ import { WarningIcon } from "../../icons/RemixIcons";
 
 export interface AudioWaveformProps {
   audioUrl: string;
+  /** Video containers must use server peaks rather than whole-file browser decoding. */
+  sourceKind?: "audio" | "video";
   waveformUrl?: string;
   label: string;
   labelColor: string;
@@ -122,12 +124,23 @@ async function loadWaveform(
   audioUrl: string,
   waveformUrl: string | undefined,
   signal: AbortSignal,
+  sourceKind: "audio" | "video",
 ): Promise<number[]> {
   // Failures propagate: authors trim and beat-align against this, so made-up peaks beat no gap.
   // The scheduler caches the failure (metadataFailureTtlMs): no refetch loop, no stuck state.
-  return waveformUrl
-    ? await fetchWaveformPeaks(waveformUrl, signal)
-    : await decodeWaveformPeaks(audioUrl, signal);
+  if (!waveformUrl) {
+    if (sourceKind === "video") throw new Error("Video waveform requires server peaks");
+    return await decodeWaveformPeaks(audioUrl, signal);
+  }
+  try {
+    return await fetchWaveformPeaks(waveformUrl, signal);
+  } catch (error) {
+    // Missing media stays missing; a cancelled lease stays cancelled.
+    if (sourceKind === "video" || error instanceof UnavailableAudioError || signal.aborted) throw error;
+    // The server decodes with FFmpeg, which a first run may still be downloading (409) or lack
+    // entirely (500). Decode audio sources locally, but never download whole video containers.
+    return await decodeWaveformPeaks(audioUrl, signal);
+  }
 }
 
 async function fetchWaveformPeaks(url: string, signal: AbortSignal): Promise<number[]> {
@@ -192,6 +205,7 @@ function useNearScreen(element: Element | null): boolean {
 
 export const AudioWaveform = memo(function AudioWaveform({
   audioUrl,
+  sourceKind = "audio",
   waveformUrl,
   label,
   labelColor,
@@ -209,21 +223,21 @@ export const AudioWaveform = memo(function AudioWaveform({
   const cacheKey = waveformUrl ?? audioUrl;
   const request = useMemo(
     () => ({
-      key: createThumbnailKey({ kind: "waveform", source: cacheKey }),
+      key: createThumbnailKey({ kind: "waveform", source: `${sourceKind}:${cacheKey}` }),
       projectId,
       sessionEpoch,
       kind: "waveform" as const,
       priority,
       rich: false,
       load: async (signal: AbortSignal) => {
-        const peaks = await loadWaveform(audioUrl, waveformUrl, signal);
+        const peaks = await loadWaveform(audioUrl, waveformUrl, signal, sourceKind);
         return {
           value: { kind: "waveform" as const, peaks },
           weight: peaks.length * Float64Array.BYTES_PER_ELEMENT,
         };
       },
     }),
-    [audioUrl, cacheKey, priority, projectId, sessionEpoch, waveformUrl],
+    [audioUrl, cacheKey, priority, projectId, sessionEpoch, sourceKind, waveformUrl],
   );
   const snapshot = useThumbnailLease(cacheKey ? request : null);
   const errorLabel = t(

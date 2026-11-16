@@ -1,3 +1,4 @@
+import { Tooltip } from "../../components/ui/Tooltip";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
 import { memo, type MouseEvent } from "react";
@@ -52,18 +53,16 @@ export const ClipBadges = memo(function ClipBadges({
       data-testid="clip-badges"
     >
       {volume && (
-        <span
+        <Tooltip label={volume === "Muted" ? t("Muted") : volume} wrap><span
           className={`${BADGE_CLASS} min-w-0 overflow-hidden border-white/20 text-white/90`}
-          title={volume === "Muted" ? t("Muted") : volume}
           data-badge="volume"
         >
           <SpeakerGlyph muted={volume === "Muted"} />
           {volume === "Muted" ? null : <span className="truncate">{volume}</span>}
-        </span>
+        </span></Tooltip>
       )}
-      <span
+      <Tooltip label={hasEffects ? effects.join(" · ") : t("No effects")} wrap><span
         className={`${BADGE_CLASS} pointer-events-auto shrink-0 cursor-pointer ${hasEffects ? FX_ON : FX_OFF}`}
-        title={hasEffects ? effects.join(" · ") : t("No effects")}
         data-badge="fx"
         data-fx-active={hasEffects ? "true" : "false"}
         onPointerDown={(event) => event.stopPropagation()}
@@ -71,7 +70,7 @@ export const ClipBadges = memo(function ClipBadges({
         onContextMenu={openMenu}
       >
         fx
-      </span>
+      </span></Tooltip>
     </span>
   );
 });

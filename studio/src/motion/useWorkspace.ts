@@ -53,7 +53,8 @@ export function useWorkspace(waitForSaves: () => Promise<void>, projectId?: stri
   }, [projectId, sessionId]);
   const request = useCallback(<T,>(path: string, init?: RequestInit) => motionApi<T>(path, init, projectId), [projectId]);
   const updateCatalog = useCallback((catalog: ProjectCatalog) => {
-    const ordered = [...catalog.projects].sort((a, b) => (b.openedAt ?? b.createdAt ?? 0) - (a.openedAt ?? a.createdAt ?? 0));
+    // The catalog keeps project order; opening a project must not move its sidebar row.
+    const ordered = catalog.projects;
     setProjects(previous => JSON.stringify(previous) === JSON.stringify(ordered) ? previous : ordered);
     const nextSessions = [...(catalog.sessions ?? [])].sort((a, b) => (b.openedAt ?? b.createdAt ?? 0) - (a.openedAt ?? a.createdAt ?? 0));
     setSessions(previous => JSON.stringify(previous) === JSON.stringify(nextSessions) ? previous : nextSessions);

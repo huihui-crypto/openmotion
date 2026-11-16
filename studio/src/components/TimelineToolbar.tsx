@@ -517,13 +517,12 @@ export const TimelineToolbar = memo(function TimelineToolbar({
               <MagnifyingGlassMinus size={16} aria-hidden="true" />
             </button>
           </Tooltip>
-          <input
+          <Tooltip label={`${displayedTimelineZoomPercent}%`} wrap><input
             type="range"
             disabled={zoomDisabled}
             min="0"
             max="100"
             value={timelineZoomPercentToSlider(displayedTimelineZoomPercent, timelineFitPps)}
-            title={`${displayedTimelineZoomPercent}%`}
             data-studio-control="timeline-zoom"
         aria-label={t("Timeline zoom")}
             onChange={(e) =>
@@ -534,7 +533,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
             // h-6 on the input is the 24x24 WCAG 2.2 (2.5.8) target: the visible
             // track stays 2px and the thumb 10px, only the pointer box grows.
             className="mx-1 h-6 w-[96px] cursor-pointer appearance-none bg-transparent [&::-webkit-slider-runnable-track]:h-[2px] [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-neutral-700 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[10px] [&::-webkit-slider-thumb]:h-[10px] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-text-0 [&::-webkit-slider-thumb]:-mt-1 [&::-webkit-slider-thumb]:shadow-[0_0_0_2px_#0a0a0a,0_1px_3px_rgba(0,0,0,0.5)] [&::-webkit-slider-thumb]:cursor-grab [&::-webkit-slider-thumb:active]:cursor-grabbing"
-          />
+          /></Tooltip>
           <Tooltip label={t("Zoom in")}>
             <button
               type="button"

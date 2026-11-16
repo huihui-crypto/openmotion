@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { candidateFixture } from './release-fixture.mjs';
-import { publishReleaseNotes } from '../.github/scripts/motion-release-notes.mjs';
+import { publishReleaseNotes, prepareCandidateNotes } from '../.github/scripts/motion-release-notes.mjs';
 
 async function fixture(t, version = '0.6.8') {
   const f = await candidateFixture(t, 'main', { version });
@@ -34,15 +34,16 @@ for (const [version, prefix, prerelease] of [['0.6.8', 'open-motion', false], ['
     assert.equal(create.target_commitish, f.candidate.sourceCommit); assert.equal(create.draft, true); assert.equal(create.prerelease, prerelease);
     assert(create.body.includes(`/${prefix}/${version}/install.md`) && create.body.includes(f.candidate.tgzSHA256));
     assert(create.body.includes('real Agent creation and human audiovisual acceptance are separate'));
-    const generated = f.writes.find(w => w.route === '/releases/generate-notes').data;
-    assert.equal(generated.target_commitish, f.candidate.sourceCommit);
-    assert.equal(generated.previous_tag_name, prerelease ? undefined : 'v0.6.7');
+    assert(!f.writes.some(w => w.route === '/releases/generate-notes'), 'New candidates reuse their frozen draft');
+    assert(create.body.includes('Frozen candidate changes'));
+    const original = await readFile(path.join(f.directory, 'release-notes.md'), 'utf8');
     assert.equal(f.writes.at(-1).data.make_latest, prerelease ? 'false' : 'true');
     const count = f.writes.length;
     f.changeRelease({ body: f.getRelease().body + '\nMaintainer edit\n' });
     await publishReleaseNotes(f.directory, f);
     assert.equal(f.writes.length, count, 'Published releases are not overwritten on retry');
-    assert((await readFile(path.join(f.directory, 'release-notes.md'), 'utf8')).includes('Maintainer edit'));
+    assert.equal(await readFile(path.join(f.directory, 'release-notes.md'), 'utf8'), original, 'Sealed notes remain immutable across publication and retries');
+    assert((await readFile(path.join(f.directory, 'github-release-notes.md'), 'utf8')).includes('Maintainer edit'));
   });
 }
 
@@ -88,4 +89,117 @@ test('GitHub Release writing is isolated from npm/R2 and never runs for archive-
   assert(notes.includes('needs.snapshot.outputs.artifact_id || needs.stable-snapshot.outputs.artifact_id'));
   const recovery = await readFile(new URL('../.github/workflows/motion-publication-recovery.yml', import.meta.url), 'utf8');
   assert(recovery.includes('contents: write') && recovery.includes('archive_only: true'), 'The reusable caller must permit the conditional Release job without running it');
+});
+
+for (const version of ['0.6.8', '0.6.8-test.14']) test(`${version} candidate notes use read-only exact-source history and the same-channel baseline`, async t => {
+  const f = await fixture(t, version), source = f.candidate.sourceCommit, base = 'a'.repeat(40);
+  await rm(path.join(f.build, 'release-notes.md'));
+  const previous = version.includes('-test.') ? 'v0.6.8-test.13' : 'v0.6.7';
+  const calls = [];
+  const commits = Array.from({ length: 101 }, (_, i) => ({ sha: (i + 1).toString(16).padStart(40, '0'), commit: { message: i === 0 ? 'Fix ![external](https://bad.invalid) <script> (#447)\nprivate body is excluded' : `Change ${i}` } }));
+  const body = await prepareCandidateNotes(f.build, { env: { MOTION_VERSION: version, MOTION_SOURCE_SHA: source }, fetcher: async (url, init) => {
+    assert.equal(init.method, 'GET'); assert(!init.headers.Authorization); calls.push(String(url));
+    if (url.includes('/releases?')) return Response.json([
+      { tag_name: 'v0.6.8-test.13', prerelease: true, draft: false }, { tag_name: 'v0.6.7', prerelease: false, draft: false },
+      { tag_name: 'v0.6.8-test.99', prerelease: true, draft: true }, { tag_name: 'v0.6.9', prerelease: false, draft: false }]);
+    if (url.includes('/git/ref/')) { assert(url.endsWith(previous)); return Response.json({ object: { type: 'tag', sha: 'c'.repeat(40) } }); }
+    if (url.includes('/git/tags/')) return Response.json({ object: { type: 'commit', sha: base } });
+    assert(url.includes(`/compare/${base}...${source}?`));
+    return Response.json({ status: 'ahead', total_commits: 101, commits: new URL(url).searchParams.get('page') === '1' ? commits.slice(0, 100) : commits.slice(100) });
+  } });
+  assert(body.includes(`Baseline: ${previous} (${base})`)); assert(body.includes('Change 100'));
+  assert(!body.includes('private body is excluded') && !body.includes('![external]') && !body.includes('<script>'));
+  assert(body.includes('NOT PROVIDED') && body.includes(f.candidate.tgzSHA256));
+  assert.equal(calls.filter(url => url.includes('/compare/')).length, 2);
+  await assert.rejects(prepareCandidateNotes(f.build, { env: { MOTION_VERSION: '0.6.9', MOTION_SOURCE_SHA: source } }), /strictly equal/);
+});
+
+test('first-channel notes disclose their bounded history; API failures never write a misleading draft', async t => {
+  const f = await fixture(t); await rm(path.join(f.build, 'release-notes.md'));
+  const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit };
+  await assert.rejects(prepareCandidateNotes(f.build, { env, fetcher: async () => new Response('', { status: 503 }) }), /HTTP 503/);
+  await assert.rejects(readFile(path.join(f.build, 'release-notes.md')), { code: 'ENOENT' });
+  const body = await prepareCandidateNotes(f.build, { env, fetcher: async (url, init) => {
+    assert.equal(init.method, 'GET');
+    if (url.includes('/releases?')) return Response.json([]);
+    assert(url.includes(`sha=${f.candidate.sourceCommit}`)); return Response.json([]);
+  } });
+  assert(body.includes('not a complete release delta') && body.includes('Baseline: not available'));
+  assert(!body.includes('No source commits since the baseline.'), 'No baseline is not proof of an empty release delta');
+});
+
+test('diverged or truncated comparison data is explicitly rejected or disclosed', async t => {
+  const f = await fixture(t, '0.6.4-test.99'); await rm(path.join(f.build, 'release-notes.md'));
+  const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit };
+  let status = 'diverged', pages = 0;
+  const fetcher = async url => {
+    if (url.includes('/releases?')) return Response.json([{ tag_name: 'v0.6.4-test.98', prerelease: true }]);
+    if (url.includes('/git/ref/')) return Response.json({ object: { type: 'commit', sha: 'a'.repeat(40) } });
+    pages++; return Response.json({ status, total_commits: 1001, commits: Array.from({ length: 100 }, (_, i) => ({ sha: (pages * 100 + i).toString(16).padStart(40, '0'), commit: { message: 'A change' } })) });
+  };
+  await assert.rejects(prepareCandidateNotes(f.build, { env, fetcher }), /ancestor/);
+  status = 'ahead'; pages = 0;
+  const truncated = await prepareCandidateNotes(f.build, { env, fetcher });
+  assert(truncated.includes('first 1,000 of 1,001 compared commits'));
+});
+
+test('a comparison page the endpoint returns short is disclosed instead of failing the build', async t => {
+  const f = await fixture(t, '0.6.4-test.99');
+  const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit }, base = 'a'.repeat(40);
+  // Simulate unexpectedly short/empty pages despite a larger declared delta.
+  for (const [available, total] of [[250, 300], [300, 350]]) {
+    await rm(path.join(f.build, 'release-notes.md'), { force: true });
+    const calls = [];
+    const fetcher = async url => {
+      if (url.includes('/releases?')) return Response.json([{ tag_name: 'v0.6.4-test.98', prerelease: true }]);
+      if (url.includes('/git/ref/')) return Response.json({ object: { type: 'commit', sha: base } });
+      const page = Number(new URL(url).searchParams.get('page')); calls.push(page);
+      const first = (page - 1) * 100;
+      return Response.json({ status: 'ahead', total_commits: total, commits: Array.from({ length: Math.max(0, Math.min(100, available - first)) },
+        (_, i) => ({ sha: (first + i + 1).toString(16).padStart(40, '0'), commit: { message: `Change ${first + i}` } })) });
+    };
+    const body = await prepareCandidateNotes(f.build, { env, fetcher });
+    assert(body.includes(`Only the first ${available} of ${total} compared commits are shown; inspect the full comparison.`));
+    assert(body.includes(`[Full source comparison/history](https://github.com/nexu-io/openmotion/compare/${base}...${f.candidate.sourceCommit})`));
+    assert.equal((body.match(/^- Change /gm) ?? []).length, available, 'Truncated ranges must not repeat rows');
+    assert.equal(calls.length, Math.ceil(available / 100) + (available % 100 === 0 ? 1 : 0), 'Stop at the first page the endpoint cannot extend');
+  }
+});
+
+test('older schema-2 candidates retain generated publication notes without inventing a sealed draft', async t => {
+  const f = await fixture(t);
+  f.candidate.schemaVersion = 2; delete f.candidate.files['release-notes.md'];
+  await writeFile(path.join(f.directory, 'candidate.json'), JSON.stringify(f.candidate));
+  await rm(path.join(f.directory, 'release-notes.md'));
+  await publishReleaseNotes(f.directory, f);
+  assert(f.writes.some(write => write.route === '/releases/generate-notes'));
+  assert((await readFile(path.join(f.directory, 'github-release-notes.md'), 'utf8')).includes('Fix installation (#1)'));
+});
+
+test('notes are sealed before upload, displayed in the summary and never require candidate write permissions', async () => {
+  const build = await readFile(new URL('../.github/workflows/motion-candidate.yml', import.meta.url), 'utf8');
+  assert(build.includes('permissions:\n  contents: read') && !build.includes('contents: write') && !build.includes('id-token:'));
+  const prepare = build.indexOf('motion-release-notes.mjs prepare'), seal = build.indexOf('motion-release.mjs seal');
+  assert(prepare > build.indexOf('motion-scan.mjs package') && prepare < seal && seal < build.indexOf('actions/upload-artifact'));
+  assert(build.includes("/candidate/release-notes.md") && build.includes('Candidate release notes (unpublished)'));
+});
+
+for (const scenario of ['full-300', 'empty-page', 'repeated-page']) test(`comparison ${scenario} never duplicates rows or invents an empty release delta`, async t => {
+  const f = await fixture(t, '0.6.8-test.14'); await rm(path.join(f.build, 'release-notes.md'));
+  const env = { MOTION_VERSION: f.candidate.version, MOTION_SOURCE_SHA: f.candidate.sourceCommit };
+  const commits = Array.from({ length: 300 }, (_, i) => ({ sha: (i + 1).toString(16).padStart(40, '0'), commit: { message: `Unique change ${i}` } }));
+  let pages = 0;
+  const body = await prepareCandidateNotes(f.build, { env, fetcher: async url => {
+    if (url.includes('/releases?')) return Response.json([{ tag_name: 'v0.6.8-test.13', prerelease: true }]);
+    if (url.includes('/git/ref/')) return Response.json({ object: { type: 'commit', sha: 'a'.repeat(40) } });
+    const page = Number(new URL(url).searchParams.get('page')); pages++;
+    const start = scenario === 'repeated-page' ? 0 : (page - 1) * 100;
+    return Response.json({ status: 'ahead', total_commits: 300, commits: scenario === 'empty-page' ? [] : commits.slice(start, start + 100) });
+  } });
+  const count = { 'full-300': 300, 'empty-page': 0, 'repeated-page': 100 }[scenario];
+  assert.equal((body.match(/^- Unique change /gm) || []).length, count);
+  if (scenario === 'full-300') assert(!body.includes('compared commits are shown'));
+  else assert(body.includes(`Only the first ${count} of 300 compared commits are shown`) && body.includes('Full source comparison/history'));
+  assert(!body.includes('No source commits since the baseline.'));
+  assert.equal(pages, { 'full-300': 3, 'empty-page': 1, 'repeated-page': 2 }[scenario]);
 });

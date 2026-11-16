@@ -1,3 +1,4 @@
+import { Tooltip } from "../components/ui/Tooltip";
 import { useEffect, useRef, useState, type ComponentProps, type Dispatch, type SetStateAction } from 'react';
 import type { AssetReference, LibraryAsset } from '../../../shared/asset-library';
 import type { GenerationJob } from '../../../shared/gateway';
@@ -61,10 +62,10 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
     <header className="om-task-toolbar">
       <h2 className="om-sr-only">{t(draft.target ? 'Create a new version' : 'Creative studio')}</h2>
       {/* Temporarily hide the Agent tab; existing conversations remain available in Tasks. */}
-      <div className="om-choice-tabs om-task-modes" role="group" aria-label={t('Task type')}>{(['direct'] as const).map(value => <button key={value} className="om-nav-item" aria-pressed={mode === value} aria-label={t(value === 'direct' ? 'Direct generation' : 'Agent conversation')} title={t(value === 'direct' ? 'Direct generation' : 'Agent conversation')} disabled={switching} onClick={() => onMode(value)}><RemixIcon name={value === 'direct' ? 'sparkling-line' : 'chat-1-line'} size={15} /><span>{t(value === 'direct' ? 'Generate' : 'Agent')}</span></button>)}</div>
-      <AssetTaskHistory {...history} trigger={<button className="om-nav-item om-task-picker" aria-label={t('Select task')} title={selectedTask?.title ?? t('New task')} disabled={switching}><span>{selectingTask ? t('Loading tasks…') : selectedTask?.title ?? t('New task')}</span><RemixIcon name="arrow-down-s-line" size={14} /></button>} />
-      <IconButton aria-label={t('New task')} title={t('New task')} icon={<RemixIcon name="add-line" size={17} />} disabled={switching} onClick={onNew} />
-      <IconButton aria-label={t('Close creator')} title={t('Close creator')} icon={<RemixIcon name="close-line" size={17} />} onClick={onClose} />
+      <div className="om-choice-tabs om-task-modes" role="group" aria-label={t('Task type')}>{(['direct'] as const).map(value => <Tooltip label={t(value === 'direct' ? 'Direct generation' : 'Agent conversation')} wrap key={value}><button className="om-nav-item" aria-pressed={mode === value} aria-label={t(value === 'direct' ? 'Direct generation' : 'Agent conversation')} disabled={switching} onClick={() => onMode(value)}><RemixIcon name={value === 'direct' ? 'sparkling-line' : 'chat-1-line'} size={15} /><span>{t(value === 'direct' ? 'Generate' : 'Agent')}</span></button></Tooltip>)}</div>
+      <AssetTaskHistory tooltip={selectedTask?.title ?? t('New task')} {...history} trigger={<button className="om-nav-item om-task-picker" aria-label={t('Select task')} disabled={switching}><span>{selectingTask ? t('Loading tasks…') : selectedTask?.title ?? t('New task')}</span><RemixIcon name="arrow-down-s-line" size={14} /></button>} />
+      <Tooltip label={t('New task')} wrap><IconButton aria-label={t('New task')} icon={<RemixIcon name="add-line" size={17} />} disabled={switching} onClick={onNew} /></Tooltip>
+      <Tooltip label={t('Close creator')} wrap><IconButton aria-label={t('Close creator')} icon={<RemixIcon name="close-line" size={17} />} onClick={onClose} /></Tooltip>
     </header>
     <div className="om-asset-chat-panel" hidden={mode !== 'agent'}><AssetConversation conversationId={taskIds.agent} onChanged={onChatChanged} onStarted={onChatStarted} onSending={setAgentSending} active={active && mode === 'agent'} references={agentReferences.map(r => r.reference)} referenceControls={referenceControls(agentReferences, setAgentReferences)} jobs={jobs} onCancel={onCancel} onView={onView} onRetrySave={onRetrySave} onError={onError} /></div>{mode === 'direct' && <>
       {latest && <div className="om-asset-current-job"><AssetGenerationCard job={latest} onCancel={onCancel} onView={onView} onRetrySave={onRetrySave} /></div>}

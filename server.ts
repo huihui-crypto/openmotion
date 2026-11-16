@@ -499,7 +499,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       return json(res, 200, { url: editorUrl, projectDirectory: store.projectDirectory, projectId: store.projectCatalog().activeId });
     }
     if (motionRequest && url.pathname.startsWith('/api/settings/')) {
-      const gateway = gatewayFor(store);
+      const gateway = gatewayFor(store, context.tracking);
       const agents = localAgentsFor(store.directory);
       if (url.pathname === '/api/settings/agents' && req.method === 'GET') return json(res, 200, await agents.list());
       if (url.pathname === '/api/settings/default-agent' && req.method === 'PUT') { const body = await input(req); await agents.choose(body.choice); return json(res, 200, { ok: true }); }
@@ -553,7 +553,7 @@ export async function handler(req: IncomingMessage, res: ServerResponse, store =
       return json(res, 404, { error: 'Settings endpoint not found' });
     }
     if (motionRequest && (url.pathname.startsWith('/api/models') || url.pathname.startsWith('/api/generations'))) {
-      const gateway = gatewayFor(store);
+      const gateway = gatewayFor(store, context.tracking);
       if (url.pathname === '/api/models/capabilities' && req.method === 'GET') return json(res, 200, await gateway.status(url.searchParams.get('refresh') === 'true'));
       if (url.pathname === '/api/models' && req.method === 'GET') return json(res, 200, await gateway.listModels({
         provider: url.searchParams.get('provider') ?? undefined, modality: url.searchParams.get('modality') ?? undefined,
@@ -779,7 +779,7 @@ export async function startServer(store = sharedStore, port = Number(process.env
     }
   } catch (error) { context.tracking?.close(); await context.studio?.close(); throw error; }
   const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
-  const gateway = gatewayFor(store);
+  const gateway = gatewayFor(store, context.tracking);
   gateway.account.options.track = record => context.tracking?.track('account_sign_in_result', record);
   // `node --test` runs use synthetic connectors; skip the real installation there. Closing the service stops an unfinished one.
   if (!process.env.NODE_TEST_CONTEXT) gateway.account.prefetch();

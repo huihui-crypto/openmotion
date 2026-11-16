@@ -265,11 +265,10 @@ export function AudioRow({
         </button>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            {renaming && onRename ? <InlineAssetRename asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <span
-              className={`min-w-0 max-w-full text-[12px] font-medium [overflow-wrap:anywhere] ${used ? "text-panel-text-1" : "text-panel-text-3"}`}
-            >
-              {name}
-            </span>}
+            {renaming && onRename ? <InlineAssetRename asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <OverflowText
+              text={name}
+              className={`min-w-0 max-w-full line-clamp-2 text-[12px] font-medium [overflow-wrap:anywhere] ${used ? "text-panel-text-1" : "text-panel-text-3"}`}
+            />}
             {!playing && (meta?.duration || subtypeLabel) && (
               <OverflowText className="max-w-full truncate text-[11px] text-panel-text-5 shrink-0"
                 text={`${meta?.duration ? `${meta.duration}s${subtypeLabel ? " · " : ""}` : ""}${subtypeLabel ?? ""}`} />

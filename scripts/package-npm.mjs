@@ -10,10 +10,12 @@ import { welcomeSharedAssets } from '../template-library.ts';
 import { packageTemplateConfig } from '../shared/template-config.ts';
 import { checkVisionLock } from './vision-runtime.mjs';
 import { checkReleaseVersion, releaseTemplateEnvironment } from './release-version.mjs';
+import { onboardingSourceFiles } from '../shared/onboarding-templates.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 // GitHub serves the full showcase. npm ships the application and its technical documentation.
 function isShowcaseAsset(file) {
+  if (onboardingSourceFiles.includes(file)) return false;
   // The welcome film needs these exact maintained runtime assets and licenses.
   if (welcomeSharedAssets.some(([source]) => source === file)) return false;
   // Plugin and MCP branding reads these symbols from the installed application.

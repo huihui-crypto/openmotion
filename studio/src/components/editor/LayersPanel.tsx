@@ -1,3 +1,4 @@
+import { Tooltip } from "../ui/Tooltip";
 import { PanelEmptyState } from "../ui/PanelEmptyState";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { RemixIcon } from "../../icons/RemixIcons";
@@ -456,8 +457,7 @@ export const LayersPanel = memo(function LayersPanel({ host }: { host?: LayersPa
             : "This layer can't be reordered";
 
           return (
-            <div
-              key={layer.key}
+            <Tooltip label={hint ? t(hint) : undefined} wrap key={layer.key}><div
               data-layer-index={index}
               role="button"
               tabIndex={0}
@@ -479,7 +479,6 @@ export const LayersPanel = memo(function LayersPanel({ host }: { host?: LayersPa
                     : "text-panel-text-2 hover:bg-panel-hover/40 hover:text-panel-text-1"
               } ${dragKey ? "cursor-grabbing" : "cursor-pointer"}`}
               style={{ paddingLeft: 8 + layer.depth * CHILD_INDENT }}
-              title={hint ? t(hint) : undefined}
             >
               {hasChildren ? (
                 <button
@@ -492,9 +491,8 @@ export const LayersPanel = memo(function LayersPanel({ host }: { host?: LayersPa
                   <RemixIcon name="arrow-right-s-line" size={12} className={`transition-transform ${isCollapsed ? "" : "rotate-90"}`} />
                 </button>
               ) : null}
-              <span
+              <Tooltip label={hint ? `${t(kindName)} · ${t(hint)}` : t(kindName)} wrap><span
                 data-layer-kind={kind}
-                title={hint ? `${t(kindName)} · ${t(hint)}` : t(kindName)}
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
                   mvp
                     ? selected ? "bg-panel-hover text-panel-text-1" : "bg-panel-hover text-panel-text-4"
@@ -506,14 +504,14 @@ export const LayersPanel = memo(function LayersPanel({ host }: { host?: LayersPa
                 }`}
               >
                 <KindIcon size={12} />
-              </span>
+              </span></Tooltip>
               <span className="min-w-0 flex-1 truncate text-[11px]">{layer.label}</span>
               {hasChildren && (
                 <span className="text-[9px] tabular-nums text-panel-text-5">
                   {layer.childCount}
                 </span>
               )}
-            </div>
+            </div></Tooltip>
           );
         })}
         {insertionLineY != null && (

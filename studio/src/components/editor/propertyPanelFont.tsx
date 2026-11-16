@@ -1,4 +1,5 @@
 import { PropertyLabel } from "./PropertyLabel";
+import { Tooltip } from "../ui/Tooltip";
 import { SearchInput } from "../ui/SearchInput";
 import { Popover } from "../ui/Popover";
 import type { ReactElement } from "react";
@@ -383,9 +384,9 @@ export function FontFamilyField({
               }`}
             >
               <span className="flex min-w-0 items-center gap-1.5">
-                <span title={option.family} className="truncate font-medium" style={{ fontFamily: `"${option.family}"` }}>
+                <Tooltip label={option.family} wrap><span className="truncate font-medium" style={{ fontFamily: `"${option.family}"` }}>
                   {option.family}
-                </span>
+                </span></Tooltip>
 
               </span>
               <span className="shrink-0 text-[9px] uppercase tracking-[0.14em] text-neutral-600">

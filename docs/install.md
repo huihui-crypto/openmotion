@@ -9,7 +9,7 @@ Repository installation defaults to the [source guide](../install.md). Use this 
 
 Follow the selected published guide and its recorded package/version, platform and host options. Do not guess a package version, execute unresolved `{{...}}` placeholders or apply newer source-only flags to an older package. Use the immutable version guide and exact package version for reproducible installation and troubleshooting. If the guide cannot be read, report the failure; do not silently switch to source or another channel.
 
-The published guide selects the current host's `openmotion setup --host` command for Codex, Claude Code, DeepSeek Harness or WorkBuddy. Configure only that host and preserve existing projects, credentials and unrelated settings. [Platform recipes and recovery](npm-installation.md)
+The published guide selects the current host's `openmotion setup --host` command. Codex, Claude Code, DeepSeek Harness and WorkBuddy have registration adapters; any other local Agent passes its own name, installs the same application and Skills, and registers the returned MCP entry itself ([other local Agents](npm-installation.md#other-local-agents)). Configure only that host and preserve existing projects, credentials and unrelated settings. [Platform recipes and recovery](npm-installation.md)
 
 For **Codex only**, the repository bootstrap also accepts an explicit pinned package:
 

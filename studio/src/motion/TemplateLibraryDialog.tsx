@@ -371,7 +371,7 @@ export function TemplateLibraryDialog(props: Props) {
         <div className={`om-control-row ${styles.headerActions}`}>
           <label className={`om-field om-search-field ${styles.search}`}><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)} onCompositionStart={() => { composing.current = true; }} onCompositionEnd={() => { composing.current = false; setSettle(value => value + 1); }} placeholder={t('Search templates, creators, styles…')} aria-label={t('Search templates')} /><kbd>⌘ K</kbd></label>
           <GitHubLink className="om-button" />
-          <button ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={16} /></button>
+          <Tooltip label={t('Close template library')}><button ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={16} /></button></Tooltip>
         </div>
       </header>
       <div className={styles.toolbar}>
@@ -388,9 +388,9 @@ export function TemplateLibraryDialog(props: Props) {
               {industries.map(value => <MenuRadioItem key={value} value={value}>{t(value)}</MenuRadioItem>)}
             </MenuRadioGroup>
           </Menu></div>}
-          <Popover modal={false} open={filtersOpen} onOpenChange={openFilters} container={null} align="end" aria-label={t('Filters')} className={styles.filterPopover}
-            trigger={<button className={`om-button om-icon-button ${styles.filterIcon}`} aria-label={t('Filters')} title={t('Filters')}><MotionIcon name="sliders" size={16} />{(Object.values(selected).flat().length + Number(editableOnly)) > 0 && <span className={styles.filterIndicator} aria-hidden="true" />}</button>}>
-            <header className={`om-control-row ${styles.filterHeader}`}><strong>{t('Filters')}</strong><button role="checkbox" aria-checked={draftEditable} className={styles.editableChoice} onClick={() => setDraftEditable(!draftEditable)}>{t('Ready to edit')}<span className={styles.choiceCheck} aria-hidden="true">{draftEditable && <MotionIcon name="check" size={12} />}</span></button><button className="om-button om-icon-button" onClick={() => setFiltersOpen(false)} aria-label={t('Close filters')}><MotionIcon name="close" size={16} /></button></header>
+          <Popover tooltip={t('Filters')} modal={false} open={filtersOpen} onOpenChange={openFilters} container={null} align="end" aria-label={t('Filters')} className={styles.filterPopover}
+            trigger={<button className={`om-button om-icon-button ${styles.filterIcon}`} aria-label={t('Filters')}><MotionIcon name="sliders" size={16} />{(Object.values(selected).flat().length + Number(editableOnly)) > 0 && <span className={styles.filterIndicator} aria-hidden="true" />}</button>}>
+            <header className={`om-control-row ${styles.filterHeader}`}><strong>{t('Filters')}</strong><button role="checkbox" aria-checked={draftEditable} className={styles.editableChoice} onClick={() => setDraftEditable(!draftEditable)}>{t('Ready to edit')}<span className={styles.choiceCheck} aria-hidden="true">{draftEditable && <MotionIcon name="check" size={12} />}</span></button><Tooltip label={t('Close filters')}><button className="om-button om-icon-button" onClick={() => setFiltersOpen(false)} aria-label={t('Close filters')}><MotionIcon name="close" size={16} /></button></Tooltip></header>
             <Tabs value={filterTab} onValueChange={value => { setFilterTab(value as Facet); setFacetQuery(''); }} orientation="vertical" className={styles.filterBody}>
               <TabsList className={styles.filterTabs} aria-label={t('Filter categories')}>
                 {available.map(facet => <Tab key={facet.key} value={facet.key} className={styles.filterTab} aria-label={t(facet.label)}><span>{t(facet.label)}</span>{Boolean(draftFilters[facet.key]?.length) && <span className={styles.tabCount}>{draftFilters[facet.key]!.length}</span>}</Tab>)}
@@ -442,10 +442,10 @@ export function TemplateLibraryDialog(props: Props) {
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
           <div className={styles.detailNav}>
-            <Tooltip withinDialog label={t('Close template preview')}><button className={styles.iconButton} autoFocus onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
+            <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
             <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span>
-            <Tooltip withinDialog label={t('Previous template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
-            <Tooltip withinDialog label={t('Next template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
+            <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
+            <Tooltip withinDialog wrap label={t('Next template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
           </div>
           <div className={styles.detailBody}>
             <h2>{preview.title}</h2>
@@ -453,14 +453,14 @@ export function TemplateLibraryDialog(props: Props) {
             <div className={styles.creator}>
               <Identity template={preview} />
               <div><strong>{preview.authorName || preview.author || preview.brand || 'OpenMotion'}</strong>{preview.brand && preview.brand.trim().toLocaleLowerCase() !== (preview.authorName || preview.author || preview.brand).trim().toLocaleLowerCase() && <small>{preview.brand}</small>}</div>
-              {preview.sourceUrl && <Tooltip withinDialog label={t('Source')}><a className={styles.sourceLink} href={preview.sourceUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_source', detailView.current)} aria-label={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a></Tooltip>}
+              {preview.sourceUrl && <Tooltip withinDialog wrap label={t('Source')}><a className={styles.sourceLink} href={preview.sourceUrl} target="_blank" rel="noreferrer" onClick={() => tracking.reportDetailLink(preview, 'view_source', detailView.current)} aria-label={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a></Tooltip>}
             </div>
             <section ref={instructionText} className={styles.instruction} aria-label={t('Template instruction')}><header><h3>{t('Template instruction')}</h3></header>{manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} /> : prompt ? <p className={promptExpanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p> : promptError ? <div className={styles.promptFailure} role="status">{t('Could not load the instruction.')}<button onClick={() => retryPrompt(value => value + 1)}>{t('Retry')}</button></div> : <div className={styles.promptSkeleton} role="status" aria-label={t('Loading instruction…')}>{[100, 94, 100, 86, 62].map((width, index) => <Skeleton key={index} style={{ width: `${width}%`, height: 10 }} />)}</div>}<button disabled={!prompt} className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={promptExpanded} onClick={() => { tracking.reportInstructionExpanded(preview, !promptExpanded, detailView.current); setPromptExpanded(!promptExpanded); }}>{t(promptExpanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button></section>
             <div className={styles.actions}>
               {isEditableTemplate(preview) && <button className="om-button" data-primary disabled={props.busy || props.openingDisabled} onClick={() => { tracking.reportUseClicked(preview, 'open_edit', detailView.current); closeDetail(); props.onOpen(preview.id); }}>{t('Open and edit')}<MotionIcon name="arrow-up-right" size={16} /></button>}
               <div className={styles.recreateActions}>
                 <button className="om-button" data-primary disabled={!prompt} onClick={() => void copy()}>{t('Recreate template')}<MotionIcon name="sparkles" size={16} /></button>
-                <Tooltip withinDialog label={t('Recreate and submit')}><button className={`om-button ${styles.submitTemplate}`} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')}><MotionIcon name="git-branch" size={17} /></button></Tooltip>
+                <Tooltip withinDialog wrap label={t('Recreate and submit')}><button className={`om-button ${styles.submitTemplate}`} disabled={!prompt} onClick={() => void copy(true)} aria-label={t('Recreate and submit')}><MotionIcon name="git-branch" size={17} /></button></Tooltip>
               </div>
             </div>
             <div className={styles.resourceLinks}>

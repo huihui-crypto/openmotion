@@ -181,7 +181,7 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         const editor = await ensureEditor(store.directory);
         const reply = await editorRequest(editor, '/editor-api/tools/call', { name: legacyToolName(name), arguments: message.params?.arguments || {}, selection: connection.selection });
         connection.selection = reply.selection; value = reply.result;
-      } else value = await callTool(name, message.params?.arguments || {}, store);
+      } else value = await callTool(name, message.params?.arguments || {}, store, await trackingFor(store));
       return result({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Tool failed';

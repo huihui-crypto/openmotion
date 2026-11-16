@@ -1,3 +1,4 @@
+import type { OmTracking } from '../shared/tracking.ts';
 import path from 'node:path';
 import type { WorkspaceStore } from '../workspace.ts';
 import { AssetLibrary } from './asset-library.ts';
@@ -6,8 +7,8 @@ import { requireNativeRuntime } from '../scripts/npm-runtime.mjs';
 import { pluginRoot } from '../hyperframes.ts';
 import { readLibraryAsset } from './asset-read.ts';
 
-export async function assetOperation(store: WorkspaceStore, args: any, importProject?: (input: any) => Promise<any>) {
-  const library = new AssetLibrary(store), gateway = gatewayFor(store);
+export async function assetOperation(store: WorkspaceStore, args: any, importProject?: (input: any) => Promise<any>, tracking?: OmTracking) {
+  const library = new AssetLibrary(store), gateway = gatewayFor(store, tracking);
   if (args.action === 'list') return library.list(args);
   if (args.action === 'read') return readLibraryAsset(library, args);
   if (args.action === 'get') {

@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fixture } from './fixtures.ts';
+import { createTracker, type PendingEvent } from '../tracking/core.ts';
+import { omEvents } from '../tracking/events.ts';
 import { mediaBytes } from './media-fixtures.ts';
 import { AssetLibrary } from '../gateway/asset-library.ts';
 import { gatewayFor } from '../gateway/service.ts';
@@ -140,6 +142,10 @@ test('interrupted saving retains local bytes and missing/corrupted recovery neve
 
 test('library edits recover an already-committed version without duplicating it or changing the original', t => fixture(async store => {
   const { gateway, api, submissions } = await setup(store);
+  const events: PendingEvent[] = [];
+  const tracking = createTracker({ registry: omEvents, entrypoint: 'worker', enabled: true, flushIntervalMs: 0,
+    send: async batch => { events.push(...batch); return 'accepted'; } });
+  gateway.options.tracking = tracking;
   const source = path.join(store.directory, 'original.png'); await writeFile(source, png);
   const library = new AssetLibrary(store), asset = await library.importFile(source, { requestId: 'original', name: 'Original' });
   const original = AssetLibrary.prototype.addLocked;
@@ -154,10 +160,13 @@ test('library edits recover an already-committed version without duplicating it 
     await api.call('openmotion_assets_use', { action: 'retry_save', jobId: job.id, requestId: 'save-edit' });
     job = await finish(store, job.id);
     assert.equal(job.state, 'completed', job.error); assert.equal(job.assets.length, 0); assert.equal(submissions(), 1);
+    await tracking.flush();
+    assert.deepEqual(events.map(e => e.event), ['media_generation_requested', 'media_generation_submitted', 'media_generation_result', 'media_generation_result']);
+    assert.deepEqual(events.at(-1)?.properties, { job_id: job.id, modality: 'image', job_state: 'completed', asset_count: 1 });
     const edited = await library.get(asset.id);
     assert.equal(edited.versions.length, 2); assert.equal(edited.versions[1].parentVersionId, asset.currentVersionId);
     assert.deepEqual(await readFile((await library.resolve({ assetId: asset.id, versionId: asset.currentVersionId })).filename), png);
-  } finally { failure.mock.restore(); await gateway.close(); }
+  } finally { failure.mock.restore(); await gateway.close(); tracking.close(); }
 }));
 
 for (const damage of ['missing-manifest', 'corrupt-manifest', 'empty-manifest', 'missing-file', 'changed-file', 'missing-after-queue']) test(`unrecoverable ${damage} clears save recovery without model usage`, () => fixture(async store => {

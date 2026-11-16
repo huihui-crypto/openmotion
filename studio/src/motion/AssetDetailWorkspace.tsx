@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { Tooltip } from "../components/ui/Tooltip";
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { assetMediaUrl, assetVersion, type AssetReference, type LibraryAsset } from '../../../shared/asset-library';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -13,21 +14,36 @@ export function AssetDetailWorkspace({ asset, versionId, active, uploading, savi
 }) {
   const { t, formatDate } = useI18n();
   const [name, setName] = useState(asset.name);
+  const [mobileView, setMobileView] = useState<'preview' | 'details'>('preview');
+  const editing = Boolean(editor);
+  const viewer = useRef<HTMLElement>(null);
+  useEffect(() => setMobileView(editing ? 'details' : 'preview'), [editing, asset.id]);
+  useEffect(() => {
+    const element = viewer.current!;
+    const observer = new ResizeObserver(() => {
+      if (!element.getClientRects().length) element.querySelectorAll<HTMLMediaElement>('audio, video').forEach(media => media.pause());
+    });
+    observer.observe(element); return () => observer.disconnect();
+  }, []);
   useEffect(() => setName(asset.name), [asset.id, asset.name]);
   const version = assetVersion(asset, versionId) ?? assetVersion(asset)!;
   const number = asset.versions.findIndex(v => v.id === version.id) + 1;
   const update = async (changes: Record<string, unknown>) => { if (!saving) await onUpdate(changes); };
-  return <section className="om-asset-workspace" aria-label={t('Asset preview')} data-editing={Boolean(editor)}>
+  return <section className="om-asset-workspace" aria-label={t('Asset preview')} data-editing={editing} data-mobile-view={mobileView}>
     <header className="om-asset-workspace-header">
       <button className="om-nav-item" onClick={onBack}><RemixIcon name="arrow-left-line" size={16} />{t('All assets')}</button>
-      <strong title={asset.name}>{asset.name}</strong><span className="om-badge">V{number}</span>
+      <Tooltip label={asset.name} wrap><strong>{asset.name}</strong></Tooltip><span className="om-badge">V{number}</span>
       <div className="om-asset-workspace-actions">{taskControls}<a className="om-button" href={assetMediaUrl(asset.id, version.id) + '?download=1'} download onClick={onDownload}><RemixIcon name="download-2-line" size={15} />{t('Download')}</a></div>
     </header>
+    <div className="om-asset-detail-switch" role="group" aria-label={t('Asset preview')}><div className="om-choice-tabs">
+      <button className="om-nav-item" aria-pressed={mobileView === 'preview'} onClick={() => setMobileView('preview')}>{t('Preview')}</button>
+      <button className="om-nav-item" aria-pressed={mobileView === 'details'} onClick={() => setMobileView('details')}>{t(editing ? 'AI Create' : 'Asset details')}</button>
+    </div></div>
     <div className="om-asset-workspace-body">
       <ResizablePane className="om-asset-filmstrip om-surface-divider" storageKey="motion-asset-filmstrip-width" initial={196} min={164} max={280} edge="right" label={t('Resize asset navigation')}>
         {navigation}
       </ResizablePane>
-      <main className="om-asset-viewer">
+      <main ref={viewer} className="om-asset-viewer">
         <div className="om-asset-viewer-stage">{active && <AssetPreview key={`${asset.id}/${version.id}`} asset={asset} version={version} controls />}</div>
         <footer className="om-asset-viewer-caption om-muted"><span>{version.width && version.height ? `${version.width} × ${version.height}` : version.mimeType}</span><span>{(version.bytes / 1024 / 1024).toFixed(2)} MB</span><span>V{number}{version.id === asset.currentVersionId ? ` · ${t('Current')}` : ''}</span></footer>
       </main>

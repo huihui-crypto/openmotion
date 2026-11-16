@@ -104,7 +104,7 @@ There is no automatic fallback from prod to DEV and no `switch-env` CLI. This se
 | DeepSeek Harness | `dsh plugin --profile web add <managed bundle> --ignore-scripts` | Its dedicated bundle/provider Skill root |
 | WorkBuddy | Merge `mcpServers.openmotion` into its `mcp.json` | Flat entries under its configuration root |
 
-Select `--host codex|claude|deepseek|workbuddy`. `--skills-dir` selects the Codex/Claude/WorkBuddy root; Harness uses its own provider. Executable overrides are `--codex`, `--claude`, `--dsh`; Harness also accepts `--profile`. Isolate host configuration with `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `DSH_HOME` or `WORKBUDDY_CONFIG_DIR`; `--home` controls the application installation, not the host profile.
+Select `--host codex|claude|deepseek|workbuddy` for a registration adapter, or the current Agent's lowercase name for [any other local Agent](#other-local-agents). `--skills-dir` selects the Codex/Claude/WorkBuddy/other-Agent root; Harness uses its own provider. Executable overrides are `--codex`, `--claude`, `--dsh`; Harness also accepts `--profile`. Isolate host configuration with `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `DSH_HOME` or `WORKBUDDY_CONFIG_DIR`; `--home` controls the application installation, not the host profile.
 
 Use the same installation flow for every host: collect the platform and Node/npm facts once, select the current Agent, run its setup adapter, then verify actual host loading while video components prepare in the background. An explicit `--host` takes precedence over host context; do not choose a host merely because its CLI is installed. The CLI retains its Codex default for compatibility, so Agent-driven installs should always pass `--host`. Only ask for the missing host/profile when reliable context is unavailable. `openmotion --help`, `setup --help`, `prepare --help` and `--version` work without installing or modifying configuration.
 
@@ -124,6 +124,34 @@ After setup, use working native tools or the direct commands below to continue i
 The internal ownership marker remains stable across the npm package rename so earlier local installations can be upgraded in place. An installation can serve multiple hosts using the same home/data. `install.json.hosts` retains each host. Skill documentation links are rewritten for flat layouts; Codex/Harness retain bundle-relative links. Re-run setup for each installed host when upgrading Skills. Unowned same-name MCP/Skills are refused. Unrelated settings/Skills and existing projects are retained. A registration failure before the profile changes restores the prior install state and Skills. If Harness has already switched to the new owned bundle, setup retains that bundle and its state even when registration or later onboarding reports an error; rerunning setup reconciles owned profile/state differences. Checked application caches remain available for retry.
 
 Compatible phase-one updates do not require closing existing MCP connections or stopping the same workspace's backend. Connections negotiate the API protocol and requested Tool, retaining running exports and completed results; see [shared editor recovery](shared-editor.md). The installer does not terminate existing processes. Incompatible protocols or internal legacy ABIs still require updating the connection and idle backend together. Refresh the host to discover new Tools or reload changed Skills; an already-closed transport needs host reconnection.
+
+<a id="other-local-agents"></a>
+
+### Other local Agents
+
+Any `--host` value outside the four adapters, such as `opencode`, `cursor-agent` or `gemini`, uses the same application, launcher, data directory and Skills. Setup does not read or write that host's configuration. It copies flat Skills to `~/.agents/skills` (or `--skills-dir`), records the host in `install.json.hosts` and returns:
+
+```json
+"agentRegistration": {
+  "serverName": "openmotion",
+  "transport": { "type": "stdio", "command": "/absolute/node", "args": ["/absolute/installHome/run-mcp.mjs"] },
+  "skillsDirectory": "/absolute/.agents/skills"
+}
+```
+
+The calling Agent adds this local stdio server using its own documented MCP format, preserving unrelated settings, then refreshes MCP and calls `openmotion_get_project`. Use the launcher exactly as returned: `run-mcp.mjs` reads `install.json` and configures the workspace, browser and media paths. Do not register a bare `mcp.ts`. `command` is the absolute Node executable that ran setup (`node.exe` on Windows), so no `.cmd` shim is involved. Adapter-less Agents share one Skills owner in that root, so installing a second such Agent reuses the same entries. `tools`, `call` and `diagnose` accept the same `--host` value; `diagnose` probes the launcher but cannot read that host's configuration.
+
+Example for OpenCode (`~/.config/opencode/opencode.json`; OpenCode also reads `~/.agents/skills`):
+
+```json
+{
+  "mcp": {
+    "openmotion": { "type": "local", "command": ["/absolute/node", "/absolute/installHome/run-mcp.mjs"], "enabled": true }
+  }
+}
+```
+
+Run `opencode mcp list` to confirm `openmotion` is connected and `opencode debug skill` to confirm the `openmotion-*` Skills. A host that cannot add a local stdio MCP server can still use `onboarding.directAccess` from a shell-capable chat. Adapter-less setup is not a compatibility claim for every listed Agent; each host's MCP loading is verified in that host.
 
 ## Continue in the current Agent chat
 

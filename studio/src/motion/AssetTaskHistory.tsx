@@ -1,3 +1,4 @@
+import { Tooltip } from "../components/ui/Tooltip";
 import { useState, type ReactElement, type ComponentProps } from 'react';
 import { Popover } from '../components/ui/Popover';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -20,14 +21,14 @@ export function AssetTaskMenu({ disabled, ...history }: Omit<ComponentProps<type
   </button>} />;
 }
 
-export function AssetTaskHistory({ tasks, selectedKey, loading, error, onRetry, onSelect, trigger }: {
+export function AssetTaskHistory({ tasks, selectedKey, loading, error, onRetry, onSelect, trigger, tooltip }: {
   tasks: AssetTask[]; selectedKey?: string; loading: boolean; error?: string; onRetry: () => void;
-  onSelect: (task: AssetTask) => void; trigger: ReactElement;
+  onSelect: (task: AssetTask) => void; trigger: ReactElement; tooltip?: string;
 }) {
   const { t, formatDate } = useI18n();
   const [open, setOpen] = useState(false), [query, setQuery] = useState(''), [filter, setFilter] = useState<AssetTaskMode | 'all'>('all');
   const visible = tasks.filter(task => (filter === 'all' || task.mode === filter) && `${task.title} ${task.detail}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
-  return <Popover modal={false} open={open} onOpenChange={setOpen} align="end" aria-label={t('Task history')} className="om-task-history om-selection-panel" trigger={trigger}>
+  return <Popover tooltip={tooltip} modal={false} open={open} onOpenChange={setOpen} align="end" aria-label={t('Task history')} className="om-task-history om-selection-panel" trigger={trigger}>
     <div className="om-task-history-heading"><span className="om-creation-icon" data-tone="agent"><RemixIcon name="history-line" size={16} /></span><strong>{t('Task history')}</strong><span className="om-badge">{tasks.length}</span></div>
     <label className="om-field"><RemixIcon name="search-line" size={15} /><input aria-label={t('Search tasks')} placeholder={t('Search tasks')} value={query} onChange={event => setQuery(event.target.value)} /></label>
     {/* Temporarily hide the Agent filter; All tasks still preserves access to existing conversations. */}
@@ -37,7 +38,7 @@ export function AssetTaskHistory({ tasks, selectedKey, loading, error, onRetry, 
       {!visible.length && <p className="om-muted om-task-history-empty">{t(loading ? 'Loading tasks…' : query || filter !== 'all' ? 'No matching tasks' : 'Your creative tasks will appear here.')}</p>}
       {visible.map(task => <button className="om-nav-item om-task-item" key={task.key} data-state={task.state} aria-current={task.key === selectedKey ? 'true' : undefined} onClick={() => { setOpen(false); onSelect(task); }}>
         <span className="om-creation-icon" data-tone={task.tone}><RemixIcon name={task.mode === 'agent' ? 'chat-1-line' : creationKinds.find(kind => kind.id === task.tone)!.icon} size={17} /></span>
-        <span className="om-task-item-copy"><strong title={task.title}>{task.title}</strong><span><span className="om-task-state"><RemixIcon name={taskStateIcon(task)} size={12} />{t(taskStateLabel(task))}</span><span className="om-task-item-detail">{task.mode === 'agent' ? t(task.detail) : task.detail}</span></span></span>
+        <span className="om-task-item-copy"><Tooltip label={task.title} wrap><strong>{task.title}</strong></Tooltip><span><span className="om-task-state"><RemixIcon name={taskStateIcon(task)} size={12} />{t(taskStateLabel(task))}</span><span className="om-task-item-detail">{task.mode === 'agent' ? t(task.detail) : task.detail}</span></span></span>
         <span className="om-task-item-end"><time dateTime={new Date(task.updatedAt).toISOString()}>{formatDate(task.updatedAt, { month: 'short', day: 'numeric' })}</time>{task.key === selectedKey ? <RemixIcon name="check-line" size={14} /> : <RemixIcon name="arrow-right-up-line" size={13} />}</span>
       </button>)}
     </div>

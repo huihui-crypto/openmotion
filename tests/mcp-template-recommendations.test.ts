@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createToolRegistry } from '../shared/mcp-registry.ts';
 import { loadTemplatePresentation } from '../shared/mcp-template-recommendations.ts';
 import { inlineVideoUri } from '../shared/inline-video.ts';
+import { onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const name = 'openmotion_show_template_recommendations';
 const ids = ['decision-tree', 'product-promo', 'nyt-graph'];
@@ -43,7 +44,7 @@ test('a negotiated native presentation is discoverable, readable and project-fre
   const resource = await call('resources/read', { uri });
   const content = resource.result.contents[0];
   assert.equal(content.mimeType, 'text/html;profile=mcp-app');
-  assert.deepEqual(content._meta.ui.csp.resourceDomains, ['blob:']);
+  assert.deepEqual(content._meta.ui.csp.resourceDomains, ['blob:', 'https://r.open-design.ai']);
   assert.match(content.text, /__OPENMOTION_TEMPLATE_CARDS__/);
   assert.ok(Buffer.byteLength(JSON.stringify(resource)) < 1.5 * 1024 * 1024);
   assert.deepEqual(await store.get(), before);
@@ -108,10 +109,10 @@ test('onboarding is an explicit read-only presentation mode and ordinary calls r
   await call('initialize', { protocolVersion: '2025-06-18', capabilities });
   const regular = (await call('tools/call', { name, arguments: { templateIds: ids } })).result;
   assert.equal('onboarding' in regular.structuredContent, false);
-  const welcome = (await call('tools/call', { name, arguments: { templateIds: ids, onboarding: true } })).result;
+  const welcome = (await call('tools/call', { name, arguments: { templateIds: onboardingTemplateIds.slice(0, 3), onboarding: true } })).result;
   assert.equal(welcome.isError, undefined);
   assert.equal(welcome.structuredContent.onboarding, true);
-  assert.deepEqual(welcome.structuredContent.cards.map((card: any) => card.templateId), ids);
+  assert.deepEqual(welcome.structuredContent.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(0, 3));
   assert.match(welcome.content[0].text, /Do not append/);
   const invalid = await call('tools/call', { name, arguments: { templateIds: ids, onboarding: 'true' } });
   assert.equal(invalid.result.isError, true);
@@ -128,10 +129,10 @@ test('presentation carries every supported conversation language without changin
   assert.deepEqual(definition.inputSchema.properties.language.enum, languages);
   assert.match(definition.description, /latest user request/);
   for (const language of languages) {
-    const shown = (await call('tools/call', { name, arguments: { templateIds: ids, onboarding: true, language } })).result;
+    const shown = (await call('tools/call', { name, arguments: { templateIds: onboardingTemplateIds.slice(0, 3), onboarding: true, language } })).result;
     assert.equal(shown.isError, undefined);
     assert.equal(shown.structuredContent.language, language);
-    assert.deepEqual(shown.structuredContent.cards.map((card: any) => card.templateId), ids);
+    assert.deepEqual(shown.structuredContent.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(0, 3));
   }
   assert.deepEqual(await store.get(), before);
 }));

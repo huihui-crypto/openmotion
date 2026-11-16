@@ -412,3 +412,30 @@ describe("RenderQueue history", () => {
   act(() => button.click());
   expect(start).not.toHaveBeenCalled();
 });
+
+
+it("opens hover-styled format help on activation and dismisses with Escape without exporting", async () => {
+  const start = vi.fn<StartRenderHandler>();
+  const host = mountRenderQueue(start);
+  const trigger = host.querySelector<HTMLButtonElement>('[aria-label="About video formats"]')!;
+  act(() => { trigger.focus(); trigger.click(); });
+  await settle();
+  const tip = document.querySelector('[role="dialog"][aria-label="About video formats"]')!;
+  expect(tip.classList.contains("studio-tooltip")).toBe(true);
+  expect(tip.classList.contains("pointer-events-none")).toBe(false);
+  for (const name of ["MP4", "MOV · ProRes", "WebM", "GIF"]) expect(tip.textContent).toContain(name);
+  expect(trigger.getAttribute("aria-controls")).toBe(tip.id);
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  fire(trigger, "keydown", "Escape");
+  await settle();
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(document.querySelector('[role="dialog"][data-open]')).toBeNull();
+  // Native click is also the activation synthesized by touch and keyboard.
+  act(() => trigger.click());
+  await settle();
+  expect(trigger.getAttribute("aria-expanded")).toBe("true");
+  act(() => trigger.click());
+  await settle();
+  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  expect(start).not.toHaveBeenCalled();
+});

@@ -9,7 +9,6 @@ import { SettingsCenter } from './SettingsCenter';
 vi.mock('./WorkspaceFrame', () => ({ useWorkspaceChrome: () => ({ openHome: vi.fn(), openLibrary: vi.fn(), switchingDisabled: false, navigationCollapsed: false }) }));
 vi.mock('./AccountSettings', () => ({ useAccountSummary: () => ({ account: null }), AccountSettings: () => null }));
 vi.mock('./ModelSwitcher', () => ({ ModelSwitcher: () => null }));
-vi.mock('./CommunityLink', () => ({ CommunityLink: () => null }));
 vi.mock('./GitHubLink', () => ({ GitHubLink: () => null }));
 vi.mock('./gatewayClient', () => ({ gatewayRequest: vi.fn(async () => ({ version: 'test' })) }));
 

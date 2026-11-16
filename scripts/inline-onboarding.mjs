@@ -6,16 +6,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { runFile } from './runtime-assets.mjs';
+import { selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 // A current host can render this read-only production view without loading a
 // new MCP tool. Domain work continues through the installation's existing CLI.
-export async function prepareInlineOnboarding({ appRoot, output, language = 'en' }) {
+export async function prepareInlineOnboarding({ appRoot, output, language = 'en', templateIds = selectOnboardingTemplateIds() }) {
   assert(path.isAbsolute(output) && output.endsWith('.html'), 'Inline onboarding requires an absolute HTML output path supplied by the calling host');
   return JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', path.join(appRoot, 'scripts/inline-onboarding.mjs'),
-    '--output', output, '--language', language], { cwd: appRoot }));
+    '--output', output, '--language', language, '--template-ids', JSON.stringify(templateIds)], { cwd: appRoot }));
 }
 
-export async function renderInlineOnboarding({ appRoot, output, language = 'en' }) {
+export async function renderInlineOnboarding({ appRoot, output, language = 'en', templateIds = selectOnboardingTemplateIds() }) {
   language = typeof language === 'string' ? language.trim().toLowerCase().split(/[-_]/)[0] : 'en';
   if (!['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'].includes(language)) language = 'en';
   const { loadTemplatePresentation, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
@@ -26,7 +27,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en' 
   assert(match, 'Verified production bootstrap is missing');
   const bootstrap = JSON.parse(match[1]);
   const recommendation = showTemplateRecommendations(presentation, {
-    templateIds: ['product-promo', 'nyt-graph', 'decision-tree'], language,
+    templateIds, language, onboarding: true,
   });
   let fragment = await readFile(path.join(directory, 'inline.fragment.html'), 'utf8');
   const json = value => JSON.stringify(value).replaceAll('<', '\\u003c');
@@ -35,7 +36,7 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en' 
     '/*__OPENMOTION_INLINE_STYLE__*/': (await readFile(path.join(directory, 'build/app.css'), 'utf8')).replace(/<\/style/gi, '<\\/style'),
     '/*__OPENMOTION_INLINE_APP__*/': (await readFile(path.join(directory, 'build/app.js'), 'utf8')).replace(/<\/script/gi, '<\\/script'),
     '/*__OPENMOTION_INLINE_BOOTSTRAP__*/': json(bootstrap),
-    '/*__OPENMOTION_INLINE_RECOMMENDATION__*/': json(recommendation),
+    '/*__OPENMOTION_INLINE_RECOMMENDATION__*/': json({ ...recommendation, onboarding: false }),
   };
   for (const [marker, value] of Object.entries(parts)) {
     assert(fragment.includes(marker), 'Inline template marker is missing: ' + marker);
@@ -78,12 +79,14 @@ export async function publishInlineOnboarding({ source, expectedSHA256, hostDire
 
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
   const { values } = parseArgs({ options: { output: { type: 'string' }, language: { type: 'string' },
+    'template-ids': { type: 'string' },
     'publish-from': { type: 'string' }, sha256: { type: 'string' }, 'host-directory': { type: 'string' } } });
   if (values['publish-from']) {
     console.log(JSON.stringify(await publishInlineOnboarding({ source: values['publish-from'], expectedSHA256: values.sha256,
       hostDirectory: values['host-directory'] }), null, 2));
   } else {
     assert(values.output && path.isAbsolute(values.output) && values.output.endsWith('.html'), 'Pass --output with an absolute .html path');
-    console.log(JSON.stringify(await renderInlineOnboarding({ appRoot: fileURLToPath(new URL('../', import.meta.url)), output: values.output, language: values.language }), null, 2));
+    console.log(JSON.stringify(await renderInlineOnboarding({ appRoot: fileURLToPath(new URL('../', import.meta.url)), output: values.output, language: values.language,
+      ...(values['template-ids'] ? { templateIds: JSON.parse(values['template-ids']) } : {}) }), null, 2));
   }
 }

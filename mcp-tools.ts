@@ -13,6 +13,7 @@ import { verifyExport } from './scripts/verify-export.ts';
 import type { ExportExpectation } from './shared/export-spec.ts';
 import { creationModes, creationMode } from './shared/session.ts';
 import { sessionPath } from './shared/workspace-url.ts';
+import type { OmTracking } from './shared/tracking.ts';
 import { gatewayFor } from './gateway/service.ts';
 import type { GenerateInput } from './shared/gateway.ts';
 import { editorHeaders } from './editor-runtime.ts';
@@ -87,7 +88,7 @@ async function designRequest(origin: string, path: string, data: object, store: 
   if (!response.ok) throw new Error(result.error || '会话操作失败');
   return result;
 }
-export async function callTool(name: string, args: Record<string, unknown> = {}, store = new WorkspaceStore()) {
+export async function callTool(name: string, args: Record<string, unknown> = {}, store = new WorkspaceStore(), tracking?: OmTracking) {
   name = legacyToolName(name);
   if (!tools.some(tool => tool.name === publicToolName(name))) throw new Error('Unknown tool: ' + name);
   if (args.projectId !== undefined) {
@@ -117,7 +118,7 @@ export async function callTool(name: string, args: Record<string, unknown> = {},
       return { ...artifact, session: await store.session(result.sessionId), ...viewerLinks(origin, result.sessionId, artifact.projectId, args.embedded !== false) };
     } catch (error) { return { ...result, artifactError: (error as Error).message, ...viewerLinks(origin, result.sessionId) }; }
   }
-  const gateway = gatewayFor(store);
+  const gateway = gatewayFor(store, tracking);
   if (name === 'motion_get_capabilities') return gateway.status(args.refresh === true);
   if (name === 'motion_list_models') return gateway.listModels(args);
   if (name === 'motion_configure_provider') return gateway.configureProvider(args.provider, args);

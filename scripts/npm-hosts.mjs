@@ -4,7 +4,15 @@ import path from 'node:path';
 import os from 'node:os';
 import { canonical, readJSON, runFile, withLock, writeJSON } from './runtime-assets.mjs';
 
+// Hosts with a dedicated registration adapter. Any other valid --host name installs the same
+// application, launcher and Skills, then hands the MCP entry to the calling Agent to register.
 export const hosts = ['codex', 'claude', 'deepseek', 'workbuddy'];
+export const genericHostPattern = /^[a-z][a-z0-9-]{0,31}$/;
+// `constructor` and the other Object.prototype keys match the name pattern but are never an Agent name.
+const prototypeHostNames = new Set(Object.getOwnPropertyNames(Object.prototype));
+export const isGenericHostName = host => genericHostPattern.test(host) && !prototypeHostNames.has(host);
+// Generic hosts share one flat Skills root, so their Skills have one owner rather than one per Agent name.
+const genericSkillOwner = 'agents';
 // Keep ownership stable so earlier local installations remain upgradable.
 const owner = '@openmotion/installer';
 const bundleName = 'dsh-plugin-openmotion-local';
@@ -55,9 +63,17 @@ export async function harnessBundleInventory(home, configFile) {
 
 export async function hostPlan(options, home, launcher, previous, bundleId) {
   const host = options.host || 'codex';
-  assert(hosts.includes(host), 'Supported hosts: ' + hosts.join(', '));
+  assert(hosts.includes(host) || isGenericHostName(host), 'Use --host ' + hosts.join('|') + ' or the current Agent name in lowercase letters, digits and hyphens (for example opencode)');
   const transport = { type: 'stdio', command: process.execPath, args: [launcher] };
-  const saved = previous?.hosts?.[host] || (host === 'codex' && previous?.skillsDirectory ? { skillsDirectory: previous.skillsDirectory } : null);
+  const saved = Object.hasOwn(previous?.hosts ?? {}, host) ? previous.hosts[host]
+    : (host === 'codex' && previous?.skillsDirectory ? { skillsDirectory: previous.skillsDirectory } : null);
+  if (!hosts.includes(host)) {
+    // No adapter: the installer cannot read this host's configuration, so the calling Agent registers the entry.
+    const skillsDirectory = await canonical(options.skillsDirectory || saved?.skillsDirectory || path.join(os.homedir(), '.agents/skills'));
+    const metadata = { skillsDirectory, layout: 'flat', registration: 'agent' };
+    return { host, skillOwner: genericSkillOwner, ...metadata, metadata, connection: { transport }, register: async () => {},
+      agentRegistration: { serverName: 'openmotion', transport, skillsDirectory } };
+  }
   const defaultSkills = host === 'claude' ? path.join(process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude'), 'skills')
     : host === 'workbuddy' ? path.join(process.env.WORKBUDDY_CONFIG_DIR || path.join(os.homedir(), '.workbuddy'), 'skills')
       : path.join(os.homedir(), '.agents/skills');
@@ -167,7 +183,7 @@ export async function obsoleteSkills(plan, home, targets) {
     let scope;
     try { scope = await readJSON(path.join(target, 'openmotion-install.json')); }
     catch (error) { if (error instanceof SyntaxError) continue; throw error; }
-    if (scope?.managedBy === owner && scope.installHome === home && scope.host === plan.host) obsolete.push(target);
+    if (scope?.managedBy === owner && scope.installHome === home && scope.host === (plan.skillOwner || plan.host)) obsolete.push(target);
   }
   return obsolete;
 }
@@ -180,7 +196,7 @@ export async function checkSkillOwner(target, home, host, layout) {
 }
 
 export async function copyHostSkills(stage, target, appRoot, plan, home, version, dataDirectory) {
-  const scope = { managedBy: owner, installHome: home, runtimeRoot: appRoot, version, dataDirectory, host: plan.host, ...(plan.host === 'deepseek' ? { configFile: plan.metadata.configFile } : {}) };
+  const scope = { managedBy: owner, installHome: home, runtimeRoot: appRoot, version, dataDirectory, host: plan.skillOwner || plan.host, ...(plan.host === 'deepseek' ? { configFile: plan.metadata.configFile } : {}) };
   if (plan.layout !== 'flat') {
     for (const name of ['skills', 'docs', 'README.md', 'AGENTS.md', 'CLAUDE.md']) await cp(path.join(appRoot, name), path.join(stage, name), { recursive: true });
     await writeJSON(path.join(stage, 'scope.json'), scope);

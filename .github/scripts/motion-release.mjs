@@ -92,6 +92,10 @@ export async function validateSource(control, commit, version, run = runFile, ch
   await run('git', ['merge-base', '--is-ancestor', commit, 'refs/remotes/origin/main'], { cwd: control });
 }
 
+export function candidateNoteIdentity(candidate) {
+  return `<!-- openmotion-candidate version=${candidate.version} source=${candidate.sourceCommit} sha256=${candidate.tgzSHA256} -->`;
+}
+
 export async function sealCandidate(build, output, source, env = process.env) {
   const manifest = await json(path.join(build, 'release-npm.json'));
   assert.equal(manifest.commit, (await runFile('git', ['rev-parse', 'HEAD'], { cwd: source })).trim());
@@ -105,7 +109,7 @@ export async function sealCandidate(build, output, source, env = process.env) {
   const filename = manifest.installer.url.replace(/^\.\//, '');
   assert.equal(filename, `openmotion-app-${manifest.version}.tgz`);
   await mkdir(output, { recursive: true });
-  for (const name of [filename, 'release-npm.json', 'source-scan.json', 'package-scan.json']) await cp(path.join(build, name), path.join(output, name));
+  for (const name of [filename, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'release-notes.md']) await cp(path.join(build, name), path.join(output, name));
   const guide = await generateInstallGuide(path.join(output, filename), output);
   assert.equal(guide.packageName, '@openmotion/app'); assert.equal(guide.commit, env.MOTION_SOURCE_SHA);
   for (const name of ['source-scan.json', 'package-scan.json']) assert.equal((await json(path.join(output, name))).status, 'passed');
@@ -123,9 +127,11 @@ export async function sealCandidate(build, output, source, env = process.env) {
   const instructions = installTemplate.replace(/\{\{([A-Z0-9_]+)\}\}/g, (_, key) => { assert(Object.hasOwn(values, key)); return values[key]; });
   assert(!instructions.includes('{{'), 'Unresolved candidate instructions');
   await writeFile(path.join(output, 'candidate-install.md'), instructions);
-  const names = [filename, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'install.md', 'install-record.json', 'acceptance.md', 'candidate-install.md'];
+  const notes = await readFile(path.join(output, 'release-notes.md'), 'utf8');
+  assert(Buffer.byteLength(notes) <= 1024 * 1024 && notes.includes(candidateNoteIdentity({ ...identity, version: manifest.version })), 'Candidate notes identity mismatch');
+  const names = [filename, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'install.md', 'install-record.json', 'acceptance.md', 'candidate-install.md', 'release-notes.md'];
   const files = Object.fromEntries(await Promise.all(names.map(async name => [name, await sha256(path.join(output, name))])));
-  const candidate = { schemaVersion: 2, kind: 'motion-candidate', packageName: guide.packageName, version: guide.version,
+  const candidate = { schemaVersion: 3, kind: 'motion-candidate', packageName: guide.packageName, version: guide.version,
     sourceCommit: guide.commit, tgz: filename, tgzSHA256: files[filename], integrity: integrity(await readFile(path.join(output, filename))), files,
     workflow: { repository, path: candidateWorkflow, ref: workflowRef, sha: env.GITHUB_SHA,
       runId: Number(env.GITHUB_RUN_ID), attempt: Number(env.GITHUB_RUN_ATTEMPT) },
@@ -184,7 +190,7 @@ async function verifyAuthorization(directory, inputs, env = process.env) {
 
 export async function verifyCandidate(directory, expectedSHA256, run) {
   const candidate = await json(path.join(directory, 'candidate.json'));
-  assert.equal(candidate.schemaVersion, 2); assert.equal(candidate.kind, 'motion-candidate'); assert.equal(candidate.packageName, '@openmotion/app');
+  assert([2, 3].includes(candidate.schemaVersion), 'Unsupported candidate schema'); assert.equal(candidate.kind, 'motion-candidate'); assert.equal(candidate.packageName, '@openmotion/app');
   checkReleaseVersion(candidate.version);
   assert.equal(candidate.tgz, `openmotion-app-${candidate.version}.tgz`); assert.equal(candidate.tgzSHA256, expectedSHA256);
   assert.match(expectedSHA256, hashPattern); assert.match(candidate.sourceCommit, /^[a-f0-9]{40}$/);
@@ -196,8 +202,13 @@ export async function verifyCandidate(directory, expectedSHA256, run) {
   assert([repository, 'nexu-io/html-anything'].includes(receiptRepository), 'Untrusted candidate repository');
   assert.deepEqual(candidate.workflow, { repository: receiptRepository, path: candidateWorkflow, ref, sha: run.head_sha, runId: run.id, attempt: run.run_attempt });
   const names = [candidate.tgz, 'release-npm.json', 'source-scan.json', 'package-scan.json', 'install.md', 'install-record.json', 'acceptance.md', 'candidate-install.md'];
+  if (candidate.schemaVersion >= 3) names.push('release-notes.md');
   assert.deepEqual(Object.keys(candidate.files).sort(), names.sort());
   for (const name of names) assert.equal(await sha256(path.join(directory, name)), candidate.files[name], 'Candidate file changed: ' + name);
+  if (candidate.schemaVersion >= 3) {
+    const notes = await readFile(path.join(directory, 'release-notes.md'), 'utf8');
+    assert(Buffer.byteLength(notes) <= 1024 * 1024 && notes.includes(candidateNoteIdentity(candidate)), 'Candidate notes identity mismatch');
+  }
   assert.equal(await sha256(path.join(directory, candidate.tgz)), expectedSHA256);
   assert.equal(integrity(await readFile(path.join(directory, candidate.tgz))), candidate.integrity);
   const guide = await json(path.join(directory, 'install-record.json'));
@@ -244,7 +255,7 @@ export async function downloadCandidate(version, directory, expectedSHA256, fetc
   try {
     const archive = path.join(work, 'candidate.zip'); await writeFile(archive, bytes);
     const entries = (await runFile('unzip', ['-Z1', archive])).trim().split('\n');
-    assert(entries.length === 9 && new Set(entries).size === 9, 'Unexpected candidate artifact files');
+    assert([9, 10].includes(entries.length) && new Set(entries).size === entries.length, 'Unexpected candidate artifact files');
     assert(entries.every(name => /^[a-zA-Z0-9._-]+$/.test(name) && name.length < 160), 'Unsafe candidate artifact entry');
     await mkdir(directory, { recursive: true });
     for (const name of entries) {
@@ -252,6 +263,7 @@ export async function downloadCandidate(version, directory, expectedSHA256, fetc
       await writeFile(path.join(directory, name), stdout);
     }
     const candidate = await verifyCandidate(directory, expectedSHA256 || (await json(path.join(directory, 'candidate.json'))).tgzSHA256, run);
+    assert.deepEqual(entries.sort(), ['candidate.json', ...Object.keys(candidate.files)].sort(), 'Unexpected candidate artifact files');
     assert.equal(candidate.version, version, 'Artifact version differs from the accepted version');
     await writeJSON(path.join(directory, 'provenance.json'), { runId: run.id, attempt: run.run_attempt, head_branch: run.head_branch, head_sha: run.head_sha, artifactId: artifact.id, digest: artifact.digest });
     return candidate;

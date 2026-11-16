@@ -1,17 +1,20 @@
-export const templateIds = ['product-promo', 'nyt-graph', 'decision-tree'] as const;
+export { recommendationTemplateIds as templateIds } from '../../shared/onboarding-templates.ts';
+import { recommendationTemplateIds } from '../../shared/onboarding-templates.ts';
 export type Language = 'zh' | 'en' | 'ja' | 'ko' | 'fr' | 'es' | 'pt';
-export type TemplateId = typeof templateIds[number];
+export type TemplateId = typeof recommendationTemplateIds[number];
 export type TemplateAsset = Readonly<{
   id: string; title: string; description: string; durationSeconds: number;
-  videoBase64: string; posterBase64: string; posterMimeType: 'image/jpeg';
-}>;
+  kind?: 'reference'; descriptions?: Partial<Record<Language, string>>;
+  videoCategories?: Partial<Record<Language, string>>;
+} & ({ videoBase64: string; posterBase64: string; posterMimeType: 'image/jpeg'; videoUrl?: never; posterUrl?: never }
+  | { videoUrl: string; posterUrl: string; videoBase64?: never; posterBase64?: never; posterMimeType?: never })>;
 export type TemplateCardsBootstrap = Readonly<{ resourceVersion: string; templates: readonly TemplateAsset[] }>;
 export type CreateArgs = Readonly<{
   requestId: string; projectType: 'template'; templateId: string; title: string; requirements: string;
 }>;
 export type RecommendationCard = Readonly<{
   position: number; templateId: string; title: string; description: string; durationSeconds: number;
-  actionRequestId: string; createArgs: CreateArgs;
+  actionRequestId: string; createArgs?: CreateArgs; templateKind?: 'reference';
 }>;
 export type Recommendation = Readonly<{
   schemaVersion: 1; resourceVersion: string; recommendationId: string;
