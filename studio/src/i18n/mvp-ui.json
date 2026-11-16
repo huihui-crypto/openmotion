@@ -315,7 +315,14 @@
     "Use your own API key to generate images, video and audio.": "自分の API キーで画像・動画・音声を生成します。",
     "Split ({value0})": "分割 ({value0})",
     "Snapping ({value0})": "スナップ ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "このエディターでは、サブコンポジション内のクリップの分割はサポートされていません。"
+    "Splitting clips inside a sub-composition is not supported in this editor.": "このエディターでは、サブコンポジション内のクリップの分割はサポートされていません。",
+    "MCP instruction": "MCP 指示",
+    "Copy a project instruction to keep editing in another Agent session": "プロジェクト指示をコピーして、別の Agent セッションで編集を続ける",
+    "Continue editing in another Agent": "別の Agent で編集を続ける",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "この指示を Codex、Claude Code、または OpenMotion MCP に接続したセッションに貼り付けてください。このプロジェクトを開き、Studio の編集を保護します。",
+    "Not connected yet? Connect Agent": "未接続ですか？Agent を接続",
+    "Copy instruction": "指示をコピー",
+    "Project instruction copied. Paste it into another Agent session.": "プロジェクト指示をコピーしました。別の Agent セッションに貼り付けてください。"
   },
   "ko": {
     "OpenMotion Sample Video": "OpenMotion 예제 영상",
@@ -633,7 +640,14 @@
     "Use your own API key to generate images, video and audio.": "본인의 API 키로 이미지, 동영상, 오디오를 생성하세요.",
     "Split ({value0})": "분할 ({value0})",
     "Snapping ({value0})": "스냅 ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "이 편집기에서는 하위 컴포지션 내부의 클립 분할을 지원하지 않습니다."
+    "Splitting clips inside a sub-composition is not supported in this editor.": "이 편집기에서는 하위 컴포지션 내부의 클립 분할을 지원하지 않습니다.",
+    "MCP instruction": "MCP 지시문",
+    "Copy a project instruction to keep editing in another Agent session": "프로젝트 지시문을 복사해 다른 Agent 세션에서 계속 편집",
+    "Continue editing in another Agent": "다른 Agent에서 계속 편집",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "이 지시문을 Codex, Claude Code 또는 OpenMotion MCP에 연결된 세션에 붙여 넣으세요. 이 프로젝트를 열고 Studio 편집 내용을 보호합니다.",
+    "Not connected yet? Connect Agent": "아직 연결 전인가요? Agent 연결",
+    "Copy instruction": "지시문 복사",
+    "Project instruction copied. Paste it into another Agent session.": "프로젝트 지시문을 복사했습니다. 다른 Agent 세션에 붙여 넣으세요."
   },
   "de": {
     "OpenMotion Sample Video": "OpenMotion-Beispielvideo",
@@ -951,7 +965,14 @@
     "Use your own API key to generate images, video and audio.": "Mit deinem eigenen API-Schlüssel Bilder, Videos und Audio generieren.",
     "Split ({value0})": "Teilen ({value0})",
     "Snapping ({value0})": "Einrasten ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "Das Teilen von Clips innerhalb einer Unterkomposition wird in diesem Editor nicht unterstützt."
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Das Teilen von Clips innerhalb einer Unterkomposition wird in diesem Editor nicht unterstützt.",
+    "MCP instruction": "MCP-Anweisung",
+    "Copy a project instruction to keep editing in another Agent session": "Projektanweisung kopieren, um in einer anderen Agent-Sitzung weiterzuarbeiten",
+    "Continue editing in another Agent": "In einem anderen Agent weiterbearbeiten",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "Füge diese Anweisung in Codex, Claude Code oder eine mit OpenMotion MCP verbundene Sitzung ein. Sie öffnet genau dieses Projekt und schützt Studio-Änderungen.",
+    "Not connected yet? Connect Agent": "Noch nicht verbunden? Agent verbinden",
+    "Copy instruction": "Anweisung kopieren",
+    "Project instruction copied. Paste it into another Agent session.": "Projektanweisung kopiert. Füge sie in eine andere Agent-Sitzung ein."
   },
   "fr": {
     "OpenMotion Sample Video": "Vidéo d’exemple OpenMotion",
@@ -1269,7 +1290,14 @@
     "Use your own API key to generate images, video and audio.": "Utilisez votre propre clé API pour générer des images, des vidéos et du son.",
     "Split ({value0})": "Scinder ({value0})",
     "Snapping ({value0})": "Magnétisme ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "Cet éditeur ne permet pas de scinder les clips à l’intérieur d’une sous-composition."
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Cet éditeur ne permet pas de scinder les clips à l’intérieur d’une sous-composition.",
+    "MCP instruction": "Instruction MCP",
+    "Copy a project instruction to keep editing in another Agent session": "Copier une instruction de projet pour continuer dans une autre session d’Agent",
+    "Continue editing in another Agent": "Continuer dans un autre Agent",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "Collez cette instruction dans Codex, Claude Code ou toute session connectée à OpenMotion MCP. Elle ouvre ce projet précis et protège les modifications Studio.",
+    "Not connected yet? Connect Agent": "Pas encore connecté ? Connecter un Agent",
+    "Copy instruction": "Copier l’instruction",
+    "Project instruction copied. Paste it into another Agent session.": "Instruction de projet copiée. Collez-la dans une autre session d’Agent."
   },
   "ru": {
     "OpenMotion Sample Video": "Пример видео OpenMotion",
@@ -1587,7 +1615,14 @@
     "Use your own API key to generate images, video and audio.": "Используйте свой API-ключ для генерации изображений, видео и аудио.",
     "Split ({value0})": "Разделить ({value0})",
     "Snapping ({value0})": "Привязка ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "В этом редакторе нельзя разделять клипы внутри подкомпозиции."
+    "Splitting clips inside a sub-composition is not supported in this editor.": "В этом редакторе нельзя разделять клипы внутри подкомпозиции.",
+    "MCP instruction": "Инструкция MCP",
+    "Copy a project instruction to keep editing in another Agent session": "Скопируйте инструкцию проекта, чтобы продолжить в другом сеансе Agent",
+    "Continue editing in another Agent": "Продолжить в другом Agent",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "Вставьте эту инструкцию в Codex, Claude Code или любой сеанс, подключённый к OpenMotion MCP. Она откроет именно этот проект и сохранит правки Studio.",
+    "Not connected yet? Connect Agent": "Ещё не подключено? Подключить Agent",
+    "Copy instruction": "Скопировать инструкцию",
+    "Project instruction copied. Paste it into another Agent session.": "Инструкция проекта скопирована. Вставьте её в другой сеанс Agent."
   },
   "es": {
     "OpenMotion Sample Video": "Vídeo de ejemplo de OpenMotion",
@@ -1905,7 +1940,14 @@
     "Use your own API key to generate images, video and audio.": "Usa tu propia clave API para generar imágenes, vídeo y audio.",
     "Split ({value0})": "Dividir ({value0})",
     "Snapping ({value0})": "Ajuste magnético ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor no permite dividir clips dentro de una subcomposición."
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor no permite dividir clips dentro de una subcomposición.",
+    "MCP instruction": "Instrucción MCP",
+    "Copy a project instruction to keep editing in another Agent session": "Copia una instrucción del proyecto para seguir editando en otra sesión de Agent",
+    "Continue editing in another Agent": "Seguir editando en otro Agent",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "Pega esta instrucción en Codex, Claude Code o cualquier sesión conectada a OpenMotion MCP. Abre este proyecto exacto y protege los cambios de Studio.",
+    "Not connected yet? Connect Agent": "¿Aún sin conectar? Conectar Agent",
+    "Copy instruction": "Copiar instrucción",
+    "Project instruction copied. Paste it into another Agent session.": "Instrucción del proyecto copiada. Pégala en otra sesión de Agent."
   },
   "pt-BR": {
     "OpenMotion Sample Video": "Vídeo de exemplo do OpenMotion",
@@ -2223,7 +2265,14 @@
     "Use your own API key to generate images, video and audio.": "Use sua própria chave de API para gerar imagens, vídeos e áudio.",
     "Split ({value0})": "Dividir ({value0})",
     "Snapping ({value0})": "Encaixe ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor não permite dividir clipes dentro de uma subcomposição."
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Este editor não permite dividir clipes dentro de uma subcomposição.",
+    "MCP instruction": "Instrução MCP",
+    "Copy a project instruction to keep editing in another Agent session": "Copie uma instrução do projeto para continuar editando em outra sessão de Agent",
+    "Continue editing in another Agent": "Continuar editando em outro Agent",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "Cole esta instrução no Codex, Claude Code ou em qualquer sessão conectada ao OpenMotion MCP. Ela abre exatamente este projeto e protege as edições do Studio.",
+    "Not connected yet? Connect Agent": "Ainda não conectado? Conectar Agent",
+    "Copy instruction": "Copiar instrução",
+    "Project instruction copied. Paste it into another Agent session.": "Instrução do projeto copiada. Cole-a em outra sessão de Agent."
   },
   "it": {
     "OpenMotion Sample Video": "Video di esempio OpenMotion",
@@ -2541,7 +2590,14 @@
     "Use your own API key to generate images, video and audio.": "Usa la tua chiave API per generare immagini, video e audio.",
     "Split ({value0})": "Dividi ({value0})",
     "Snapping ({value0})": "Aggancio ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "Questo editor non supporta la divisione di clip all’interno di una sottocomposizione."
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Questo editor non supporta la divisione di clip all’interno di una sottocomposizione.",
+    "MCP instruction": "Istruzione MCP",
+    "Copy a project instruction to keep editing in another Agent session": "Copia un’istruzione di progetto per continuare in un’altra sessione Agent",
+    "Continue editing in another Agent": "Continua in un altro Agent",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "Incolla questa istruzione in Codex, Claude Code o in una sessione collegata a OpenMotion MCP. Apre esattamente questo progetto e protegge le modifiche di Studio.",
+    "Not connected yet? Connect Agent": "Non ancora collegato? Collega Agent",
+    "Copy instruction": "Copia istruzione",
+    "Project instruction copied. Paste it into another Agent session.": "Istruzione di progetto copiata. Incollala in un’altra sessione Agent."
   },
   "tr": {
     "OpenMotion Sample Video": "OpenMotion Örnek Videosu",
@@ -2859,6 +2915,13 @@
     "Use your own API key to generate images, video and audio.": "Kendi API anahtarınızla görsel, video ve ses oluşturun.",
     "Split ({value0})": "Böl ({value0})",
     "Snapping ({value0})": "Yapışma ({value0})",
-    "Splitting clips inside a sub-composition is not supported in this editor.": "Bu düzenleyicide alt kompozisyon içindeki klipleri bölme desteklenmiyor."
+    "Splitting clips inside a sub-composition is not supported in this editor.": "Bu düzenleyicide alt kompozisyon içindeki klipleri bölme desteklenmiyor.",
+    "MCP instruction": "MCP talimatı",
+    "Copy a project instruction to keep editing in another Agent session": "Başka bir Agent oturumunda düzenlemeye devam etmek için proje talimatını kopyalayın",
+    "Continue editing in another Agent": "Başka bir Agent’ta düzenlemeye devam et",
+    "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "Bu talimatı Codex, Claude Code veya OpenMotion MCP’ye bağlı herhangi bir oturuma yapıştırın. Tam olarak bu projeyi açar ve Studio düzenlemelerini korur.",
+    "Not connected yet? Connect Agent": "Henüz bağlı değil mi? Agent bağla",
+    "Copy instruction": "Talimatı kopyala",
+    "Project instruction copied. Paste it into another Agent session.": "Proje talimatı kopyalandı. Başka bir Agent oturumuna yapıştırın."
   }
 }

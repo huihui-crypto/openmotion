@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { setupPrompt, setupGuideUrl, templatePrompt, type IntegrationInfo } from '../shared/integration.ts';
+import { projectEditPrompt, projectEditorUrl, setupPrompt, setupGuideUrl, templatePrompt, type IntegrationInfo } from '../shared/integration.ts';
 
 const info: IntegrationInfo = {
   name: 'OpenMotion', version: '1.0.0', templateSource: 'repository',
@@ -57,4 +57,23 @@ test('template prompt reuses the shared published install guide', () => {
       assert.ok(templatePrompt(published, 'codex', template, locale).includes(setupGuideUrl(published)));
     }
   }
+});
+
+test('project instruction pins the exact project and composes only public MCP operations', () => {
+  const project = { id: '0f8fad5b-d9cb-469f-a165-70867728950e', title: 'Launch film' };
+  for (const locale of ['en', 'zh-CN'] as const) {
+    const prompt = projectEditPrompt(info, project, locale);
+    assert.match(prompt, new RegExp(project.id));
+    assert.match(prompt, /Launch film/);
+    assert.ok(prompt.includes(info.dataDirectory));
+    assert.ok(prompt.includes(projectEditorUrl(info, project.id)));
+    for (const tool of ['openmotion_get_project', 'openmotion_open_preview', 'openmotion_edit_project']) assert.ok(prompt.includes(tool), `${locale}: ${tool}`);
+    assert.match(prompt, /expectedRevision/);
+    assert.doesNotMatch(prompt, /openmotion_create_project/);
+    const offline = projectEditPrompt(null, { id: project.id, title: ' ' }, locale);
+    assert.match(offline, new RegExp(project.id));
+    assert.ok(offline.includes(setupGuideUrl(null)));
+    assert.doesNotMatch(offline, /127\.0\.0\.1|project-data/);
+  }
+  assert.equal(projectEditorUrl({ ...info, previewUrl: 'http://127.0.0.1:49937/' }, 'project'), 'http://127.0.0.1:49937/?project=project#project/project');
 });

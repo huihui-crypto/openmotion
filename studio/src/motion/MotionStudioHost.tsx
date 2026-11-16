@@ -17,6 +17,7 @@ import { WorkspaceProject } from './WorkspaceProject';
 import { WorkspaceSaveStatus } from './WorkspaceSaveStatus';
 import { trackMotion } from './tracking';
 import { OpenMotionAgentTools } from './OpenMotionAgentTools';
+import { ProjectAgentInstruction } from './ProjectAgentInstruction';
 
 export function MotionEditorFrame({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -67,6 +68,7 @@ function WorkspaceHistoryActions() {
       <TimelineHistoryButtons canUndo={operation.busy ? false : undefined} canRedo={operation.busy ? false : undefined} />
     </div>
     <MotionHistoryPopover />
+    <ProjectAgentInstruction />
   </div>;
 }
 

@@ -164,6 +164,8 @@ button, input, select, textarea { font-family: inherit; }
 .motion-history-actions { display: flex; align-items: center; gap: 2px; }
 .motion-history-actions > button, .motion-history-actions > span > button { width: 28px; height: 28px; }
 .motion-history-actions .motion-button { width: auto; }
+.motion-history-actions .motion-project-mcp-trigger { width: auto; min-width: 28px; gap: 4px; padding-inline: 8px; }
+@media (max-width: 1000px) { .motion-history-actions .motion-project-mcp-trigger { padding-inline: 0; } }
 .motion-layout-menu { min-width: 224px; }
 .motion-menu-label { padding: 7px 9px 4px; color: var(--motion-dim); font-size: var(--motion-text-step-10); }
 .motion-menu-hint { max-width: 224px; padding: 8px 9px 5px; color: var(--motion-dim); font-size: var(--motion-text-step-10); line-height: 1.6; }

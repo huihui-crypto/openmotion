@@ -97,6 +97,43 @@ Follow the installation guide: ${setupGuideUrl(info)}
 3. 在当前 Agent 中发现 OpenMotion 工具，调用 openmotion_get_project 验证工作区。仅写入配置不代表连接成功；遇到阻碍请说明。
 4. ${host === 'codex' ? '在本轮完成引导：先准备好欢迎语和视频卡片，再打开模板库并立即展示已就绪的内容，不把内部指令发成新的用户消息。' : '接入后打开模板库，'}等我给出创作要求后再创建或修改工程。`;
 }
+export type ProjectInstructionTarget = { id: string; title: string };
+export function projectEditorUrl(info: IntegrationInfo, projectId: string) {
+  const id = encodeURIComponent(projectId);
+  return `${info.previewUrl.replace(/\/$/, '')}/?project=${id}#project/${id}`;
+}
+// Project-level handoff: another Agent session reopens this exact project through the public MCP tools.
+// Composes existing operations only; it never creates, switches or overwrites another project.
+export function projectEditPrompt(info: IntegrationInfo | null, project: ProjectInstructionTarget, locale: 'zh-CN' | 'en' = 'zh-CN') {
+  const title = project.title.trim() || (locale === 'en' ? 'Untitled' : '未命名');
+  const guide = setupGuideUrl(info);
+  if (locale === 'en') return [
+    `Use OpenMotion MCP to continue editing this project: ${title}`,
+    `projectId: ${project.id}`,
+    ...(info ? [`Data directory: ${info.dataDirectory}`, `Editor: ${projectEditorUrl(info, project.id)}`] : []),
+    '',
+    `1. Confirm this Agent can discover the OpenMotion tools. If not, install and connect it following ${guide}; reuse the data directory above and preserve existing projects and other MCP settings.`,
+    '2. Call openmotion_get_project with the projectId above and check the returned title and workspace. If they do not match, stop and tell me; never edit another project.',
+    '3. After I describe the change, begin a round with openmotion_open_preview (action=begin, mode=modify, same projectId), then save with openmotion_edit_project using the latest expectedRevision and expectedVersionId. On a conflict, read again; never overwrite edits made in Studio.',
+    '4. When done, follow previewHandoff to show the editor preview in this conversation and confirm the visible result changed.',
+    '',
+    'My changes:',
+    '',
+  ].join('\n');
+  return [
+    `使用 OpenMotion MCP 继续编辑这个项目：${title}`,
+    `projectId：${project.id}`,
+    ...(info ? [`数据目录：${info.dataDirectory}`, `编辑器：${projectEditorUrl(info, project.id)}`] : []),
+    '',
+    `1. 先确认当前 Agent 能发现 OpenMotion 工具。未接入时按 ${guide} 安装并接入，复用上面的数据目录，保留已有工程和其他 MCP 配置。`,
+    '2. 用上面的 projectId 调用 openmotion_get_project，核对返回的项目标题和工作区；对不上就停下告诉我，不改其他项目。',
+    '3. 收到我的修改要求后，用 openmotion_open_preview（action=begin、mode=modify、同一 projectId）开始本轮修改，再用 openmotion_edit_project 保存，带上最新的 expectedRevision 和 expectedVersionId；冲突时重新读取，不覆盖 Studio 里的改动。',
+    '4. 改完按 previewHandoff 在当前会话打开编辑器预览，确认画面已经更新。',
+    '',
+    '我的修改要求：',
+    '',
+  ].join('\n');
+}
 export function templatePrompt(info: IntegrationInfo, _host: IntegrationHost, template: { id: string; title: string }, locale = 'zh-CN') {
   if (info.templateSource === 'repository') {
     const message = repositoryTemplatePrompts[catalogLocale(Object.keys(repositoryTemplatePrompts), locale, 'en')];

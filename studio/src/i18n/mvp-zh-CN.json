@@ -1199,5 +1199,12 @@
   "Snapping ({value0})": "吸附（{value0}）",
   "Generation service API settings": "生成服务 API 设置",
   "Use your own API key to generate images, video and audio.": "使用你自己的 API Key 生成图片、视频和音频",
-  "Splitting clips inside a sub-composition is not supported in this editor.": "此编辑器不支持分割子合成内的片段。"
+  "Splitting clips inside a sub-composition is not supported in this editor.": "此编辑器不支持分割子合成内的片段。",
+  "MCP instruction": "MCP 指令",
+  "Copy a project instruction to keep editing in another Agent session": "复制项目指令，在其他 Agent 会话中继续编辑",
+  "Continue editing in another Agent": "在其他 Agent 中继续编辑",
+  "Paste this instruction into Codex, Claude Code or any session connected to OpenMotion MCP. It opens this exact project and keeps Studio edits safe.": "把这条指令粘贴到 Codex、Claude Code 或任何接入 OpenMotion MCP 的会话，Agent 会打开这个项目继续编辑，不会覆盖 Studio 里的改动。",
+  "Not connected yet? Connect Agent": "还没接入？连接 Agent",
+  "Copy instruction": "复制指令",
+  "Project instruction copied. Paste it into another Agent session.": "已复制项目指令，粘贴到其他 Agent 会话即可继续编辑"
 }
