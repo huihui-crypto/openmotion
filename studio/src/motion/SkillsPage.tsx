@@ -12,9 +12,6 @@ import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration
 import { Popover } from '../components/ui/Popover';
 import './skills.css';
 
-/** Short source shown on cards: owner/repo (plus skill folder) or OpenMotion. */
-const sourceLabel = (skill: MotionSkill) => skill.repository?.replace('https://github.com/', '').replace('/tree/main/', ' / ') ?? 'OpenMotion';
-
 /** Cards lead with the task, like the template library; the upstream project name stays verbatim as the source. */
 const displayNameOf = (t: (text: string) => string) => (skill: MotionSkill) => t(skill.title);
 
@@ -74,7 +71,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       <main className={styles.results}>
         <div className={`${styles.grid} om-skills-grid`}>
           <section className={styles.intro}><span className={styles.eyebrow}>{t('Teach your Agent new moves.')}</span><h1>{t('Pick a skill. Let your Agent make it.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project through OpenMotion MCP.')}</p><small>{t('{count} skills', { count: visible.length })}</small></section>
-          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} category={t(skill.category)} tagline={skill.name} source={sourceLabel(skill)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
+          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
         </div>
         {!visible.length && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
       </main>
@@ -112,7 +109,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
 }
 
 /** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
-function SkillCard({ skill, name, category, tagline, source, selected, onSelect }: { skill: MotionSkill; name: string; category: string; tagline: string; source: string; selected: boolean; onSelect: () => void }) {
+function SkillCard({ skill, name, category, selected, onSelect }: { skill: MotionSkill; name: string; category: string; selected: boolean; onSelect: () => void }) {
   const [active, setActive] = useState(false);
   return <article className="om-gallery-card om-skill-gallery-card" data-skill-id={skill.id} data-selected={selected}>
     <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: skill.cover?.aspect ?? coverAspect[skill.motif.length % coverAspect.length] }} onClick={onSelect} aria-pressed={selected} aria-label={name}
@@ -120,7 +117,7 @@ function SkillCard({ skill, name, category, tagline, source, selected, onSelect 
       <SkillMedia skill={skill} playing={active} />
       <span className="om-gallery-card-shade" />
       <span className="om-gallery-card-top"><span>{category}</span></span>
-      <span className="om-gallery-card-bottom"><span className="om-gallery-card-caption"><strong>{name}</strong><small>{tagline}</small></span><span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={15} /></span></span>
+      <span className="om-gallery-card-bottom"><span className="om-gallery-card-caption"><strong>{name}</strong></span><span className="om-gallery-card-arrow"><MotionIcon name="arrow-up-right" size={15} /></span></span>
     </button>
   </article>;
 }
