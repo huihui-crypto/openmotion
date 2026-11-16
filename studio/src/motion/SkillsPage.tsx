@@ -108,7 +108,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
 
 /** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
 function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; category: string; selected: boolean; onSelect: () => void }) {
-  const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false);
+  const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false), [near, setNear] = useState(false);
   const card = useRef<HTMLElement>(null);
   // Autoplay while at least half the card is on screen (paused off screen, so only the visible few load).
   // Reduced-motion users keep hover-to-play.
@@ -116,8 +116,10 @@ function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { ski
     const element = card.current;
     if (!element || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.5 });
-    observer.observe(element);
-    return () => observer.disconnect();
+    // Start buffering a screen ahead so playback is smooth when the card arrives.
+    const ahead = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: '100% 0px' });
+    observer.observe(element); ahead.observe(element);
+    return () => { observer.disconnect(); ahead.disconnect(); };
   }, []);
   const active = hovered || visible;
   const setActive = setHovered;
@@ -126,7 +128,7 @@ function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { ski
     onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)}>
     <button className="motion-gallery-card-cover om-gallery-cover" style={{ aspectRatio: skill.cover?.aspect ?? coverAspect[skill.motif.length % coverAspect.length] }} onClick={onSelect} aria-pressed={selected} aria-label={name}
       onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
-      <SkillMedia skill={skill} playing={active} />
+      <SkillMedia skill={skill} playing={active} near={near || hovered} />
       <span className="om-gallery-card-top"><span>{category}</span></span>
     </button>
     <button className="om-skill-card-meta" onClick={onSelect} tabIndex={-1} aria-hidden="true"><strong>{name}</strong><span>{useWhen}</span></button>
@@ -135,7 +137,7 @@ function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { ski
 const coverAspect = [1.78, 1.35, 1, 1.78];
 
 /** Upstream demo media when available; otherwise the package-token illustration. */
-export function SkillMedia({ skill, playing = false, large = false }: { skill: MotionSkill; playing?: boolean; large?: boolean }) {
+export function SkillMedia({ skill, playing = false, near = false, large = false }: { skill: MotionSkill; playing?: boolean; near?: boolean; large?: boolean }) {
   const { t } = useI18n();
   const [failed, setFailed] = useState(false);
   const cover = failed ? undefined : skill.cover;
@@ -145,32 +147,31 @@ export function SkillMedia({ skill, playing = false, large = false }: { skill: M
   // each half fills one side, a divider runs down the middle and the skill name sits on it.
   if (cover.compare) return <span className="om-skill-media om-skill-split" data-large={large}>
     {(['before', 'after'] as const).map(side => <span key={side} className="om-skill-split-half" data-side={side}>
-      <CoverMedia cover={cover} play={play} large={large} onFail={() => setFailed(true)} />
+      <CoverMedia cover={cover} play={play} near={near} large={large} onFail={() => setFailed(true)} />
     </span>)}
     <span className="om-skill-split-divider" aria-hidden="true" />
     <span className="om-skill-split-label" aria-hidden="true"><RemixIcon name="sparkling-line" size={14} />{t('Remove the AI look')}</span>
     <span className="om-skill-split-caption" data-side="before" aria-hidden="true">{t('Before')}</span>
     <span className="om-skill-split-caption" data-side="after" aria-hidden="true">{t('After')}</span>
   </span>;
-  return <span className="om-skill-media" data-large={large}><CoverMedia cover={cover} play={play} large={large} onFail={() => setFailed(true)} /></span>;
+  return <span className="om-skill-media" data-large={large}><CoverMedia cover={cover} play={play} near={near} large={large} onFail={() => setFailed(true)} /></span>;
 }
 
-/** Poster first; the demo video (or GIF) plays only while the card is active, like template videos. */
-function CoverMedia({ cover, play, large, onFail }: { cover: NonNullable<MotionSkill['cover']>; play: boolean; large: boolean; onFail: () => void }) {
+/** Poster first; the demo video (or GIF) plays only while the card is active.
+ * The video element owns its poster, so playback starts in place with no image-to-video swap,
+ * and it starts buffering as soon as the card nears the viewport. */
+function CoverMedia({ cover, play, near, large, onFail }: { cover: NonNullable<MotionSkill['cover']>; play: boolean; near: boolean; large: boolean; onFail: () => void }) {
   const video = useRef<HTMLVideoElement>(null);
-  const [ready, setReady] = useState(false);
   useEffect(() => {
     const element = video.current;
     if (!element || !cover.video) return;
     if (play) void element.play().catch(() => {}); else element.pause();
   }, [play, cover.video]);
-  const still = cover.poster ?? (cover.video ? undefined : cover.gif);
-  return <>
-    {cover.gif && <img src={play ? cover.gif : still} alt="" loading="lazy" decoding="async" onError={onFail} />}
-    {!cover.gif && cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" />}
-    {cover.video && <video ref={video} src={cover.video} muted playsInline loop preload={large || !cover.poster ? 'metadata' : 'none'} aria-hidden="true"
-      onPlaying={() => setReady(true)} onError={onFail} style={{ opacity: !cover.poster || (play && ready) ? 1 : 0 }} />}
-  </>;
+  if (cover.video) return <video ref={video} src={cover.video} poster={cover.poster} muted playsInline loop
+    preload={large || near || play ? 'auto' : cover.poster ? 'none' : 'metadata'} aria-hidden="true" onError={onFail} />;
+  const still = cover.poster ?? cover.gif;
+  return <>{cover.gif && <img src={play ? cover.gif : still} alt="" loading="lazy" decoding="async" onError={onFail} />}
+    {!cover.gif && cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" />}</>;
 }
 
 /** Package-token illustration: one motif per technique, animated only when motion is allowed. */
