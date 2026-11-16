@@ -50,6 +50,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   // The instruction follows the interface language, including the example brief and borrowed technique.
   const prompt = selected ? skillPrompt({ ...selected, output: t(selected.output), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
   const shortcut = selected ? skillShortcut({ ...selected, title: displayName(selected), example: t(selected.example) }, parameters, locale, installUrl) : '';
+  const latest = useRef({ instruction: prompt, command: shortcut }); latest.current = { instruction: prompt, command: shortcut };
   const open = (skill: MotionSkill) => onSkillChange(skill.id);
   // A failed copy keeps its exact text for manual copying only until the brief changes; then show the live text again.
   useEffect(() => { setManualCopy(null); }, [prompt, shortcut]);
@@ -59,7 +60,11 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
     if (!selected) return;
     const text = surface === 'command' ? shortcut : prompt;
     try { await navigator.clipboard.writeText(text); setManualCopy(null); toast.showToast(t('Copied. Paste into your Agent.'), 'info'); }
-    catch { setManualCopy({ text, surface }); toast.showToast(t(surface === 'command' ? 'Copy failed. Select and copy the command below.' : 'Copy failed. Select and copy the instruction below.'), 'error', 'feedback'); }
+    catch {
+      // A late failure for a brief that has since changed must not restore stale text.
+      if (latest.current[surface] !== text) return;
+      setManualCopy({ text, surface }); toast.showToast(t(surface === 'command' ? 'Copy failed. Select and copy the command below.' : 'Copy failed. Select and copy the instruction below.'), 'error', 'feedback');
+    }
   }
   return <div className={`${styles.library} om-skills-page om-skills-library`} data-detail={Boolean(selected)}>
     <StudioToastViewport {...toast} />

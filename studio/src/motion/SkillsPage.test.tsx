@@ -169,3 +169,16 @@ it('drops a stale failed-copy text once the brief changes', async () => {
   expect(instruction.textContent).toContain('Duration: 30s');
   expect(instruction.dataset.manual).toBe('false');
 });
+
+it('ignores a late copy failure after the brief has changed', async () => {
+  let rejectCopy!: (error: Error) => void;
+  vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(() => new Promise<void>((_resolve, reject) => { rejectCopy = reject; }));
+  act(() => root.render(<Host />));
+  act(() => button('Staggered entrance').click());
+  await act(async () => { button('Copy for Agent').click(); });
+  act(() => button('30s').click());
+  await act(async () => rejectCopy(new Error('Clipboard unavailable')));
+  const instruction = container.querySelector<HTMLPreElement>('.om-skill-prompt pre')!;
+  expect(instruction.textContent).toContain('Duration: 30s');
+  expect(instruction.dataset.manual).toBe('false');
+});
