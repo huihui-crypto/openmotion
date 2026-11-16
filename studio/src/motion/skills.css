@@ -125,3 +125,4 @@
 .om-skills-intro.om-skills-intro { min-height: 0; max-width: 640px; padding: var(--motion-space-8) 0 var(--motion-space-24); }
 .om-skills-intro.om-skills-intro h1 { max-width: none; }
 .om-skills-intro.om-skills-intro p { max-width: 560px; margin-bottom: 0; }
+.om-skills-intro.om-skills-intro > div { margin-top: var(--motion-space-16); }

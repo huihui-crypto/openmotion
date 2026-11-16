@@ -181,7 +181,8 @@
     "When to use": "什么时候用",
     "Remove the AI look": "去 AI 味",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "挑一个 Skill，填好需求、复制指令，Agent 会通过 OpenMotion 做出可继续编辑的项目。",
-    "Cover source": "封面来源"
+    "Cover source": "封面来源",
+    "Submit a skill": "提交 Skill"
   },
   "ja": {
     "Skills": "Skills",
@@ -365,7 +366,8 @@
     "When to use": "使いどき",
     "Remove the AI look": "AI っぽさを消す",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Skill を選び、要件を入力して指示をコピーしましょう。Agent が OpenMotion で編集可能なプロジェクトを作成します。",
-    "Cover source": "カバーの出典"
+    "Cover source": "カバーの出典",
+    "Submit a skill": "Skill を投稿"
   },
   "ko": {
     "Skills": "Skills",
@@ -549,7 +551,8 @@
     "When to use": "이럴 때 사용",
     "Remove the AI look": "AI 티 없애기",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Skill을 고르고 요구 사항을 입력한 뒤 지침을 복사하세요. Agent가 OpenMotion에서 편집 가능한 프로젝트를 만듭니다.",
-    "Cover source": "커버 출처"
+    "Cover source": "커버 출처",
+    "Submit a skill": "Skill 제출"
   },
   "ru": {
     "Skills": "Skills",
@@ -733,7 +736,8 @@
     "When to use": "Когда использовать",
     "Remove the AI look": "Убрать AI-шаблонность",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Выберите Skill, заполните задачу и скопируйте инструкцию. Agent создаст в OpenMotion проект, который можно редактировать.",
-    "Cover source": "Источник обложки"
+    "Cover source": "Источник обложки",
+    "Submit a skill": "Отправить Skill"
   },
   "de": {
     "Skills": "Skills",
@@ -917,7 +921,8 @@
     "When to use": "Wann verwenden",
     "Remove the AI look": "KI-Look entfernen",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Wähle einen Skill, fülle die Anforderungen aus und kopiere die Anweisung. Dein Agent erstellt ein bearbeitbares Projekt in OpenMotion.",
-    "Cover source": "Quelle des Covers"
+    "Cover source": "Quelle des Covers",
+    "Submit a skill": "Skill einreichen"
   },
   "fr": {
     "Skills": "Skills",
@@ -1101,7 +1106,8 @@
     "When to use": "Quand l’utiliser",
     "Remove the AI look": "Retirer l’effet IA",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Choisissez un Skill, remplissez la demande et copiez les instructions. Votre Agent crée un projet modifiable dans OpenMotion.",
-    "Cover source": "Source de la couverture"
+    "Cover source": "Source de la couverture",
+    "Submit a skill": "Proposer un Skill"
   },
   "es": {
     "Skills": "Skills",
@@ -1285,7 +1291,8 @@
     "When to use": "Cuándo usarlo",
     "Remove the AI look": "Quitar el aspecto de IA",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Elige un Skill, completa los requisitos y copia las instrucciones. Tu Agent crea un proyecto editable en OpenMotion.",
-    "Cover source": "Origen de la portada"
+    "Cover source": "Origen de la portada",
+    "Submit a skill": "Enviar Skill"
   },
   "pt-BR": {
     "Skills": "Skills",
@@ -1469,7 +1476,8 @@
     "When to use": "Quando usar",
     "Remove the AI look": "Tirar a cara de IA",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Escolha uma Skill, preencha o briefing e copie a instrução. Seu Agent cria um projeto editável no OpenMotion.",
-    "Cover source": "Origem da capa"
+    "Cover source": "Origem da capa",
+    "Submit a skill": "Enviar Skill"
   },
   "it": {
     "Skills": "Skill",
@@ -1653,7 +1661,8 @@
     "When to use": "Quando usarla",
     "Remove the AI look": "Togliere l’effetto AI",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Scegli una Skill, compila il brief e copia le istruzioni. Il tuo Agent crea un progetto modificabile in OpenMotion.",
-    "Cover source": "Fonte della copertina"
+    "Cover source": "Fonte della copertina",
+    "Submit a skill": "Invia una Skill"
   },
   "tr": {
     "Skills": "Skill’ler",
@@ -1837,6 +1846,7 @@
     "When to use": "Ne zaman kullanılır",
     "Remove the AI look": "AI görünümünü kaldır",
     "Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.": "Bir Skill seç, brief’i doldur ve talimatı kopyala. Agent’ın OpenMotion’da düzenlenebilir bir proje oluşturur.",
-    "Cover source": "Kapak kaynağı"
+    "Cover source": "Kapak kaynağı",
+    "Submit a skill": "Skill gönder"
   }
 }

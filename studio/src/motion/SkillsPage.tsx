@@ -12,6 +12,9 @@ import { setupGuideUrl, type IntegrationInfo } from '../../../shared/integration
 import { Popover } from '../components/ui/Popover';
 import './skills.css';
 
+/** The contribution guide section with the paste-ready Agent brief for a new library Skill. */
+export const skillSubmissionUrl = 'https://github.com/nexu-io/openmotion/blob/main/CONTRIBUTING.md#submit-a-skill-with-your-agent';
+
 /** Cards lead with the task, like the template library; the upstream project name stays verbatim as the source. */
 const displayNameOf = (t: (text: string) => string) => (skill: MotionSkill) => t(skill.title);
 
@@ -79,7 +82,10 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
         </div>
       </div>
       <main className={styles.results}>
-        <section className={`${styles.intro} om-skills-intro`}><span className={styles.eyebrow}>{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p></section>
+        <section className={`${styles.intro} om-skills-intro`}><span className={styles.eyebrow}>{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
+          {/* Same as the template library's Submit video: open the contribution guide, whose Agent brief does the packaging and the pull request. */}
+          <div className={styles.introActions}><a className={styles.submitVideo} href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer">{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a></div>
+        </section>
         <div className={`${styles.grid} om-skills-grid`}>
           {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
         </div>

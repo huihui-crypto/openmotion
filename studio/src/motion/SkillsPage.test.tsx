@@ -2,7 +2,7 @@
 import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { SkillsPage } from './SkillsPage';
+import { SkillsPage, skillSubmissionUrl } from './SkillsPage';
 import { motionSkills, skillPrompt } from './skillCatalog';
 import { readWorkspacePage, workspacePageHref } from './workspacePageRouting';
 import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
@@ -181,4 +181,17 @@ it('ignores a late copy failure after the brief has changed', async () => {
   const instruction = container.querySelector<HTMLPreElement>('.om-skill-prompt pre')!;
   expect(instruction.textContent).toContain('Duration: 30s');
   expect(instruction.dataset.manual).toBe('false');
+});
+
+it('opens the contribution guide section for submitting a skill, like the template library', async () => {
+  act(() => root.render(<Host />));
+  const link = [...container.querySelectorAll<HTMLAnchorElement>('.om-skills-intro a')].find(node => node.textContent?.includes('Submit a skill'))!;
+  expect(link.href).toBe(skillSubmissionUrl);
+  expect(link.target).toBe('_blank');
+  const { default: guide } = await import('../../../CONTRIBUTING.md?raw');
+  const section = guide.slice(guide.indexOf('### Submit a skill with your Agent'));
+  expect(skillSubmissionUrl.endsWith('#submit-a-skill-with-your-agent')).toBe(true);
+  expect(section).toContain('library/skills/<name>/SKILL.md');
+  expect(section).toContain('nexu-io/openmotion');
+  expect(section).toContain('draft pull request');
 });
