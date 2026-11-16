@@ -64,6 +64,15 @@ it('routes generated media through OpenMotion and labels OpenMotion skills', () 
   expect(photo).toContain('https://github.com/higgsfield-ai/skills/tree/main/higgsfield-product-photoshoot');
 });
 
+it('starts a fresh brief when the selected skill changes from outside, such as history navigation', () => {
+  const render = (skillId: string) => act(() => root.render(<SkillsPage skillId={skillId} onSkillChange={() => {}} />));
+  render('anime-js');
+  act(() => button('30s').click());
+  expect(container.querySelector('.om-skill-prompt pre')!.textContent).toContain('Duration: 30s');
+  render('manim');
+  expect(container.querySelector('.om-skill-prompt pre')!.textContent).toContain('Duration: 10s');
+});
+
 it('localizes the instruction and keeps the user brief', () => {
   const text = skillPrompt(motionSkills[0], { subject: '新品发布', duration: 10, aspect: '1:1', style: '' }, 'zh-CN');
   expect(text).toContain('内容：新品发布');

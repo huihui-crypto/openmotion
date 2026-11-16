@@ -31,7 +31,9 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   }, [query, category, t]);
   // The instruction follows the interface language, including the example brief and borrowed technique.
   const prompt = selected ? skillPrompt({ ...selected, name: displayName(selected), example: t(selected.example), technique: t(selected.technique) }, parameters, locale) : '';
-  const open = (skill: MotionSkill) => { setManualCopy(''); setParameters(defaults); onSkillChange(skill.id); };
+  const open = (skill: MotionSkill) => onSkillChange(skill.id);
+  // The brief belongs to one skill; any route change (card, history, link) starts a fresh brief.
+  useEffect(() => { setParameters(defaults); setManualCopy(''); }, [skillId]);
   async function copy() {
     if (!selected) return;
     try { await navigator.clipboard.writeText(prompt); setManualCopy(''); toast.showToast(t('Copied. Paste into your Agent.'), 'info'); }
