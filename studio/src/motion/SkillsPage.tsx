@@ -68,7 +68,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       <main className={styles.results}>
         <div className={`${styles.grid} om-skills-grid`}>
           <section className={styles.intro}><span className={styles.eyebrow}>{t('Teach your Agent new moves.')}</span><h1>{t('Pick a skill. Let your Agent make it.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project through OpenMotion MCP.')}</p></section>
-          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t('Use when: {text}', { text: t(skill.useWhen) })} output={t(skill.output)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
+          {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
         </div>
         {!visible.length && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
       </main>
@@ -107,7 +107,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
 }
 
 /** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
-function SkillCard({ skill, name, useWhen, output, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; output: string; category: string; selected: boolean; onSelect: () => void }) {
+function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; category: string; selected: boolean; onSelect: () => void }) {
   const [active, setActive] = useState(false);
   // Keep the cover clean; the task name and what it makes sit under it, so a glance says what the skill does.
   return <article className="om-gallery-card om-skill-gallery-card" data-skill-id={skill.id} data-selected={selected}
@@ -117,7 +117,7 @@ function SkillCard({ skill, name, useWhen, output, category, selected, onSelect 
       <SkillMedia skill={skill} playing={active} />
       <span className="om-gallery-card-top"><span>{category}</span></span>
     </button>
-    <button className="om-skill-card-meta" onClick={onSelect} tabIndex={-1} aria-hidden="true"><strong>{name}</strong><span>{useWhen}</span><small>{output}</small></button>
+    <button className="om-skill-card-meta" onClick={onSelect} tabIndex={-1} aria-hidden="true"><strong>{name}</strong><span>{useWhen}</span></button>
   </article>;
 }
 const coverAspect = [1.78, 1.35, 1, 1.78];
