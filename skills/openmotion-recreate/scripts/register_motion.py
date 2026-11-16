@@ -1,6 +1,6 @@
 """Measure a planar reference region in original pixel coordinates.
 
-Requires the host's Python, NumPy and OpenCV. This reads reference frames and
+Run through vision-tools.mjs for pinned Python, NumPy and OpenCV. This reads reference frames and
 writes observation data. The maker still chooses material, geometry and edits.
 """
 
@@ -97,7 +97,7 @@ def main():
         import cv2
         import numpy as np
     except ImportError:
-        parser.exit(2, 'This optional helper requires NumPy and OpenCV in the host Python environment.\n')
+        parser.exit(2, 'Run this helper through node vision-tools.mjs register or measure to prepare its managed Python dependencies.\n')
     try:
         times = sorted(set(float(value) for value in args.times.split(',')))
     except ValueError:

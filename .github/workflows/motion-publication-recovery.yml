@@ -31,7 +31,8 @@ jobs:
   recover:
     needs: select-ref
     permissions:
-      contents: read
+      # Reusable-workflow permission ceiling; its Release job is skipped for archive-only.
+      contents: write
       actions: read
       id-token: write
     uses: ./.github/workflows/motion-publish-test.yml

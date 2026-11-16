@@ -159,6 +159,15 @@ categories describe intended videos; style, industry and other facets remain
 independently selectable. The full-window detail provides direct copy actions and
 repository links without a second recreation modal.
 
+Discovery headers and toolbars compose the shared `om-control-row`, `om-button`
+and `om-field` recipes. The `om-search-field` variant keeps its icon, input and
+shortcut centered with one outer focus treatment; `om-filter-pill` retains the
+rounded category shape and semantic selected state. Search, categories, dropdowns
+and icon actions share the 32px control height, with 6px control corners, 16px
+icons and 8px gaps. The library owns responsive geometry: a 320px desktop search,
+a reserved GitHub badge width, equal industry/sort widths and a full-width search
+row on narrow screens. Long dropdown labels truncate without moving the chevron.
+
 The shared `Skeleton` primitive uses `skeleton-base` and `skeleton-highlight` tokens in both themes, with reduced-motion support. Catalog placeholders reserve the final card geometry; lazy poster placeholders stay static to avoid animating offscreen cards. Detail preview buffering and retry states stay inside the media frame. Discovery filter menus are non-modal, keep checkbox selection open, and expose removable condition chips. Search uses a single outer focus treatment; detail action rows and guide summaries share inset padding and rounded hover surfaces. Recreate and submit uses the bundled Remix git-branch icon.
 
 

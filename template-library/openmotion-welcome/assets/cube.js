@@ -17,7 +17,12 @@ window.WelcomeCube = function (canvas) {
   geometry.computeVertexNormals();
   const canvases=Array.from({length:6},()=>Object.assign(document.createElement('canvas'),{width:512,height:512}));
   const textures=canvases.map(c=>{const texture=new THREE.CanvasTexture(c);texture.encoding=THREE.sRGBEncoding;texture.anisotropy=4;return texture;});
-  const materials=textures.map(map=>new THREE.MeshStandardMaterial({map,roughness:0.45,metalness:0.04}));
+  // r147's standard shader requires derivatives. Keep its original lighting when
+  // available, and use Lambert shading when preview contexts lack the extension.
+  const hasDerivatives=renderer.capabilities.isWebGL2||renderer.extensions.has('OES_standard_derivatives');
+  const materials=textures.map(map=>hasDerivatives
+    ?new THREE.MeshStandardMaterial({map,roughness:0.45,metalness:0.04})
+    :new THREE.MeshLambertMaterial({map}));
   const cube=new THREE.Mesh(geometry,materials);scene.add(cube);
   function draw(time){
     const E=WelcomeArt.ease,C=WelcomeArt.clamp;

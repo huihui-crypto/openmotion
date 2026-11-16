@@ -1,9 +1,13 @@
 <p align="center"><img src="readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-<p align="center"><strong>あらゆる動画を分析・再現</strong></p>
+<p align="center"><strong>Claude Motion と CapCut に代わるオープンソースの動画スタジオ</strong></p>
 
 <p align="center">
-  <picture><source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/1b567187bc527cc99f8ef2c91c41c9adf5fa91fa9bbc5f8e2f579ad9c7837a46.jpg"><img src="https://releases.open-design.ai/open-motion/media/sha256/1b567187bc527cc99f8ef2c91c41c9adf5fa91fa9bbc5f8e2f579ad9c7837a46.jpg" width="100%" alt="Dan Martell の元動画と Riya の素材で再現した映像。白い太字字幕の間に手書きのキーワードが入り、下に Studio の字幕タイムラインが見える。"></picture>
+  <picture>
+    <source type="image/webp" srcset="readme/capcut-claude-motion-cover.ja.webp">
+    <source media="(max-width: 600px)" srcset="https://releases.open-design.ai/open-motion/media/sha256/1b567187bc527cc99f8ef2c91c41c9adf5fa91fa9bbc5f8e2f579ad9c7837a46.jpg">
+    <img src="https://releases.open-design.ai/open-motion/media/sha256/1b567187bc527cc99f8ef2c91c41c9adf5fa91fa9bbc5f8e2f579ad9c7837a46.jpg" width="100%" alt="Dan Martell の元動画と Riya の素材で再現した映像。白い太字字幕の間に手書きのキーワードが入り、下に Studio の字幕タイムラインが見える。">
+  </picture>
 </p>
 
 <p align="center">
@@ -33,12 +37,12 @@
 
 # OpenMotion
 
-OpenMotion は、**エージェントが動画制作の全工程を担う初のフルスタック動画生成ツール**です。参考動画をアップロードするか SNS の動画リンクを貼り付けると、**自分のブランドキットとコピーで元の演出を再現できます**。
+OpenMotion は、**AI エージェントが動画制作の全工程を担うフルスタックの動画スタジオ**であり、**Claude Motion と CapCut に代わるオープンソースの選択肢**です。参考動画をアップロードするか SNS の動画リンクを貼り付けると、**自分のブランドキットとコピーで元の演出を再現できます**。
 
 - 🎬 **動画の分析から再現・書き出しまで。** エージェントが参考動画を分析し、カットとトランジションを HTML で組み直し、足りない素材を生成します。同じプロジェクトを Studio で開き、間合いを調整して MP4 に書き出せます。
 - 🔑 **BYOA（自分のエージェント）と BYOK（自分の API キー）。** OpenMotion は無料のオープンソースソフトウェアです。[使い慣れたローカルエージェント](#agent-wall)で動画を再現し、各工程に自分の API キーを使えます。
 - 🧩 **Motion.md** は、OpenMotion が定義した Markdown 形式です。カットの順番、尺、トランジションを記録し、ブランド動画の演出をプロジェクトと一緒に共有できます。
-- 🎛️ **画像・動画・音楽・音声。** Nano Banana 2 で画像を、Seedance 2.0 で追加カットを作り、Suno v4 の音楽と Kokoro のナレーションを同じタイムラインに配置できます。[内蔵の全 7 モデル](#model-wall)
+- 🎛️ **画像・動画・音楽・音声。** GPT Image 2.6 で画像を、Seedance 2.5 で追加カットを作成。Suno で音楽を付け、Eleven v4 でナレーションを生成できます。[モデルと接続方法を見る](#model-wall)
 
 <a id="快速开始"></a> <a id="quick-start"></a>
 
@@ -60,12 +64,22 @@ https://github.com/nexu-io/openmotion/blob/main/install.md を読み、手順に
 
 セットアップ後、エージェントがローカルのテンプレートライブラリを開き、テンプレートを提案します。選択を確認してからプロジェクトを作成します。[ソースインストールガイド](../install.md)
 
+### 公開 npm アプリをインストール（任意）
+
+上記のソースセットアップがリポジトリインストールの既定です。ビルド済み Studio と設定済みのオンラインテンプレートライブラリを含む公開アプリを明示的に選ぶ場合は、次の指示をローカルエージェントにコピーしてください：
+
+```text
+https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手順に従って現在のエージェントに公開 npm アプリをインストールして接続してください。
+```
+
+[公開アプリのインストールとチャネルの選択](install.md)。公開バージョンはこのチェックアウトより古い場合があります。
+
 ### リポジトリをローカルで起動する
 
 Git、npm、Node.js 26.11.1 が必要です：
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git
 cd openmotion
 npm ci
 npm run build:studio
@@ -74,17 +88,6 @@ npm start
 
 起動時に表示される実際の `studioUrl` または `previewUrl` を開き、**テンプレートライブラリ**を選択します。Studio と MCP はこのチェックアウトのテンプレートを読み込みます。同じソースにエージェントを接続するには、[ソースと MCP の設定](#agent-setup)を参照してください。[クローン容量と任意のメディア](repository-storage.md)
 
-### 公開済みアプリをエージェントにインストール
-
-この方法は公開済みの npm アプリをインストールし、その設定済みオンラインカタログを使用します。リポジトリのテンプレートを使う場合や貢献する場合は、上記のソース起動手順を使用してください。
-
-次の指示をコピーしてローカルエージェントに送ると、インストールを開始できます：
-
-```text
-https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手順に従って現在のエージェントに OpenMotion をインストールして接続してください。
-```
-
-インストール後、エージェントが試せるテンプレートを提案します。選択を確認してからプロジェクトを作成します。[インストールと初回利用ガイド](install.md#installation-success-reply)
 
 <a id="agent-wall"></a>
 
@@ -294,7 +297,7 @@ https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手�
 
 <a id="what-is-openmotion"></a> <a id="openmotion-是什么"></a> <a id="video-is-code"></a>
 
-### 1. エージェントが動画制作の全工程を担う初のフルスタック動画生成ツール
+### 1. 動画制作の全工程をエージェントと進めるスタジオ
 
 **HTML で動画を書く。** シーン、書体、レイアウト、トランジションとそのタイミングを HTML、CSS、JavaScript で記述します。実写、生成したクリップ、画像、音楽、ナレーションを組み合わせ、同じプロジェクトを Studio で開いて MP4 に書き出せます。
 
@@ -378,7 +381,7 @@ https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手�
 
 <a id="make-your-motion-language-reusable"></a> <a id="motion-design-community"></a>
 
-### 3. 100 本以上の Motion.md で動画を再現
+### 3. 300 本以上の Motion.md で動画を再現
 
 OpenMotion が提案する **Motion.md** は、ショットの順序、長さ、トランジション、置き換え可能な素材を Markdown で記録する形式です。オンラインライブラリでは、参考動画とモーションガイドを同じ詳細ページで確認できます。
 
@@ -407,6 +410,8 @@ Brand Kit セクションには、ブランド情報、語り口、確認済み�
 ### 4. 画像・動画・音楽・音声を生成
 
 **BYOK で、自分のモデルアカウントを動画制作に使えます。** **Model Settings** で対応する API キーを登録し、モデルを選んでください。Studio の **Model Gateway** で画像、動画、音楽、音声を生成し、プレビューした候補を同じプロジェクトに取り込めます。対応するローカル画像生成では、既存のエージェントのログイン情報も利用できます。
+
+**モデル設定**で fal.ai に接続してカタログを更新すると、GPT Image 2.6、Nano Banana 2.1、FLUX.3、Seedance 2.5、Kling 4.0、Wan 3.0、Eleven v4 を検索できます。以下のプリセットは更新前にも表示されます。
 
 <p><img src="readme/models/codex.svg" width="133" alt="Codex Image">
 <img src="readme/models/nano-banana.svg" width="133" alt="Nano Banana 2">
@@ -445,7 +450,7 @@ Brand Kit セクションには、ブランド情報、語り口、確認済み�
 Git、npm、**Node.js 26.11.1** を用意してください。ソースからのプレビューと書き出しには Chrome または Chromium と、FFmpeg・FFprobe も必要です。[実行環境の設定](usage.md)
 
 ```sh
-git clone --depth 1 https://github.com/nexu-io/openmotion.git openmotion
+git -c filter.lfs.process= -c filter.lfs.smudge= -c filter.lfs.required=false clone --depth 1 --single-branch --branch main https://github.com/nexu-io/openmotion.git openmotion
 cd openmotion
 npm ci
 npm run build:studio
@@ -470,7 +475,7 @@ bash scripts/install-motion.command
 
 <a id="claude-setup"></a>
 
-**Claude Code** · ローカルインストーラーで `--host claude` を選び、Claude Code で `/mcp` を実行して接続を確認します。[ローカルインストーラー](npm-installation.md)
+**Claude Code** · [手動 MCP 設定](#manual-mcp)でこのソースに接続し、`/mcp` で確認してください。
 
 <a id="deepseek-setup"></a>
 

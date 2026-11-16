@@ -3,6 +3,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runFile, sha256, writeAtomic, writeJSON } from './runtime-assets.mjs';
+import { installationInstructions } from './install-onboarding.mjs';
 import { checkReleaseVersion, releaseTemplateEnvironment } from './release-version.mjs';
 
 export function validateGuideSpec(name, version) {
@@ -31,11 +32,11 @@ export async function generateInstallGuide(tgz, output, candidate = false) {
   const pkg = await readEntry('package/package.json'), manifest = await readEntry('package/payload/release-npm.json');
   const channel = validateGuideIdentity(pkg, manifest);
   const digest = await sha256(tgz), packageSpec = `${pkg.name}@${pkg.version}`;
-  const values = { VERSION: pkg.version, PACKAGE_SPEC: packageSpec, CHANNEL: channel, COMMIT: manifest.commit,
+  const values = { ONBOARDING: await installationInstructions(fileURLToPath(new URL('../', import.meta.url))), VERSION: pkg.version, PACKAGE_SPEC: packageSpec, CHANNEL: channel, COMMIT: manifest.commit,
     TEMPLATE_ENVIRONMENT: manifest.templateEnvironment, TGZ_SHA256: digest,
     TARGETS: Object.values(manifest.runtime.targets).map(t => `${t.platform}/${t.arch}${t.minimumOS ? ` (${t.minimumOS}+)` : ''}`).join(', '),
     DETAILS_URL: `https://github.com/nexu-io/openmotion/blob/${manifest.commit}/docs/npm-installation.md` };
-  const template = await readFile(new URL('../docs/install.md', import.meta.url), 'utf8');
+  const template = await readFile(new URL('../docs/templates/npm-install.md', import.meta.url), 'utf8');
   // The repository warning is unnecessary after all release placeholders are resolved.
   const text = (candidate ? '> Build preview only: this candidate is not an approved registry installation entry.\n\n' : '') + template.replace(/^If you are reading this file.*\n\n/m, '').replace(/\{\{([A-Z0-9_]+)\}\}/g, (_, key) => {
     assert(Object.hasOwn(values, key), 'Unknown installation placeholder: ' + key); return values[key];

@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
@@ -10,8 +11,8 @@ import { providerOrigin } from '../gateway/network.ts';
 import type { Fetcher } from '../gateway/network.ts';
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a2ioAAAAASUVORK5CYII=', 'base64');
-const mp4 = Buffer.concat([Buffer.from('00000018667479706d703432000000006d703432', 'hex'), Buffer.alloc(32)]);
-const audio = Buffer.concat([Buffer.from('ID3'), Buffer.alloc(40)]);
+const mp4 = await mediaBytes('video');
+const audio = await mediaBytes('audio');
 function service(store: any) { return new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
   openProject: async () => {}, mutation: async task => task(), cancel: async () => {} }); }
 async function finish(store: any, id: string) { const g = gatewayFor(store); await g.tick(); await Promise.all([...g.active.values()].map(task => task.done)); return g.getJob(id); }

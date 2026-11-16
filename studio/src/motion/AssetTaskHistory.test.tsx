@@ -16,16 +16,19 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 async function render(error?: string) { await act(async () => root.render(<AssetTaskHistory tasks={tasks} loading={false} error={error} onRetry={retry} onSelect={select} trigger={<button>Tasks</button>} />)); }
 const button = (text: string) => [...document.querySelectorAll('button')].find(node => node.textContent === text)!;
 async function click(el: HTMLElement) { await act(async () => { el.click(); }); }
-it('keeps history outside the gallery flow, filters both task kinds and selects the original record', async () => {
+it('hides the Agent filter while keeping generation filtering and existing conversations accessible', async () => {
   await render();
   expect(document.querySelector('.om-task-history')).toBeNull();
   await click(button('Tasks'));
   expect(document.querySelectorAll('.om-task-item')).toHaveLength(2);
   expect(container.querySelector('.om-task-history')).toBeNull(); // portal, not an inline disclosure
-  await click(button('Agent'));
+  expect(button('Agent')).toBeUndefined();
+  await click(button('Generate'));
   expect(document.querySelectorAll('.om-task-item')).toHaveLength(1);
-  expect(document.querySelector('.om-task-item')?.textContent).toContain('Build a soundtrack');
-  await click(document.querySelector<HTMLElement>('.om-task-item')!);
+  expect(document.querySelector('.om-task-item')?.textContent).toContain('Paint the forest');
+  await click(button('All tasks'));
+  expect(document.querySelectorAll('.om-task-item')).toHaveLength(2);
+  await click([...document.querySelectorAll<HTMLElement>('.om-task-item')].find(item => item.textContent?.includes('Build a soundtrack'))!);
   expect(select).toHaveBeenCalledExactlyOnceWith(tasks[1]);
   expect(document.querySelector('[data-open].om-task-history')).toBeNull();
 });

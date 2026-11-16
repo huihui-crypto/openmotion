@@ -23,3 +23,15 @@ export type AssetListInput = {
 };
 export const assetVersion = (asset: LibraryAsset, versionId = asset.currentVersionId) => asset.versions.find(version => version.id === versionId);
 export const assetMediaUrl = (assetId: string, versionId: string) => `/motion-api/assets/${encodeURIComponent(assetId)}/versions/${encodeURIComponent(versionId)}/file`;
+
+export type AssetReadContent = { type: 'text'; text: string } | { type: 'image' | 'audio'; mimeType: string; data: string };
+export type AssetReadResult = {
+  assetId: string; versionId: string; modality: Modality; version: AssetVersion;
+  previews: { mimeType: string; bytes: number; width?: number; height?: number; timestamp?: number; start?: number; duration?: number }[];
+  content: AssetReadContent[];
+};
+/** Media belongs in native content, never duplicated in JSON metadata or persisted chat messages. */
+export function assetReadToolResult(value: AssetReadResult) {
+  const { content, ...metadata } = value;
+  return { content: [{ type: 'text' as const, text: JSON.stringify(metadata) }, ...content], structuredContent: metadata };
+}

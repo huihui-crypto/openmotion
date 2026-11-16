@@ -30,7 +30,7 @@ test('default installation prepares all three production cards in its own worksp
   assert.equal((await stat(result.inlinePresentation.path)).size, result.inlinePresentation.bytes);
   assert.equal(result.hostSessionVerified, false, 'Preparing content is not a host delivery acknowledgment');
 });
-test('the inline renderer mounts the production welcome and three real media cards without an MCP connection', async t => {
+test('the inline renderer returns a streaming welcome separately from three real media cards', async t => {
   const directory = await mkdtemp(path.join(tmpdir(), 'om-inline-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
   const output = path.join(directory, 'welcome.html');
@@ -48,13 +48,16 @@ test('the inline renderer mounts the production welcome and three real media car
   window.document.body.innerHTML = fragment;
   for (const script of window.document.querySelectorAll('script')) window.eval(script.textContent!);
   assert.equal(window.document.querySelectorAll('.omtc-card').length, 3);
-  assert.match(window.document.querySelector('.omtc-welcome')!.textContent!, /我是你的开源视频创作搭档/);
+  assert.equal(window.document.querySelector('.omtc-welcome'), null);
+  assert.match(result.welcomeMarkdown, /我是你的开源视频创作搭档/);
   assert.equal(window.document.querySelectorAll('.omtc-card video[src^="blob:"]').length, 3);
+  let copied = '';
+  Object.defineProperty(window.navigator, 'clipboard', {value: {writeText: async (text: string) => {copied = text;}}});
   (window.document.querySelector('.omtc-card .omtc-clone') as any).click();
-  const draft = window.document.querySelector('textarea')!;
-  assert.match(draft.value, /product-promo/);
-  assert.match(draft.value, /我的要求/);
-  assert.equal(draft.readOnly, true, 'an unsupported composer bridge must expose the copyable brief');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.match(copied, /product-promo/);
+  assert.match(copied, /我的要求/);
+  assert.equal(window.document.querySelector('textarea'), null);
   await assert.rejects(renderInlineOnboarding({ appRoot, output, language: 'zh' }), /EEXIST/);
   assert.equal(await readFile(output, 'utf8'), fragment);
 });

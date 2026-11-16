@@ -47,7 +47,8 @@ beforeEach(() => {
     if (url.pathname.endsWith('/projects') && !init?.method) return Response.json(catalog);
     if (url.pathname.includes('/sessions/')) return Response.json(catalog.sessions.find(item => url.pathname.endsWith(item.id)));
     if (url.pathname.includes('/projects/') && url.pathname.endsWith('/open')) return Response.json({ projectId: url.pathname.split('/').at(-2), revision: 'r' });
-    if (url.pathname.endsWith('/settings/providers')) return Response.json({ providers: [provider, { ...provider, id: 'openai', label: 'OpenAI', protocol: 'openai', category: 'language' }], models: [], defaults: {} });
+    // The OpenAI preset carries media kinds, so it stays visible in the provider list.
+    if (url.pathname.endsWith('/settings/providers')) return Response.json({ providers: [provider, { ...provider, id: 'openai', label: 'OpenAI', protocol: 'openai', category: 'multimodal', kinds: ['text', 'image', 'audio'] }], models: [], defaults: {} });
     if (url.pathname.endsWith('/integration')) return Response.json(info);
     if (url.pathname.endsWith('/template-catalog')) return Response.json({ items: [{ id: 'product-promo', title: 'Product Promo', kind: 'builtin', tags: [] }], next: null, catalogVersion: 'test' });
     return Response.json({ projectId, revision: 'r', version: '1.2.3', agents: [], defaults: {}, state: 'signed-out' });
@@ -139,6 +140,8 @@ it('restores provider details and returns to the providers list through history'
 
 it('uses the header controls for visited pages, preserves Forward on reload and drops abandoned destinations', async () => {
   await mount();
+  expect(historyButton('Back').title).toBe('Back');
+  expect(historyButton('Forward').title).toBe('Forward');
   expect(historyButton('Back').disabled).toBe(true);
   expect(historyButton('Forward').disabled).toBe(true);
   await click('MCP · Connect Agent'); await click('Settings');
@@ -156,15 +159,24 @@ it('uses the header controls for visited pages, preserves Forward on reload and 
   await click('Help'); expect(historyButton('Forward').disabled).toBe(true);
 });
 
-it('keeps history controls inside the active template dialogs', async () => {
+it('keeps gallery history controls while headerless template previews retain browser navigation', async () => {
   const library = 'dialog[aria-label="Template library"] > div > header';
-  const detail = 'dialog[aria-label="Template preview"] > header';
+  const detail = 'dialog[aria-label="Template preview"]';
   await mount(); await click('MCP · Connect Agent'); await click('Explore templates');
+  expect(historyButton('Back', library).hasAttribute('title')).toBe(false);
+  await act(async () => { historyButton('Back', library).focus(); await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(container.querySelector('dialog[aria-label="Template library"] [role="tooltip"]')?.textContent).toBe('Back');
   await act(async () => container.querySelector<HTMLButtonElement>('[data-template-id="product-promo"] button')!.click());
-  await clickHistory('Back', detail); expect(page().template).toBeNull();
+  expect(container.querySelector(`${detail} > header`)).toBeNull();
+  expect(container.querySelector(`${detail} .om-history-navigation`)).toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Close template preview"]`)).not.toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Previous template"]`)).not.toBeNull();
+  expect(container.querySelector(`${detail} button[aria-label="Next template"]`)).not.toBeNull();
+  expect(historyButton('Back').title).toBe('Back');
+  await traverse(-1); expect(page().template).toBeNull();
   expect(historyButton('Forward', library).disabled).toBe(false);
   await clickHistory('Forward', library); expect(page().template).toBe('product-promo');
-  await clickHistory('Back', detail); await clickHistory('Back', library);
+  await traverse(-1); await clickHistory('Back', library);
   expect(page()).toMatchObject({ settings: 'mcp', templates: false });
 });
 

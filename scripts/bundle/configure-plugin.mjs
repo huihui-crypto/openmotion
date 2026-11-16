@@ -11,4 +11,5 @@ await access(node);
 const config = JSON.parse(await readFile(path.join(root, '.mcp.json'), 'utf8'));
 Object.assign(config.mcpServers.openmotion, { command: node, args: ['--experimental-strip-types', '--import', './bootstrap.mjs', 'mcp.ts'], cwd: root });
 await writeFile(path.join(root, 'plugin/.mcp.json'), JSON.stringify(config, null, 2) + '\n');
+await writeFile(path.join(root, 'plugin/scope.json'), JSON.stringify({ runtimeRoot: root, version: metadata.version, machineLocal: true }, null, 2) + '\n');
 console.log('Thin plugin configured for: ' + root);

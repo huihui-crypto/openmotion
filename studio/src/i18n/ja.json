@@ -1817,5 +1817,6 @@
   "Main track magnet": "メイントラックのマグネット",
   "Timeline linkage": "タイムライン連動",
   "Trim left to playhead": "再生ヘッドまで左をトリム",
-  "Trim right to playhead": "再生ヘッドまで右をトリム"
+  "Trim right to playhead": "再生ヘッドまで右をトリム",
+  "Screen too small to expand this panel": "画面が小さすぎるため、パネルを展開できません"
 }

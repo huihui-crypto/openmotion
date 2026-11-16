@@ -39,9 +39,13 @@ MCP-only 使用 resources/read `openmotion://workflow/director/start` 读取本�
 
 ### 1. 形成创作判断
 
+Typography: before choosing faces for new text, redesigning text hierarchy or addressing a font/style complaint, read [Typography](../openmotion-production/references/typography.md). Use its role-led, actual-copy comparison for open choices; carry the observed choice into a representative frame or clip and the existing creative record.
+
 确认受众、主要信息、期望感受或行动、发布规格、事实依据、素材与声音需求。检查实际工具、素材和渲染能力；真实界面演示与概念化表达分开标注。
 
 需要选择、获取或替换素材时读取 [共享素材规范](../openmotion-production/references/materials.md)。现有主视觉质感不足，或任务含截图、跨段复现、多段落及展示感问题时，另按需读取 [制作决策与状态延续](references/production-decisions.md)，落实材料与动作、占时及状态复用的关系。
+
+纯动态图形全程用原生代码实现，不调用、不建议也不询问多模态生成；成片确实需要摄影画面、实拍感镜头、合成配音或新配乐时，按 [openmotion-media](../openmotion-media/SKILL.md) 处理。
 
 已有成片或审片反馈时，先看实际问题区间，把仍未解决的现象与保留的有效部分作为本次创作输入；不要把用户指出的展示感缩减成几个接点或字号问题。
 

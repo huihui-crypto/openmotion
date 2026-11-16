@@ -78,12 +78,28 @@ async function downloadAttempt(asset, filename, progress, attempt, maxAttempts) 
 
 export async function runFile(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, timeout: 300_000, ...options });
-    let stdout = '', stderr = '';
+    const { timeout = 300_000, killSignal = 'SIGTERM', ...spawnOptions } = options;
+    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, killSignal, ...spawnOptions });
+    let stdout = '', stderr = '', settled = false;
+    const finish = (error, output) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      error ? reject(error) : resolve(output);
+    };
+    // Own and clear the deadline on every terminal path, including a failed spawn.
+    const timer = timeout > 0 ? setTimeout(() => {
+      child.kill(killSignal);
+      finish(Object.assign(new Error(`${command} timed out after ${timeout}ms`), { code: 'ETIMEDOUT' }));
+    }, timeout) : undefined;
+    timer?.unref();
     child.stdout?.on('data', chunk => { stdout = (stdout + chunk).slice(-4 * 1024 * 1024); });
     child.stderr?.on('data', chunk => { stderr = (stderr + chunk).slice(-16000); });
-    child.once('error', reject);
-    child.once('close', code => code === 0 ? resolve(stdout) : reject(new Error(`${command} exited ${code}: ${stderr || stdout}`)));
+    child.once('error', error => {
+      if (error.code === 'ENOENT') error.message = `HOST_CLI_NOT_FOUND: ${command}. Install this CLI or pass its executable/JavaScript entry path. ${error.message}`;
+      finish(error);
+    });
+    child.once('close', code => code === 0 ? finish(null, stdout) : finish(new Error(`${command} exited ${code}: ${stderr || stdout}`)));
   });
 }
 

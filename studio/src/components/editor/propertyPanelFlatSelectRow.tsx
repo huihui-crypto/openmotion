@@ -1,3 +1,4 @@
+import { PropertyLabel } from "./PropertyLabel";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
 import { RotateCcw } from "../../icons/SystemIcons";
@@ -57,9 +58,9 @@ export function FlatSelectRow({
       ? [{ value, label: value }, ...normalizedOptions]
       : normalizedOptions;
   return (
-    <div className="group flex min-h-[30px] items-center justify-between">
-      <span className={`text-[11px] ${VALUE_TIER_LABEL_CLASS[tier]}`}>{t(label)}</span>
-      <span className="flex items-center gap-2">
+    <div className="group flex min-h-[30px] items-center justify-between gap-2">
+      <PropertyLabel label={t(label)} className={VALUE_TIER_LABEL_CLASS[tier]} />
+      <span className="flex min-w-0 max-w-[65%] items-center gap-2">
         {presentation === "menu" ? (
           <Menu
             align="end"

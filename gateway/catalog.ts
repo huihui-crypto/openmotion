@@ -1,7 +1,8 @@
 import type { Model, Modality, ProviderId } from '../shared/gateway.ts';
 import { apiJson, type Fetcher } from './network.ts';
+import { isGatewayProvider, providerRegistry, registeredProvider } from '../shared/provider-registry.ts';
 
-export const providerLabels: Record<ProviderId, string> = { codex: 'Codex', atlascloud: 'Atlas Cloud', fal: 'fal.ai', opendesign: 'OpenDesign Cloud', wavespeed: 'WaveSpeedAI' };
+export const providerLabels: Record<ProviderId, string> = Object.fromEntries(providerRegistry.filter(provider => isGatewayProvider(provider.id)).map(provider => [provider.id, provider.label]));
 export const providerIds = Object.keys(providerLabels) as ProviderId[];
 export function modelKey(provider: ProviderId, modelId: string) { return `${provider}:${modelId}`; }
 export function validModelId(id: unknown): asserts id is string {
@@ -50,8 +51,9 @@ export function normalizeModels(provider: 'atlascloud' | 'fal' | 'wavespeed', ro
 }
 export async function discoverModels(provider: 'atlascloud' | 'fal', query: string, fetcher: Fetcher): Promise<Model[]> {
   // Catalogues are public. Listing a model must never mark the user's key as verified.
+  const definition = registeredProvider(provider)!, baseUrl = definition.catalogueBaseUrl ?? definition.baseUrl;
   if (provider === 'atlascloud') {
-    const body = await apiJson(fetcher, 'https://api.atlascloud.ai/api/v1/models');
+    const body = await apiJson(fetcher, baseUrl + '/api/v1/models');
     if (!Array.isArray(body.data)) throw new Error('Atlas catalogue format changed');
     return normalizeModels(provider, body.data);
   }
@@ -61,7 +63,7 @@ export async function discoverModels(provider: 'atlascloud' | 'fal', query: stri
     const params = new URLSearchParams({ limit: '100', status: 'active' });
     if (query) params.set('q', query);
     if (cursor) params.set('cursor', cursor);
-    const body = await apiJson(fetcher, `https://api.fal.ai/v1/models?${params}`);
+    const body = await apiJson(fetcher, `${baseUrl}/v1/models?${params}`);
     if (!Array.isArray(body.models)) throw new Error('fal catalogue format changed');
     models.push(...normalizeModels(provider, body.models));
     if (!body.next_cursor) break;

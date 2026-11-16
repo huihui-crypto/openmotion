@@ -31,7 +31,11 @@ export function useAssetBrowser({ kind, revision = 0, active = true }: { kind: A
   const [error, setError] = useState(false), [loading, setLoading] = useState(true), [retry, setRetry] = useState(0), [page, setPage] = useState(0);
   const signature = `${kind}|${query}|${source}|${sort}|${revision}`;
   const requestKey = `${signature}|${page}`;
-  const data = result?.key === requestKey ? result : undefined;
+  // Keep the last settled collection visible while a new filter or tab request
+  // is in flight. Skeleton cards are reserved for the initial load, so tab
+  // changes do not flash a second loading surface over the existing gallery.
+  const data = result;
+  const stale = Boolean(data && data.key !== requestKey);
   const [previous, setPrevious] = useState(signature);
   if (previous !== signature) { setPrevious(signature); setPage(0); }
   useEffect(() => {
@@ -43,7 +47,7 @@ export function useAssetBrowser({ kind, revision = 0, active = true }: { kind: A
     }, query ? 180 : 0);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [active, kind, query, source, sort, page, revision, retry, requestKey]);
-  return { kind, query, setQuery, source, setSource, sort, setSort, data, loading, error, page, setPage, retry: () => setRetry(v => v + 1) };
+  return { kind, query, setQuery, source, setSource, sort, setSort, data, stale, loading: loading || (stale && !error), error, page, setPage, retry: () => setRetry(v => v + 1) };
 }
 type BrowserActions = { onOpen: (asset: LibraryAsset) => void; onCreate?: (kind: 'image' | 'video' | 'audio') => void; compact?: boolean; selectedId?: string };
 export function AssetBrowser({ kind, revision, active, ...actions }: BrowserActions & { kind: AssetKind; revision?: number; active?: boolean }) {
@@ -52,7 +56,7 @@ export function AssetBrowser({ kind, revision, active, ...actions }: BrowserActi
 }
 export function AssetBrowserContent({ browser, onOpen, onCreate, compact = false, selectedId }: BrowserActions & { browser: ReturnType<typeof useAssetBrowser> }) {
   const { t } = useI18n();
-  const { kind, query, setQuery, source, setSource, sort, setSort, data, loading, error, page, setPage, retry } = browser;
+  const { kind, query, setQuery, source, setSource, sort, setSort, data, stale, loading, error, page, setPage, retry } = browser;
   return <section data-compact={compact} aria-label={t('Asset library')}>
     <div className="om-asset-filters om-control-row">
       <label className="om-field om-asset-search"><RemixIcon name="search-line" size={16} /><input type="search" aria-label={t('Search assets')} placeholder={t('Search assets...')} value={query} onChange={e => setQuery(e.target.value)} maxLength={200} /></label>
@@ -60,7 +64,7 @@ export function AssetBrowserContent({ browser, onOpen, onCreate, compact = false
       <Select label={t('Sort')} value={sort} onCommit={setSort} options={[{ value: 'newest', label: t('Newest first') }, { value: 'oldest', label: t('Oldest first') }, { value: 'name', label: t('Name') }]} /></>}
       {(query || source !== 'all') && <button className="om-nav-item" onClick={() => { setQuery(''); setSource('all'); }}>{t('Clear filters')}</button>}
     </div>
-    <div className="om-asset-results" aria-busy={loading}>
+    <div className="om-asset-results" aria-busy={loading} inert={stale && !error}>
       {error ? <div className="om-empty"><RemixIcon name="error-warning-line" size={32} /><p>{t('Could not load assets')}</p><button className="om-button" onClick={retry}>{t('Retry')}</button></div>
         : !data ? <div className="om-asset-grid">{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} className="om-asset-loading-card" />)}</div>
         : !data?.assets.length && onCreate && !query && source === 'all' && kind !== 'trash' ? <div className="om-asset-welcome"><span className="om-creation-kicker">{t('YOUR NEXT CREATION STARTS HERE')}</span><h2 className="om-title">{t('One idea. Endless possibilities.')}</h2><p className="om-muted">{t('Upload your own media or create an image, video or audio asset.')}</p><div className="om-asset-starters">{creationKinds.filter(k => kind === 'all' || kind === k.id).map(item => <button className="om-creation-suggestion om-asset-starter" key={item.id} onClick={() => onCreate(item.id)}><CreationEmblem kind={item.id} /><strong>{t(item.title)}</strong><span className="om-muted">{t(item.hint)}</span><span className="om-asset-starter-action">{t(item.action)}<RemixIcon name="arrow-right-line" size={16} /></span></button>)}</div></div>

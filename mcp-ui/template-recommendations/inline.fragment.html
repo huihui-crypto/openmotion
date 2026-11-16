@@ -7,8 +7,8 @@
   const bootstrap = /*__OPENMOTION_INLINE_BOOTSTRAP__*/;
   const recommendation = /*__OPENMOTION_INLINE_RECOMMENDATION__*/;
   // This host has an inline document renderer, not a negotiated MCP message
-  // extension. The production component therefore offers its existing copyable
-  // brief fallback and never sends a task or pretends MCP is connected.
+  // extension. Copy the brief to the clipboard without sending a task or
+  // pretending that native composer access has been negotiated.
   const host = {
     getHostContext: () => ({locale: recommendation.language}),
     getHostCapabilities: () => ({}),

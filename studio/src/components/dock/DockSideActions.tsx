@@ -13,7 +13,8 @@ export function DockSideActions({ group, panels }: Pick<IDockviewHeaderActionsPr
   const { t } = useI18n();
   const first = panels.find(panel => isPanelId(panel.id))?.id;
   const zone = isPanelId(first) ? PANEL_DEFINITIONS[first].zone : "center";
-  const collapsed = useDockLayoutStore(state => state.collapsedZones?.includes(zone) ?? false);
+  const collapsedZones = useDockLayoutStore(state => state.collapsedZones);
+  const collapsed = collapsedZones?.includes(zone) ?? false;
   const controller = useDockLayoutStore(state => state.controller);
   const activatePanel = useDockLayoutStore(state => state.activatePanel);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -28,9 +29,11 @@ export function DockSideActions({ group, panels }: Pick<IDockviewHeaderActionsPr
   const label = t(zone === "left"
     ? collapsed ? "Expand left panel" : "Collapse left panel"
     : collapsed ? "Expand right panel" : "Collapse right panel");
+  const unavailable = collapsed && controller?.canExpandSide?.(first) === false;
+  const expandHint = t("Screen too small to expand this panel");
   const toggle = (
-    <Tooltip label={t(collapsed ? "Expand" : "Collapse")} side={collapsed ? zone === "left" ? "right" : "left" : "bottom"}>
-      <IconButton ref={buttonRef} size={collapsed ? "lg" : "sm"} aria-label={label}
+    <Tooltip label={unavailable ? expandHint : t(collapsed ? "Expand" : "Collapse")} side={collapsed ? zone === "left" ? "right" : "left" : "bottom"}>
+      <IconButton ref={buttonRef} size={collapsed ? "lg" : "sm"} aria-label={label} disabled={unavailable}
         aria-expanded={!collapsed} icon={<RemixIcon name="arrow-right-s-line" size={16} mirrored={zone === "left" ? !collapsed : collapsed} />}
         onClick={event => { restoreFocus.current = true; controller?.setGroupCollapsed?.(first, !collapsed, event.detail > 0); controller?.rememberWorkspace?.(); }} />
     </Tooltip>
@@ -46,8 +49,8 @@ export function DockSideActions({ group, panels }: Pick<IDockviewHeaderActionsPr
           const id = panel.id;
           const Icon = TAB_ICONS[id];
           const title = panel.title || t(PANEL_DEFINITIONS[id].title);
-          return <Tooltip key={id} label={title} side={zone === "left" ? "right" : "left"}>
-            <IconButton size="lg" aria-label={title} aria-expanded={false}
+          return <Tooltip key={id} label={unavailable ? expandHint : title} side={zone === "left" ? "right" : "left"}>
+            <IconButton size="lg" aria-label={title} aria-expanded={false} disabled={unavailable}
               icon={<Icon size={16} />} onClick={event => {
                 restoreFocus.current = true;
                 controller?.setGroupCollapsed?.(id, false, event.detail > 0);

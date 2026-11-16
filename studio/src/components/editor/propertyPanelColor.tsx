@@ -1,3 +1,4 @@
+import { PropertyLabel } from "./PropertyLabel";
 import { useI18n } from "../../i18n/I18n";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -470,7 +471,7 @@ export function ColorField({
   if (flat) {
     return (
       <div className="flex min-h-[30px] items-center justify-between gap-2">
-        <span className="text-[11px] text-panel-text-2">{label}</span>
+        <PropertyLabel label={label} className="text-panel-text-2" />
         <button
           type="button"
           data-flat-color-trigger="true"
@@ -478,7 +479,7 @@ export function ColorField({
           aria-label={t("Pick {value0} color", { value0: label.toLowerCase() })}
           ref={buttonRef}
           onClick={openPicker}
-          className="flex h-7 min-w-0 items-center rounded-md bg-panel-bg-soft px-1.5 text-[11px] text-panel-text-0 transition-colors hover:bg-panel-hover disabled:cursor-not-allowed"
+          className="flex h-7 min-w-0 shrink-0 items-center rounded-md bg-panel-bg-soft px-1.5 text-[11px] text-panel-text-0 transition-colors hover:bg-panel-hover disabled:cursor-not-allowed"
         >
           <span
             className="relative h-3.5 w-3.5 shrink-0 overflow-hidden rounded-[3px] border border-panel-hairline"

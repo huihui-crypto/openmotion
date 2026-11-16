@@ -373,7 +373,7 @@ describe.each(["classic", "flat"] as const)("shared %s input telemetry", (ui) =>
   it("tracks FontFamilyField exactly once for a real selection", async () => {
     vi.stubGlobal("FontFace", class { async load() { return this; } });
     const originalFonts = Object.getOwnPropertyDescriptor(document, "fonts");
-    Object.defineProperty(document, "fonts", { configurable: true, value: { add: vi.fn() } });
+    Object.defineProperty(document, "fonts", { configurable: true, value: Object.assign(new EventTarget(), { add: vi.fn() }) });
     const host = render(
       section(
         <FontFamilyField

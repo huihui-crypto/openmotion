@@ -27,6 +27,8 @@
 [data-motion-studio] .om-button:hover { background: var(--motion-hover); color: var(--motion-strong); }
 [data-motion-studio] .om-button[data-primary] { background: var(--motion-action); color: var(--motion-on-action); border-color: var(--motion-action); }
 [data-motion-studio] .om-button:disabled { color: var(--motion-control-disabled); background: var(--motion-panel); border-color: var(--motion-border); cursor: default; }
+[data-motion-studio] .om-text-link[data-quiet] { background: transparent; text-decoration: none; }
+[data-motion-studio] .om-text-link[data-quiet]:hover:not(:disabled):not([aria-disabled="true"]) { background: transparent; text-decoration: underline; }
 [data-motion-studio] .om-card { border: 1px solid var(--motion-border-subtle); border-radius: var(--motion-radius-lg); background: var(--motion-bg); padding: var(--motion-space-16); }
 [data-motion-studio] .om-card-stack { display: grid; align-content: start; justify-items: start; gap: var(--motion-space-12); }
 [data-motion-studio] .om-card-stack > :is(.om-settings-row, .om-muted) { width: 100%; }
@@ -333,6 +335,14 @@
 [data-motion-studio] .om-field:has(input):not(:has(textarea)) { box-sizing: border-box; height: var(--motion-control); min-height: var(--motion-control); padding-block: 0; font-size: var(--motion-text-md); font-weight: var(--motion-weight-regular); }
 [data-motion-studio] .om-control-row > .hf-od-field { padding-inline: var(--motion-space-10); border-radius: var(--motion-radius-md); background: var(--motion-panel); }
 [data-motion-studio] .om-control-row > .om-icon-button { width: var(--motion-control); padding: 0; flex: none; justify-content: center; }
+/* Search and discovery controls share the ordinary application control recipes. */
+[data-motion-studio] .om-search-field > svg { flex: none; width: var(--motion-icon); height: var(--motion-icon); }
+[data-motion-studio] .om-search-field input { flex: 1; padding: 0; border-radius: 0; appearance: none; font: inherit; line-height: var(--motion-leading-body); box-shadow: none; }
+[data-motion-studio] .om-search-field kbd { flex: none; font-family: inherit; font-size: var(--motion-text-xs); line-height: var(--motion-leading-body); white-space: nowrap; }
+[data-motion-studio] .om-control-row > .om-button[data-popup-open] { background: var(--motion-hover); color: var(--motion-strong); }
+[data-motion-studio] .om-button.om-filter-pill { border-color: transparent; border-radius: var(--motion-radius-full); background: var(--motion-gallery-control); color: var(--motion-muted); }
+[data-motion-studio] .om-button.om-filter-pill:hover { background: var(--motion-hover); color: var(--motion-strong); }
+[data-motion-studio] .om-button.om-filter-pill[aria-pressed="true"] { background: var(--motion-accent-soft); color: var(--motion-accent); }
 [data-motion-studio] .om-creation-mode { padding: var(--motion-space-2); }
 [data-motion-studio] .om-creation-mode .om-nav-item { padding-block: var(--motion-space-4); }
 [data-motion-studio] .om-generation-settings .om-nav-item { min-height: var(--motion-control-sm); padding-block: var(--motion-space-4); font-size: var(--motion-text-sm); }

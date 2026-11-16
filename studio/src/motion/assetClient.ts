@@ -1,7 +1,7 @@
 import { gatewayRequest } from './gatewayClient';
 import type { LibraryAsset } from '../../../shared/asset-library';
 export async function assetRequest<T>(args: Record<string, unknown>): Promise<T> {
-  return gatewayRequest<T>('phase1/call', 'POST', { name: 'openmotion_assets', arguments: args });
+  return gatewayRequest<T>('phase1/call', 'POST', { name: 'openmotion_assets_use', arguments: args });
 }
 export async function uploadLibraryAsset(file: File, assetId?: string, parentVersionId?: string) {
   const query = new URLSearchParams({ requestId: crypto.randomUUID() });

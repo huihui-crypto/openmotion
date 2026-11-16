@@ -7,7 +7,7 @@ import path from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { WorkspaceStore } from '../workspace.ts';
-import { getWorkflow, workflowReferences, workflowRegistry, workflowSections, phase1WorkflowNames } from '../shared/workflow.ts';
+import { getWorkflow, markdownAnchors, workflowLinkAnchors, workflowReferences, workflowRegistry, workflowSections, phase1WorkflowNames } from '../shared/workflow.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const workflows = phase1WorkflowNames;
@@ -157,6 +157,39 @@ test('Markdown references resolve across workflows, deduplicate canonical paths,
   }
 });
 
+test('Markdown heading anchors follow rendered slugs and every packaged #fragment link resolves', async () => {
+  const headings = [
+    '# Check and deliver', '## 1. Export the inspected version', '## 旁白选角与语气', '### `measure` CLI: probe', '## Notes', '## Notes', '## Closed heading ##',
+    '## _Emphasis_ and <em>tags</em>', '## `a_b` snake_case', '## _private', '## __init__ hook', '# a', '# a-1', '# a',
+    '````markdown', '## Inside a longer fence', '```', '## Still inside', '````', '## After the fence',
+    '~~~', '## Unclosed fence hides the rest',
+  ];
+  const anchors = markdownAnchors(headings.join('\n'));
+  assert.deepEqual([...markdownAnchors(headings.join('\r\n'))], [...anchors]);
+  assert.deepEqual([...anchors], ['check-and-deliver', '1-export-the-inspected-version', '旁白选角与语气', 'measure-cli-probe', 'notes', 'notes-1', 'closed-heading',
+    'emphasis-and-tags', 'a_b-snake_case', '_private', 'init-hook', 'a', 'a-1', 'a-2', 'after-the-fence']);
+
+  const documentId = 'skills/openmotion-director/SKILL.md';
+  const links = workflowLinkAnchors([
+    '[sound](references/sound-narrative.md#审听与比较)', '[encoded](references/sound-narrative.md#%E5%AE%A1%E5%90%AC%E4%B8%8E%E6%AF%94%E8%BE%83)',
+    '[self](#local)', '[whole](references/action-script.md)', '`[code](references/action-script.md#ignored)`', '[external](https://example.com/a.md#b)',
+  ].join('\n'), documentId);
+  assert.deepEqual(links.map(({ documentId, anchor }) => ({ documentId, anchor })), [
+    { documentId: 'skills/openmotion-director/references/sound-narrative.md', anchor: '审听与比较' },
+    { documentId: 'skills/openmotion-director/references/sound-narrative.md', anchor: '审听与比较' },
+    { documentId, anchor: 'local' },
+  ]);
+
+  const missing: string[] = [];
+  for (const { workflow, section } of entries) {
+    const document = await getWorkflow(section, workflow);
+    for (const link of workflowLinkAnchors(document.content, document.documentId)) {
+      const target = link.documentId === document.documentId ? document : await getWorkflow(link.section, link.workflow);
+      if (!markdownAnchors(target.content).has(link.anchor)) missing.push(`${document.documentId}: ${link.href}`);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
 test('MCP rejects unknown routes, invalid route-section pairs and arbitrary paths without creating workspace files', async () => {
   const directory = await mkdtemp(path.join(tmpdir(), 'motion-workflow-invalid-'));
   try {
@@ -198,7 +231,7 @@ test('phase1 resource discovery exposes all five routes and their supporting doc
     const result = stdio(directory, [{ id: 1, method: 'resources/list' }]).get(1);
     const uris = result.resources.map((resource: { uri: string }) => resource.uri);
     const expected = entries.map(({ workflow, section }) => `openmotion://workflow/${workflow}/${section}`);
-    assert.deepEqual(uris, [...expected, 'openmotion://engine/SKILL.md', 'ui://openmotion/inline-video/v1/player.html']);
+    assert.deepEqual(uris, [...expected, 'openmotion://fonts/index', 'openmotion://engine/SKILL.md', 'ui://openmotion/inline-video/v1/player.html']);
     assert.ok(uris.includes('openmotion://workflow/video-to-template/verification'));
     assert.ok(!uris.some(uri => uri.includes('debug-media')));
     const reads = stdio(directory, expected.map((uri, i) => ({ id: i, method: 'resources/read', params: { uri } })));

@@ -27,6 +27,12 @@ test('local adapters share one runtime, launch outside its cwd and preserve prev
       for (const skill of ['openmotion-director', 'openmotion-template-to-video', 'openmotion-video-to-template']) {
         assert.equal(await readFile(path.join(output, host, 'openmotion/skills', skill, 'SKILL.md'), 'utf8'), await readFile(path.join(source, 'skills', skill, 'SKILL.md'), 'utf8'));
       }
+      for (const file of ['references/unchanged-export.md', 'scripts/delivery.mjs', 'scripts/playback.mjs']) {
+        assert.equal(await readFile(path.join(output, host, 'openmotion/skills/openmotion-template-to-video', file), 'utf8'), await readFile(path.join(source, 'skills/openmotion-template-to-video', file), 'utf8'));
+      }
+      for (const file of ['references/typography.md', 'references/fonts.md', 'fonts/catalog.json']) {
+        assert.equal(await readFile(path.join(output, host, 'openmotion/skills/openmotion-production', file), 'utf8'), await readFile(path.join(source, 'skills/openmotion-production', file), 'utf8'));
+      }
       for (const name of ['SKILL.md', 'references/rebuild.md', 'references/verify.md', 'scripts/measure_frame.mjs', 'scripts/register_motion.py', 'scripts/measure_motion.py']) {
         assert.equal(await readFile(path.join(output, host, 'openmotion/skills/openmotion-recreate', name), 'utf8'), await readFile(path.join(source, 'skills/openmotion-recreate', name), 'utf8'));
       }
@@ -114,7 +120,7 @@ test('bundled runtime adapters preserve the Node preload and launch with a minim
     await cp(process.execPath, node);
     await mkdir(path.join(runtime, 'docs'));
     for (const name of ['AGENTS.md', 'CLAUDE.md']) await writeFile(path.join(runtime, name), '# Fixture');
-    for (const filename of ['scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/zip.mjs', 'scripts/distribution.ts', 'packages/design-system/index.js', 'packages/design-system/provider-icons.js', 'shared/entry.ts', 'shared/integration.ts', 'shared/template-locale.ts', 'shared/template-prompts.ts', 'shared/workflow.ts', 'shared/workflow-entry.js', 'shared/public-names.mjs', 'packages/design-system/icons.svg', 'packages/design-system/remix-icon-LICENSE.txt', 'packages/design-system/remix-icon-NOTICE.txt']) {
+    for (const filename of ['scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/zip.mjs', 'scripts/distribution.ts', 'packages/design-system/index.js', 'packages/design-system/provider-icons.js', 'shared/entry.ts', 'shared/integration.ts', 'shared/template-locale.ts', 'shared/template-prompts.ts', 'shared/workflow.ts', 'shared/font-catalog.ts', 'shared/workflow-entry.js', 'shared/public-names.mjs', 'packages/design-system/icons.svg', 'packages/design-system/remix-icon-LICENSE.txt', 'packages/design-system/remix-icon-NOTICE.txt']) {
       await mkdir(path.dirname(path.join(runtime, filename)), { recursive: true });
       await cp(path.join(source, filename), path.join(runtime, filename));
     }

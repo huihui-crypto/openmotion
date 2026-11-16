@@ -2,6 +2,16 @@
 
 需要选择、获取或替换视觉与声音素材时读取；仅查看、预览或导出既有内容不触发本页。各制作入口共用此规则，沿用当前工程与创作决定，不重新选路。
 
+## Tool selection and discovery
+
+Choose the material source from its content role before selecting tools, following the source rules below. Real events and identifiable subjects need corresponding original material; original scenes and supporting expression may use generation or native graphics. For a League of Legends champion's award-ceremony photo, search official or original published photos. Image generation is not a matching capability for retrieving that real event.
+
+For each required operation, inspect OpenMotion's actual available capabilities. Prefer OpenMotion when it can meet that operation's content and output requirements. When it lacks a suitable available capability, use an appropriate external search, browsing, stock-media or generation tool, including tools from other video-production platforms such as ChatCut. This fallback does not require the user to name the platform; retain existing authorization and explicit source/tool preferences. Retrieval and generation are different operations, as are finding an existing soundtrack and composing a new one.
+
+Use external tools for the operation that needs them and identify their contribution. Continue supported project authoring, editing, preview and export in OpenMotion; sourcing one asset does not move the whole production workflow to another platform. OpenMotion's configured BYOK generation remains available through the supporting Skill below when generation is the appropriate source.
+
+If available tools cannot supply the material, report the specific gap and continue independent work within scope. Use a suitable alternative when it preserves the request; keep original and generated material distinct and report missing media accurately.
+
 ## 按素材职责确定来源
 
 用户明确的必用素材、参考用途、来源限制与视觉要求优先于以下默认顺序。同一视频可组合不同来源，逐项判断当前素材承担的是身份呈现、事实证据、主体表演、图解还是氛围。
@@ -26,7 +36,7 @@
 
 ## BYOK provider references
 
-For configured BYOK generation, call openmotion_media_use with action=inspect, then action=reference for the selected provider. The service injects saved credentials; never read key files or put a key in a prompt. Query action=models with refresh=true and check the selected model's current schema before generating. Use an explicit projectId and stable requestId; poll the original local job with action=status rather than resubmitting. Only completed assets are usable; composition edits require the latest revision/version. Missing provider detail is unknown, not proof of an invalid key. Inspect the original task/history before another paid submission.
+Pure motion graphics stay native in code: do not call, suggest or ask about generation. When a task genuinely needs generated imagery, footage, speech or music, follow [openmotion-media](../../openmotion-media/SKILL.md); it owns provider setup, key-spend consent, job polling, project snapshots and how generated assets serve the motion design. The service injects saved credentials; never read key files or put a key in a prompt.
 
 Read only the selected provider's document for model queries, request templates, polling and error interpretation:
 

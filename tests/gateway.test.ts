@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { mediaBytes } from './media-fixtures.ts';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { cp, readFile, stat, writeFile, mkdir, symlink, chmod } from 'node:fs/promises';
@@ -181,7 +182,7 @@ test('fal uses returned queue URLs and provider-native voice input; auth rejecti
 }));
 
 test('Atlas submits and polls video, maps actual media, and refuses credentials inside arbitrary parameters', () => fixture(async store => {
-  const mp4 = Buffer.concat([Buffer.from('00000018667479706d703432000000006d703432', 'hex'), Buffer.alloc(32)]);
+  const mp4 = await mediaBytes('video');
   const gateway = new ModelGateway(store, { detect: agents, pollMs: 1, download: async () => mp4, fetcher: fetcher((url, init) => {
     assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer atlas-secret');
     if (init.method === 'POST') { assert.ok(url.endsWith('/generateVideo')); assert.equal(JSON.parse(init.body as string).duration, 5); return { code: 200, data: { id: 'video-1' } }; }

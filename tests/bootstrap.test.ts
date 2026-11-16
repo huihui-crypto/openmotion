@@ -18,7 +18,7 @@ async function fixture(run: (context: { directory: string; destination: string; 
     const log = path.join(directory, 'commands.log');
     await mkdir(bin);
     for (const file of ['scripts/install-motion.command', 'scripts/source-marketplace.mjs', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/runtime-assets.mjs',
-      'docs/install.md', 'shared/template-config.json', 'marketplace.example.json']) {
+      'docs/install-onboarding.md', 'shared/template-config.json', 'marketplace.example.json']) {
       await mkdir(path.dirname(path.join(source, file)), { recursive: true });
       await copyFile(path.join(root, file), path.join(source, file));
     }
@@ -91,23 +91,25 @@ test('source setup without a calling chat reports that boundary without invoking
   });
 });
 
-test('prepared inline cards without a calling chat still lead with pending and publication instructions', async () => {
+for (const threadId of ['', '11111111-1111-4111-8111-111111111111']) test('prepared onboarding stays in the installing turn with chat ' + (threadId || 'unknown'), async () => {
   await fixture(async ({ log, env }) => {
-    await copyFile(path.join(root, 'scripts/onboarding-callback.mjs'), path.join(env.MOTION_TEST_SOURCE!, 'scripts/onboarding-callback.mjs'));
     // Exercise the prepared-but-undelivered protocol without rendering a widget,
     // starting a real preview or sending any message to the developer's chat.
-    await writeFile(path.join(env.MOTION_TEST_SOURCE!, 'scripts/inline-onboarding.mjs'), `export async function prepareInlineOnboarding({output, language}) { return {status:'prepared', path:output, sha256:'0'.repeat(64), language}; }`);
+    await writeFile(path.join(env.MOTION_TEST_SOURCE!, 'scripts/inline-onboarding.mjs'), `import fs from 'node:fs/promises'; import path from 'node:path'; import {createHash} from 'node:crypto';
+export async function prepareInlineOnboarding({output, language}) { await fs.mkdir(path.dirname(output), {recursive:true}); await fs.writeFile(output, 'verified cards'); return {status:'prepared', path:output, sha256:createHash('sha256').update('verified cards').digest('hex'), language}; }`);
     const result = spawnSync('bash', [path.join(root, 'install.sh')], {
-      env: { ...env, CODEX_THREAD_ID: '', CODEX_SESSION_ID: '' }, encoding: 'utf8',
+      env: { ...env, MOTION_DATA_DIR: path.join(env.MOTION_TEST_SOURCE!, 'data'), CODEX_THREAD_ID: threadId, CODEX_SESSION_ID: '' }, encoding: 'utf8',
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stderr, /ONBOARDING_PENDING.*CURRENT_CHAT_UNKNOWN/);
+    assert.doesNotMatch(await readFile(log, 'utf8'), /codex queue/);
+    assert.match(result.stderr, /same installation turn/);
     assert.match(result.stderr, /publish.*permitted visualization directory/);
     const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
     assert.equal(onboarding.inlinePresentation.status, 'prepared');
     assert.equal(onboarding.onboardingComplete, false);
-    assert.equal(onboarding.callback.reason, 'CURRENT_CHAT_UNKNOWN');
-    assert.doesNotMatch(await readFile(log, 'utf8'), /codex queue/);
+    assert.equal(onboarding.onboardingStatus, 'awaiting_host_delivery');
+    assert.equal(onboarding.callback, undefined);
+    assert.equal(onboarding.preview.status, 'ready');
   });
 });
 
@@ -190,10 +192,10 @@ test('MCP verification failure is reported even after plugin registration', asyn
 
 test('a missing onboarding contract stops before plugin registration', async () => {
   await fixture(async ({ log, env }) => {
-    await rm(path.join(env.MOTION_TEST_SOURCE!, 'docs/install.md'));
+    await rm(path.join(env.MOTION_TEST_SOURCE!, 'docs/install-onboarding.md'));
     const result = spawnSync('bash', [path.join(root, 'install.sh')], { env, encoding: 'utf8' });
     assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /install\.md/);
+    assert.match(result.stderr, /install-onboarding\.md/);
     assert.doesNotMatch(await readFile(log, 'utf8'), /marketplace add|plugin add openmotion@/);
     assert.doesNotMatch(result.stdout, /preflight succeeded|Installation-success reply/);
   });

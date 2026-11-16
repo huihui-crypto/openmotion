@@ -49,6 +49,8 @@ export function generationOptions(model: Model): GenerationOptions | undefined {
     number('speed', 'Speech speed', 1, undefined, undefined, 0.1),
   ];
   if (['opendesign', 'account'].includes(model.provider) && model.mode === 'text-to-speech') fields = [text('voice', 'Voice ID', true)];
+  // The connector's `audio music --duration` takes whole seconds; music models publish no duration range.
+  if (model.provider === 'account' && model.modality === 'audio' && model.mode === 'text-to-audio') fields = [number('duration', 'Duration (seconds)', undefined, 1)];
   return fields ? { delivery: 'provider', fields } : undefined;
 }
 
