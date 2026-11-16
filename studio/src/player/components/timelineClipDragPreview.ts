@@ -138,7 +138,9 @@ function dragRowAim(
   geometry: TimelineRowGeometry,
 ) {
   let y = clientY - (ctx.scroll?.getBoundingClientRect().top ?? 0) + (ctx.scroll?.scrollTop ?? 0);
-  if (drag.started && drag.insertRow !== null) {
+  // Pointer seams are line-only: crossing them never opens or captures a row.
+  // Keyboard pickup still reserves a lane, so retain its expanded geometry.
+  if (drag.pointerId === null && drag.started && drag.insertRow !== null) {
     const top = geometry.getRowTop(drag.insertRow);
     if (y >= top - INSERT_SEAM_PX && y <= top + TRACK_H + INSERT_SEAM_PX)
       return { rowFloat: drag.insertRow, insertRow: drag.insertRow };

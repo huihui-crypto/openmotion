@@ -313,9 +313,13 @@ function useDisplayTrackOrder(draggedClip: DraggedClipState | null, trackOrder: 
   const started = draggedClip?.started === true;
   const insertRow = draggedClip?.insertRow ?? null;
   const previewTrack = draggedClip?.previewTrack;
+  const keyboardPickup = draggedClip?.pointerId === null;
   return useMemo(() => {
     if (!started || previewTrack === undefined) return trackOrder;
     if (insertRow !== null) {
+      // A pointer only marks the seam until release. Expanding a row on hover
+      // moves the target under the pointer and traps ordinary cross-track drags.
+      if (!keyboardPickup) return trackOrder;
       const pendingKey = trackOrder.reduce((lowest, key) => Math.min(lowest, key), 0) - 1;
       const displayOrder = [...trackOrder];
       displayOrder.splice(insertRow, 0, pendingKey);
@@ -328,7 +332,7 @@ function useDisplayTrackOrder(draggedClip: DraggedClipState | null, trackOrder: 
     // track only relative to other REAL (integer) tracks, leaving any
     // fractional group-anchor keys exactly where grouping placed them.
     return insertPreviewTrack(trackOrder, previewTrack);
-  }, [started, insertRow, previewTrack, trackOrder]);
+  }, [started, insertRow, previewTrack, trackOrder, keyboardPickup]);
 }
 
 export function useTimelineDisplayLayout(

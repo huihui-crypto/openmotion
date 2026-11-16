@@ -123,7 +123,7 @@ function horizontalDrag(
 }
 
 describe("computeDragPreview — plain horizontal drag never arms a phantom insert (BUG 1)", () => {
-  it("opens the physical seam below a zero-padding ruler and keeps it armed inside the new lane", () => {
+  it("arms an insertion only at the seam and releases it inside the next existing lane", () => {
     const geometry = createTimelineRowGeometry([0, 1, 2], [104, 48, 48], { top: 0 });
     const context = { ...ctx(geometry.rowHeights), rowGeometry: geometry };
     const { drag, clientX } = horizontalDrag(moodboard, 0.5, 2);
@@ -132,9 +132,25 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     const between = computeDragPreview(drag, clientX, 128, context);
     expect(between.insertRow).toBe(1);
     const inside = computeDragPreview(between, clientX, 150, context);
-    expect(inside.insertRow).toBe(1);
+    expect(inside.insertRow).toBeNull();
     const below = computeDragPreview(inside, clientX, 202, context);
     expect(below.insertRow).toBeNull();
+  });
+
+  it.each([false, true])("crosses a seam in small pointer steps without being captured by a new lane (upward=%s)", (upward) => {
+    const element = clip("cut", upward ? 1 : 0, 7.87, 3.1, 2);
+    const geometry = createTimelineRowGeometry([0, 1, 2], [48, 48, 48], { top: 0 });
+    const context = { ...ctx(undefined, [element]), rowGeometry: geometry };
+    const from = geometry.getRowTop(element.track) + 24;
+    const to = geometry.getRowTop(upward ? 0 : 1) + 24;
+    let current = { ...horizontalDrag(element, element.track + 0.5, 0).drag,
+      originClientY: from, pointerClientY: from };
+    for (let y = from; upward ? y >= to : y <= to; y += upward ? -2 : 2) {
+      current = computeDragPreview(current, 800, y, context);
+    }
+    expect(current.insertRow).toBeNull();
+    expect(current.previewTrack).toBe(upward ? 0 : 1);
+    expect(current.previewStart).toBe(7.87);
   });
 
   it("dragging v-moodboard +2s while grabbing its clip body keeps it a pure time move", () => {
