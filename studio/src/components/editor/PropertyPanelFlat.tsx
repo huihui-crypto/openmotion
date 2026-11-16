@@ -556,7 +556,7 @@ export function PropertyPanelFlat({
 
   return (
     <DesignPanelInputProvider ui="flat">
-      <div className="flex h-full min-h-0 flex-col overflow-hidden bg-panel-bg text-panel-text-1">
+      <div className="@container/inspector flex h-full min-h-0 flex-col overflow-hidden bg-panel-bg text-panel-text-1">
         {!mvp && (
           <DesignPanelInputProvider section="header">
             <PropertyPanelFlatHeader

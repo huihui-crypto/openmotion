@@ -41,6 +41,29 @@ test('template library opens without a bound project or initializing source, pre
   }, initialized);
 });
 
+test('provider setup opens without a project and preserves workspace state', async () => {
+  for (const initialized of [false, true]) await fixture(async store => {
+    const service = api(store), before = await store.get(), catalog = store.projectCatalog();
+    for (const presentation of ['foreground', 'background', 'now']) {
+      const opened = await service.call('openmotion_open_preview', { target: 'providers', presentation });
+      const url = new URL(opened.previewUrl);
+      assert.equal(url.searchParams.get('page'), 'settings');
+      assert.equal(url.searchParams.get('section'), 'providers');
+      assert.equal(url.searchParams.has('project'), false);
+      assert.equal(opened.target, 'providers');
+      assert.equal(opened.projectCreated, false);
+      assert.equal(opened.previewHandoff.openedByHost, false);
+      assert.equal(opened.previewHandoff.hostActionRequired, presentation !== 'background');
+      assert.match(opened.previewHandoff.instructions, /Model providers/);
+    }
+    assert.deepEqual(await store.get(), before);
+    assert.deepEqual(store.projectCatalog(), catalog);
+    for (const args of [{ projectId: 'project' }, { sessionId: 'session' }, { action: 'begin' }, { action: 'record_display' }]) {
+      await assert.rejects(service.call('openmotion_open_preview', { target: 'providers', ...args }), /INVALID_ARGUMENT/);
+    }
+  }, initialized);
+});
+
 test('confirmed inactive-chat deferral preserves the current chat and resolves the latest version on return', () => fixture(async store => {
   const service = api(store, async () => {}), p = await create(service), first = await edit(service, p, 'first');
   const opened = await service.call('openmotion_open_preview', first.previewHandoff.nextAction.arguments);
@@ -221,6 +244,10 @@ test('public MCP round trips expose the handoff and reject a stale host receipt'
     const created = await call('openmotion_create_project', { requestId: crypto.randomUUID(), projectType: 'natural_language', title: 'RPC preview', requirements: 'Check a two-turn editing handoff' });
     assert.equal(created.isError, undefined);
     const p = created.structuredContent;
+    const settings = await call('openmotion_open_preview', { target: 'providers' });
+    assert.equal(settings.isError, undefined, 'A bound project must not leak into provider setup');
+    assert.equal(new URL(settings.structuredContent.previewUrl).searchParams.get('section'), 'providers');
+    assert.equal(settings.structuredContent.projectId, undefined);
     const boundLibrary = await call('openmotion_open_preview', { target: 'templates' });
     assert.equal(boundLibrary.isError, undefined, 'A project binding must not leak into the template library target');
     assert.equal(boundLibrary.structuredContent.projectId, undefined);

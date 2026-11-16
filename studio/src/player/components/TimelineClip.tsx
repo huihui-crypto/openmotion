@@ -1,3 +1,4 @@
+import { Tooltip } from "../../components/ui/Tooltip";
 import { useI18n } from "../../i18n/I18n";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { memo, type CSSProperties, type ReactNode } from "react";
@@ -150,6 +151,9 @@ export const TimelineClip = memo(function TimelineClip({
     ...passengerStyle,
   };
 
+  const tooltipLabel = isComposition
+          ? t("{value0} • Double-click to open", { value0: el.compositionSrc ?? "" })
+          : t("{displayLabel} • {startLabel}s to {endLabel}s", { displayLabel: displayLabel, startLabel: startLabel, endLabel: endLabel });
   const clip = (
     <button
       type="button"
@@ -175,11 +179,6 @@ export const TimelineClip = memo(function TimelineClip({
       }
       className={clipClassName}
       style={style}
-      title={
-        isComposition
-          ? t("{value0} • Double-click to open", { value0: el.compositionSrc ?? "" })
-          : t("{displayLabel} • {startLabel}s to {endLabel}s", { displayLabel: displayLabel, startLabel: startLabel, endLabel: endLabel })
-      }
       onPointerEnter={onHoverStart}
       onPointerLeave={onHoverEnd}
       onPointerDown={onPointerDown}
@@ -281,5 +280,7 @@ export const TimelineClip = memo(function TimelineClip({
       )}
     </button>
   );
-  return isAudioClip || el.hasAudio ? <ClipPeakTooltip>{clip}</ClipPeakTooltip> : clip;
+  return isAudioClip || el.hasAudio
+    ? <ClipPeakTooltip label={tooltipLabel}>{clip}</ClipPeakTooltip>
+    : <Tooltip label={tooltipLabel} wrap disabled={isGestureActor || isDragging}>{clip}</Tooltip>;
 });

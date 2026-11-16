@@ -8,6 +8,9 @@ import { Menu as BaseMenu } from "@base-ui/react/menu";
 import { useRef } from "react";
 import type { ComponentPropsWithoutRef, ElementType, ReactElement, ReactNode } from "react";
 import { cn } from "./cn";
+import { Tooltip } from "./Tooltip";
+import { floatingMotion, POPUP_LAYER, popupSurface } from "./floatingSurface";
+export { floatingMotion, POPUP_LAYER, popupSurface } from "./floatingSurface";
 import { Check, RemixIcon } from "../../icons/RemixIcons";
 
 /**
@@ -39,27 +42,6 @@ export function useInlinePortal(container: PortalContainer) {
 /** Matches Tooltip's gap from its trigger, and its viewport margin. */
 const SIDE_OFFSET = 6;
 const VIEWPORT_MARGIN = 8;
-
-/**
- * Enter and exit shared by menus, popovers, dropdowns, and tooltips.
- * The open duration class differs; the shape does not.
- * `data-starting-style`/`data-ending-style` are Base UI's transition attributes.
- */
-export function floatingMotion(openDuration: "duration-open" | "duration-tooltip") {
-  return cn("hf-floating-motion outline-hidden", openDuration, openDuration === "duration-tooltip" && "hf-tooltip-motion");
-}
-
-/**
- * Chrome shared by every floating panel (`Popover` too); callers add their own shadow token.
- */
-export const popupSurface = cn(
-  "hf-od-floating-surface rounded-lg border border-border-input bg-surface",
-  floatingMotion("duration-open"),
-  "data-[preview-state=open]:opacity-100 data-[preview-state=open]:scale-100",
-);
-
-/** Every floating list, menu, popover and tooltip sits on this layer, above panel chrome and modals. */
-export const POPUP_LAYER = "z-200";
 
 const menuPopup = cn(popupSurface, "min-w-36 p-1 shadow-menu");
 
@@ -95,6 +77,8 @@ interface MenuProps
   extends PositionedProps, Omit<ComponentPropsWithoutRef<typeof BaseMenu.Root>, "children"> {
   /** A single element. It becomes the trigger; no wrapper is added around it. */
   trigger: ReactElement;
+  /** Standard hover/focus hint for the menu trigger. */
+  tooltip?: string;
   /** The items: `MenuItem`, `MenuRadioGroup`, `MenuSeparator`. */
   children: ReactNode;
 }
@@ -105,6 +89,7 @@ interface MenuProps
  */
 export function Menu({
   trigger,
+  tooltip,
   children,
   side = "bottom",
   align = "start",
@@ -118,7 +103,9 @@ export function Menu({
   const inline = useInlinePortal(container);
   return (
     <BaseMenu.Root {...root}>
-      <BaseMenu.Trigger render={trigger} />
+      {tooltip === undefined ? <BaseMenu.Trigger render={trigger} /> : (
+        <Tooltip label={tooltip} wrap><BaseMenu.Trigger render={trigger} /></Tooltip>
+      )}
       {inline.host}
       <BaseMenu.Portal {...inline.portal}>
         <BaseMenu.Positioner

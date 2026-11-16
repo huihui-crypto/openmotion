@@ -17,8 +17,8 @@ export function assetTasks(jobs: GenerationJob[], conversations: AssetChatSummar
   const tasks: AssetTask[] = [];
   const agentJobs = new Map<string, GenerationJob[]>();
   for (const job of jobs) {
-    if (!job.library) continue;
-    const chatId = job.library.conversationId;
+    if (!job.library && !job.saveToLibrary) continue;
+    const chatId = job.library?.conversationId;
     if (chatId) { agentJobs.set(chatId, [...(agentJobs.get(chatId) ?? []), job]); continue; }
     tasks.push({ key: `direct:${job.id}`, id: job.id, mode: 'direct', title: job.prompt, updatedAt: job.updatedAt,
       state: job.state, tone: job.modality, detail: job.model.label, jobs: [job] });

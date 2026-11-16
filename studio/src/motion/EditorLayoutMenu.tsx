@@ -17,8 +17,8 @@ export function EditorLayoutMenu() {
     else controller.applyWorkspacePreset?.(preset);
   };
 
-  return <Menu modal={false} aria-label={t("Panels and layout")} align="end" className="motion-context-menu motion-editor-layout-menu"
-    trigger={<IconButton aria-label={t("Panels and layout")} title={t("Panels and layout")} disabled={!controller} icon={<RemixIcon name="layout-2-line" size={16} />} />}>
+  return <Menu tooltip={t("Panels and layout")} modal={false} aria-label={t("Panels and layout")} align="end" className="motion-context-menu motion-editor-layout-menu"
+    trigger={<IconButton aria-label={t("Panels and layout")} disabled={!controller} icon={<RemixIcon name="layout-2-line" size={16} />} />}>
     <div className="motion-menu-label">{t("Layout presets")}</div>
     <MenuRadioGroup value={selectedPreset} onValueChange={value => selectPreset(value as LayoutPreset)}>
       <MenuRadioItem value="fit">{t("Fit timeline to content")}</MenuRadioItem>

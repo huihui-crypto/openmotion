@@ -12,6 +12,7 @@ import { HYPERFRAMES_VERSION, repairGeneratedRegistry } from '../hyperframes.ts'
 import { isMain } from './entry.ts';
 import { withAvailableHistorySteps } from './studio-history-availability.ts';
 import { MAX_ASSET_BYTES } from './asset-limits.ts';
+import { repairCodeExtrudeMaterial } from './registry-material-compat.ts';
 
 import { createFontCatalog, prepareFont, preparedFontResponse } from './studio-fonts.ts';
 
@@ -51,6 +52,22 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
         if (closing) throw new Error('Studio is stopping');
         const host = createStudioServer({ projectDir: scoped.projectDirectory, projectName: id,
           origin: () => origin, historyRoot });
+        // Keep the upstream catalog, but repair its pinned WebGL 1 material defect.
+        // This adapter is shared by Studio registry-install callers.
+        const installRegistryBlock = host.adapter.installRegistryBlock?.bind(host.adapter);
+        if (installRegistryBlock) host.adapter.installRegistryBlock = async options => {
+          const result = await installRegistryBlock(options);
+          if (options.blockName === 'code-3d-extrude') {
+            for (const file of result.written ?? []) {
+              if (!file.endsWith('.html')) continue;
+              const filename = await scoped.safePath(file);
+              const source = await readFile(filename, 'utf8');
+              const repaired = repairCodeExtrudeMaterial(source);
+              if (repaired !== source) await writeFile(filename, repaired);
+            }
+          }
+          return result;
+        };
         const nativeApp = host.app;
         const renderRequest = new AsyncLocalStorage<{ filename?: string }>();
         const startRender = host.adapter.startRender.bind(host.adapter);

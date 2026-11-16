@@ -1,3 +1,4 @@
+import { Tooltip } from "../components/ui/Tooltip";
 import { useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { useWorkspaceChrome } from './WorkspaceFrame';
@@ -22,11 +23,10 @@ export function WorkspaceProject() {
   };
   return <span className="motion-project-control om-app-project-title">
     <span className="motion-project-name-measure" aria-hidden="true">{displayedTitle || t(project ? 'Untitled' : 'Connecting…')}</span>
-    <input
+    <Tooltip label={project?.title || t('Untitled')} wrap><input
       className="om-inline-input motion-project-name-input"
       maxLength={100}
       aria-label={t('Project name')}
-      title={project?.title || t('Untitled')}
       value={displayedTitle}
       placeholder={t(project ? 'Untitled' : 'Connecting…')}
       disabled={workspace.busy || switchingDisabled || !project}
@@ -51,7 +51,7 @@ export function WorkspaceProject() {
           event.currentTarget.blur();
         }
       }}
-    />
+    /></Tooltip>
   </span>;
 }
 

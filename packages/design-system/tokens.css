@@ -3,6 +3,8 @@
   --motion-font-sans: "Albert Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --motion-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --motion-font-display: "Albert Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --motion-tooltip-bg: var(--motion-neutral-n11);
+  --motion-tooltip-fg: var(--motion-neutral-n0);
   --motion-text-xs: 11px;
   --motion-text-sm: 12px;
   --motion-text-md: 13px;
@@ -90,6 +92,18 @@
   --motion-on-brand: #202020;
   --motion-font-editorial: "Times New Roman", Times, serif;
   --motion-collection-title-gradient: linear-gradient(120deg, var(--motion-brand) 0%, var(--motion-strong) 40%);
+  --motion-neutral-n0: #ffffff;
+  --motion-neutral-n1: #fafafa;
+  --motion-neutral-n2: #f7f7f7;
+  --motion-neutral-n3: #ededed;
+  --motion-neutral-n4: #dbdbdb;
+  --motion-neutral-n5: #bdbdbd;
+  --motion-neutral-n6: #a3a3a3;
+  --motion-neutral-n7: #848484;
+  --motion-neutral-n8: #5c5c5c;
+  --motion-neutral-n9: #494949;
+  --motion-neutral-n10: #353535;
+  --motion-neutral-n11: #121212;
 }
 :where([data-motion-ui]) {
   color-scheme: light;
@@ -143,6 +157,14 @@
   --motion-gallery-stage-wash: rgba(255, 255, 255, 0.22);
   --motion-skeleton-base: #eceeed;
   --motion-skeleton-highlight: #f6f7f6;
+  --motion-audio-preview-surface: var(--motion-neutral-n0);
+  --motion-audio-preview-well: var(--motion-neutral-n2);
+  --motion-audio-preview-icon-well: var(--motion-neutral-n2);
+  --motion-audio-preview-line: var(--motion-neutral-n4);
+  --motion-audio-preview-ink: var(--motion-neutral-n9);
+  --motion-audio-preview-action: var(--motion-neutral-n11);
+  --motion-audio-preview-action-hover: var(--motion-neutral-n10);
+  --motion-audio-preview-on-action: var(--motion-neutral-n0);
   --motion-asset-logo-bg: #ffffff;
   --motion-asset-logo-ink: #171717;
   --motion-shell: #f4f4f4;
@@ -210,6 +232,14 @@
   --motion-gallery-stage-wash: rgba(0, 0, 0, 0.44);
   --motion-skeleton-base: #222222;
   --motion-skeleton-highlight: #2c2c2c;
+  --motion-audio-preview-surface: var(--motion-neutral-n11);
+  --motion-audio-preview-well: var(--motion-bg);
+  --motion-audio-preview-icon-well: var(--motion-neutral-n10);
+  --motion-audio-preview-line: var(--motion-neutral-n8);
+  --motion-audio-preview-ink: var(--motion-neutral-n4);
+  --motion-audio-preview-action: var(--motion-neutral-n2);
+  --motion-audio-preview-action-hover: var(--motion-neutral-n4);
+  --motion-audio-preview-on-action: var(--motion-neutral-n11);
   --motion-asset-logo-bg: #ffffff;
   --motion-asset-logo-ink: #171717;
   --motion-shell: #292929;
@@ -278,6 +308,14 @@
     --motion-gallery-stage-wash: rgba(0, 0, 0, 0.44);
     --motion-skeleton-base: #222222;
     --motion-skeleton-highlight: #2c2c2c;
+    --motion-audio-preview-surface: var(--motion-neutral-n11);
+    --motion-audio-preview-well: var(--motion-bg);
+    --motion-audio-preview-icon-well: var(--motion-neutral-n10);
+    --motion-audio-preview-line: var(--motion-neutral-n8);
+    --motion-audio-preview-ink: var(--motion-neutral-n4);
+    --motion-audio-preview-action: var(--motion-neutral-n2);
+    --motion-audio-preview-action-hover: var(--motion-neutral-n4);
+    --motion-audio-preview-on-action: var(--motion-neutral-n11);
     --motion-asset-logo-bg: #ffffff;
     --motion-asset-logo-ink: #171717;
     --motion-shell: #292929;

@@ -1,3 +1,4 @@
+import { Tooltip } from "../../components/ui/Tooltip";
 import { useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../../i18n/I18n';
 import { RemixIcon } from '../../icons/RemixIcons';
@@ -31,23 +32,23 @@ export function TimelineTrackControls({ elements, track, number, label, hidden, 
   };
   const name = t('Track {number}', { number: number ?? '' });
   const lockLabel = t(locked ? 'Unlock track' : 'Lock track');
-  return <div className="motion-track-controls" aria-label={name} title={label}
+  return <div className="motion-track-controls" aria-label={name}
     onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
-    <span className="motion-track-kind" title={`${name} · ${label}`} aria-label={name}>
+    <Tooltip label={`${name} · ${label}`} wrap><span className="motion-track-kind" aria-label={name}>
       <RemixIcon name={audioOnly ? 'music-2-line' : 'film-line'} size={16} />
-    </span>
-    <button type="button" aria-label={`${lockLabel} · ${name}`} title={lockLabel}
+    </span></Tooltip>
+    <Tooltip label={lockLabel} wrap><button type="button" aria-label={`${lockLabel} · ${name}`}
       aria-pressed={locked} disabled={disabled || !edits.onSetElementsAttributeQuiet}
       onClick={() => void run(() => edits.onSetElementsAttributeQuiet?.(elements.map(element => ({ element, value: locked ? null : '' })), 'data-timeline-locked', locked ? 'Unlock track' : 'Lock track'))}>
       <RemixIcon name={locked ? 'lock-line' : 'lock-unlock-line'} size={16} />
-    </button>
+    </button></Tooltip>
     {!audioOnly && <VisibilityButton hidden={hidden} trackNumber={track} trackDisplayNumber={number} asMute={false} onToggle={toggleHidden} disabled={disabled || !toggleHidden} />}
     <TimelineTrackAudioControls elements={elements} trackLabel={name} isAudioOnly={audioOnly} hidden={hidden}
       onUnhide={() => { void toggleHidden?.(track, false, number); }} />
     {children}
-    <button type="button" aria-label={`${t('Delete track')} · ${name}`} title={t('Delete track')}
+    <Tooltip label={t('Delete track')} wrap><button type="button" aria-label={`${t('Delete track')} · ${name}`}
       disabled={disabled || locked || !edits.onDeleteTrack} onClick={() => void run(() => edits.onDeleteTrack?.(track))}>
       <RemixIcon name="delete-bin-line" size={16} />
-    </button>
+    </button></Tooltip>
   </div>;
 }

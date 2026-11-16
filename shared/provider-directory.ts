@@ -7,12 +7,20 @@ export type ProviderDefinition = {
   id: string; label: string; protocol: ProviderProtocol; baseUrl: string;
   kinds: ModelKind[]; category: ProviderCategory; website?: string; docs?: string;
   setupRequired?: boolean;
+  baseUrlEditable?: boolean;
 };
 export type ProviderConnection = ProviderDefinition & {
   configured: boolean; enabled: boolean; available: boolean; custom: boolean;
   credentialSource: 'stored' | 'environment' | 'local-agent' | 'account' | 'none';
   reason: string;
 };
+/** Keep registry internals and saved revisions outside the public connection payload. */
+export function publicProviderConnection(provider: ProviderConnection): ProviderConnection {
+  const { id, label, protocol, baseUrl, kinds, category, website, docs, setupRequired, baseUrlEditable,
+    configured, enabled, available, custom, credentialSource, reason } = provider;
+  return { id, label, protocol, baseUrl, kinds, category, website, docs, setupRequired, baseUrlEditable,
+    configured, enabled, available, custom, credentialSource, reason };
+}
 export const modelCapabilities = ['reasoning', 'tools'] as const;
 export const inputModalities = ['vision', 'audio', 'video'] as const;
 export type ModelMetadata = {
@@ -23,6 +31,8 @@ export type ModelMetadata = {
 export type DirectoryModel = ModelMetadata & {
   id: string; provider: string; modelId: string; label: string; kind: ModelKind;
   enabled: boolean; source: 'builtin' | 'live' | 'custom'; mode?: string;
+  /** Accepts one input image to edit; set only from the provider's own capability data. */
+  supportsImageReference?: boolean;
 };
 export type ProviderDirectory = {
   providers: ProviderConnection[]; models: DirectoryModel[];

@@ -1,6 +1,6 @@
 # Motion application npm package
 
-> Archived npm distribution documentation. New installations use the [source guide](../install.md). Candidate builds, npm publication and snapshot recovery are disabled. Existing published versions, projects and diagnostics are preserved; the commands below document historical behavior and are not a new installation route.
+> Repository installation defaults to the [source guide](../install.md). Published npm installation is an explicit alternative through the [application guide](install.md). Candidate builds, publication and snapshot recovery use the manual [release workflow](release-workflows.md); merging changes does not publish a package or update hosted guides.
 
 For a download-once cold installation, build on the target machine with `node --experimental-strip-types scripts/package-npm.mjs OUTPUT_DIR --bundle-runtime`. This option installs locked production npm dependencies at build time and embeds them in an XZ application archive, omitting `.map` debug sidecars while retaining application sources, executable modules, declarations and licenses. The manifest pins OS/CPU and dependency lock SHA256. Setup rejects another target before changing installation state, verifies the embedded marker, lock and direct package versions, then skips dependency downloads. Select the exact reviewed artifact for the machine; this is not a universal package. Lightweight builds retain target-machine npm installation. Frontend libraries compiled into Studio are development dependencies; editing/export dependencies remain production dependencies. No browser/media binaries are added, and packaging does not publish anything.
 
@@ -104,7 +104,7 @@ There is no automatic fallback from prod to DEV and no `switch-env` CLI. This se
 | DeepSeek Harness | `dsh plugin --profile web add <managed bundle> --ignore-scripts` | Its dedicated bundle/provider Skill root |
 | WorkBuddy | Merge `mcpServers.openmotion` into its `mcp.json` | Flat entries under its configuration root |
 
-Select `--host codex|claude|deepseek|workbuddy`. `--skills-dir` selects the Codex/Claude/WorkBuddy root; Harness uses its own provider. Executable overrides are `--codex`, `--claude`, `--dsh`; Harness also accepts `--profile`. Isolate host configuration with `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `DSH_HOME` or `WORKBUDDY_CONFIG_DIR`; `--home` controls the application installation, not the host profile.
+Select `--host codex|claude|deepseek|workbuddy` for a registration adapter, or the current Agent's lowercase name for [any other local Agent](#other-local-agents). `--skills-dir` selects the Codex/Claude/WorkBuddy/other-Agent root; Harness uses its own provider. Executable overrides are `--codex`, `--claude`, `--dsh`; Harness also accepts `--profile`. Isolate host configuration with `CODEX_HOME`, `CLAUDE_CONFIG_DIR`, `DSH_HOME` or `WORKBUDDY_CONFIG_DIR`; `--home` controls the application installation, not the host profile.
 
 Use the same installation flow for every host: collect the platform and Node/npm facts once, select the current Agent, run its setup adapter, then verify actual host loading while video components prepare in the background. An explicit `--host` takes precedence over host context; do not choose a host merely because its CLI is installed. The CLI retains its Codex default for compatibility, so Agent-driven installs should always pass `--host`. Only ask for the missing host/profile when reliable context is unavailable. `openmotion --help`, `setup --help`, `prepare --help` and `--version` work without installing or modifying configuration.
 
@@ -121,9 +121,37 @@ Harness callers should pass the actual current profile from their host context, 
 
 After setup, use working native tools or the direct commands below to continue in the same chat. Refresh native discovery only when needed. Confirm all eleven public Tools and five Skills, and call `openmotion_get_project` to verify the expected data directory. Do not impose another host's restart or refresh procedure, or substitute an on-disk registration for host loading evidence.
 
-The internal ownership marker remains stable across the npm package rename so earlier local installations can be upgraded in place. An installation can serve multiple hosts using the same home/data. `install.json.hosts` retains each host. Skill documentation links are rewritten for flat layouts; Codex/Harness retain bundle-relative links. Re-run setup for each installed host when upgrading Skills. Unowned same-name MCP/Skills are refused. Unrelated settings/Skills and existing projects are retained. Registration failure restores the prior install state and Skills; checked application caches remain available for retry.
+The internal ownership marker remains stable across the npm package rename so earlier local installations can be upgraded in place. An installation can serve multiple hosts using the same home/data. `install.json.hosts` retains each host. Skill documentation links are rewritten for flat layouts; Codex/Harness retain bundle-relative links. Re-run setup for each installed host when upgrading Skills. Unowned same-name MCP/Skills are refused. Unrelated settings/Skills and existing projects are retained. A registration failure before the profile changes restores the prior install state and Skills. If Harness has already switched to the new owned bundle, setup retains that bundle and its state even when registration or later onboarding reports an error; rerunning setup reconciles owned profile/state differences. Checked application caches remain available for retry.
 
 Compatible phase-one updates do not require closing existing MCP connections or stopping the same workspace's backend. Connections negotiate the API protocol and requested Tool, retaining running exports and completed results; see [shared editor recovery](shared-editor.md). The installer does not terminate existing processes. Incompatible protocols or internal legacy ABIs still require updating the connection and idle backend together. Refresh the host to discover new Tools or reload changed Skills; an already-closed transport needs host reconnection.
+
+<a id="other-local-agents"></a>
+
+### Other local Agents
+
+Any `--host` value outside the four adapters, such as `opencode`, `cursor-agent` or `gemini`, uses the same application, launcher, data directory and Skills. Setup does not read or write that host's configuration. It copies flat Skills to `~/.agents/skills` (or `--skills-dir`), records the host in `install.json.hosts` and returns:
+
+```json
+"agentRegistration": {
+  "serverName": "openmotion",
+  "transport": { "type": "stdio", "command": "/absolute/node", "args": ["/absolute/installHome/run-mcp.mjs"] },
+  "skillsDirectory": "/absolute/.agents/skills"
+}
+```
+
+The calling Agent adds this local stdio server using its own documented MCP format, preserving unrelated settings, then refreshes MCP and calls `openmotion_get_project`. Use the launcher exactly as returned: `run-mcp.mjs` reads `install.json` and configures the workspace, browser and media paths. Do not register a bare `mcp.ts`. `command` is the absolute Node executable that ran setup (`node.exe` on Windows), so no `.cmd` shim is involved. Adapter-less Agents share one Skills owner in that root, so installing a second such Agent reuses the same entries. `tools`, `call` and `diagnose` accept the same `--host` value; `diagnose` probes the launcher but cannot read that host's configuration.
+
+Example for OpenCode (`~/.config/opencode/opencode.json`; OpenCode also reads `~/.agents/skills`):
+
+```json
+{
+  "mcp": {
+    "openmotion": { "type": "local", "command": ["/absolute/node", "/absolute/installHome/run-mcp.mjs"], "enabled": true }
+  }
+}
+```
+
+Run `opencode mcp list` to confirm `openmotion` is connected and `opencode debug skill` to confirm the `openmotion-*` Skills. A host that cannot add a local stdio MCP server can still use `onboarding.directAccess` from a shell-capable chat. Adapter-less setup is not a compatibility claim for every listed Agent; each host's MCP loading is verified in that host.
 
 ## Continue in the current Agent chat
 
@@ -142,7 +170,7 @@ This is an installed MCP client, not native host discovery or reconnection. It s
 
 Explicit builds accept `MAJOR.MINOR.PATCH-test.N[.N]` or `MAJOR.MINOR.PATCH`. CI-generated candidates use next-patch `test.<run>.<attempt>`; manually assigned candidates can use `test.1`, `test.2`. Every artifact has one identity across the installer, app package/lock and plugin metadata. Build numbers never overwrite old output; source versions are not bumped by packaging.
 
-Source package manifests remain `private:true`. Only an explicit test/DEV or stable/prod build produces publishable tgz metadata. Test artifacts default to `candidate`; the manual publisher advances `test` only after matching Mac/Windows registry installation checks. Stable artifacts default to `stage`; stable publication and `latest` promotion are separate follow-ups. Local/default and channel/environment-mismatched artifacts remain private. No command here publishes or changes npm tags. See [test and stable acceptance](release-guide.md) for separate maintainer authorization and gates.
+Source package manifests remain `private:true`. Only an explicit test/DEV or stable/prod build produces publishable tgz metadata. Test artifacts default to `candidate`; the manual publisher advances `test` after registry propagation and runs non-blocking Mac/Windows installation checks afterward. Stable artifacts default to `stage`; both matching prod installation checks must pass before `latest` advances. Local/default and channel/environment-mismatched artifacts remain private. No command here publishes or changes npm tags. See [test and stable acceptance](release-guide.md) for separate maintainer authorization and gates.
 
 After publication, the intended user entry is `npx --yes --package @openmotion/app@<exact-version> -- openmotion setup --host codex`, followed by native discovery or direct installed access in the same chat; `prepare` is optional when an explicit wait or retry is needed. `@test` and `@latest` select channels; acceptance always records the exact resolved version. Installing/running npx alone, publishing a new package or moving a tag does not update an existing managed app.
 
@@ -228,3 +256,18 @@ Recreation measurement and registration use a private Python environment with th
 Complete platform ZIPs include the Python archive and both wheels in `runtime/vision-assets` for offline preparation. Lightweight npm installations need network access on first use. The vision tools support macOS 13+ arm64 and Windows 11+ x64. Host execution and network permissions still apply. Preparation failures report an error and can be retried with the same entry's `prepare` command. Project HTML/JavaScript and exported MP4s do not acquire a Python runtime dependency.
 
 The original Python distribution license files, NumPy distribution licenses and OpenCV wheel licenses (including bundled native-library notices) are retained in the shipped archives and installed environment. Source provenance is recorded in the pinned public URLs and hashes.
+
+
+## Windows legacy installation recovery
+
+Published npm installation remains retired; these repairs preserve existing managed installations without enabling publication. Windows Codex, Claude and DeepSeek host adapters resolve supported npm `.cmd`/`.ps1` shims to the JavaScript or native executable and keep arguments outside a shell. Unsupported wrappers fail with an executable-path hint. Missing commands fail immediately; command deadlines are cleared on spawn failure, exit and timeout.
+
+Harness setup writes a fresh `hosts/deepseek-<id>` bundle on each run and registers that path instead of renaming the bundle a running host may hold open. The previous owned bundle is retained, including the original `hosts/deepseek` layout. Refresh the host's Tools/Skills after setup. Superseded owned paths are recorded in `install.json.hosts.deepseek.retainedBundles`; setup also inventories older owned bundles after an interrupted run. Inspect cleanup with `node scripts/cleanup-harness-bundles.mjs --home "<actual installation home>"`. After stopping every Harness process using that installation, rerun with `--confirm-all-processes-stopped`. Cleanup preserves both the currently registered and state-selected bundles, refuses unverifiable ownership, retains directories it cannot remove and reports them for retry. Automatic cleanup of potentially open bundles is disabled. Project data and unrelated host configuration remain separate.
+
+New runtime locks record their owner and recover after its process exits. On hosts without the shared editor, including Windows, a legacy empty `workspace.lock` has no trustworthy owner and is not deleted automatically by the workspace runtime. The macOS shared-editor startup already removes an empty regular legacy lock; use offline recovery only if the lock still blocks startup. From the updated source checkout or application root, inspect it with:
+
+```sh
+node --experimental-strip-types scripts/recover-workspace-lock.ts --data-dir "<actual workspace data directory>"
+```
+
+This first command changes nothing. Stop every Studio/backend, connected Agent and export using that exact directory. Only after verifying they have stopped, rerun with `--confirm-all-processes-stopped`. Recovery quarantines the empty file beside its original path, preserves project data and refuses nonempty or symbolic-link locks. Restart using the same data directory. The confirmation is an operator assertion, not automatic proof that no legacy process is alive; do not run recovery against an active workspace.

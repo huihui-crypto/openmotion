@@ -58,6 +58,8 @@ test('candidate CLI numbers the frozen Motion source, not the legacy control che
   await git('update-ref', 'refs/remotes/origin/main', commit);
   await writeFile(path.join(directory, 'package.json'), JSON.stringify({ version: '0.1.0' }));
   const output = path.join(directory, 'output'), script = fileURLToPath(new URL('../.github/scripts/motion-release.mjs', import.meta.url));
+  const mockRegistry = path.join(directory, 'registry.mjs');
+  await writeFile(mockRegistry, "globalThis.fetch = async url => { if (url !== 'https://registry.npmjs.org/@openmotion%2fapp') throw Error('Unexpected network access'); return Response.json({'dist-tags': {test: '0.6.4-test.6'}}); };\n");
   for (const [source, version, run, attempt, expected] of [
     ['', '', '2', '1', '0.6.4-test.7'],
     [commit, '', '2', '2', '0.6.4-test.7.2'],
@@ -65,13 +67,36 @@ test('candidate CLI numbers the frozen Motion source, not the legacy control che
     [commit, '0.6.5-test.1', '', '', '0.6.5-test.1'],
   ]) {
     await writeFile(output, '');
-    await runFile(process.execPath, [script, 'source', directory], { env: { ...process.env, GITHUB_OUTPUT: output,
+    await runFile(process.execPath, ['--import', mockRegistry, script, 'source', directory], { env: { ...process.env, GITHUB_OUTPUT: output,
       ...valid, GITHUB_SHA: commit, GITHUB_WORKFLOW_REF: `${repository}/${candidateWorkflow}@refs/heads/main`,
       MOTION_SOURCE_SHA: source, MOTION_VERSION: version, GITHUB_RUN_ID: '42812345678', GITHUB_RUN_NUMBER: run, GITHUB_RUN_ATTEMPT: attempt } });
     assert.equal(await readFile(output, 'utf8'), `source_sha=${commit}\nversion=${expected}\n`);
     assert(compareReleaseVersions(expected, '0.6.4-test.6') > 0);
   }
   assert.equal(JSON.parse(await readFile(path.join(directory, 'package.json'))).version, '0.1.0');
+});
+
+test('automatic candidates continue beyond published npm versions after a source version reset', async () => {
+  const env = { ...valid, GITHUB_SHA: 'a'.repeat(40), GITHUB_WORKFLOW_REF: `${repository}/${candidateWorkflow}@refs/heads/main`,
+    GITHUB_RUN_NUMBER: '9', GITHUB_RUN_ATTEMPT: '1' };
+  const run = async (_, args) => args[0] === 'show' ? JSON.stringify({ version: '0.0.1' }) : '';
+  const resolve = (tags, patch = {}) => resolveCandidate('.', '', '', { ...env, ...patch }, run, async () => Response.json({ 'dist-tags': tags }));
+  assert.equal((await resolve({ latest: '0.6.7', test: '0.6.4-test.13' })).version, '0.6.8-test.14');
+  assert.equal((await resolve({ latest: '0.6.7', test: '0.6.8-test.99', candidate: '0.6.8-test.100' })).version, '0.6.9-test.14');
+  assert.equal((await resolve({ latest: '0.6.7' }, { GITHUB_RUN_ATTEMPT: '2' })).version, '0.6.8-test.14.2');
+  const ahead = { latest: '0.6.7', test: '0.6.8-test.20' };
+  const first = await resolve(ahead, { GITHUB_RUN_NUMBER: '15' });
+  const second = await resolve(ahead, { GITHUB_RUN_NUMBER: '16' });
+  assert.equal(first.version, '0.6.9-test.20'); assert.equal(second.version, '0.6.8-test.21');
+  assert.notEqual(first.version, second.version, 'Concurrent candidates must keep distinct versions');
+  for (const version of [first.version, second.version]) {
+    assert(compareReleaseVersions(version, ahead.test) > 0, `${version} must stay newer than the published test tag`);
+  }
+  await assert.rejects(resolveCandidate('.', '', '', env, run, async () => new Response('', { status: 503 })), /baseline/);
+  await assert.rejects(resolve({ latest: 'bad' }), /MAJOR/);
+  await assert.rejects(resolveCandidate('.', '', '', env, run, async () => Response.json({})), /Missing npm/);
+  const explicit = await resolveCandidate('.', '', '0.7.0-test.1', env, run, async () => { throw Error('Explicit versions need no registry lookup'); });
+  assert.equal(explicit.version, '0.7.0-test.1');
 });
 
 test('only a completed successful registered candidate build can supply a version', () => {
@@ -129,6 +154,11 @@ test('the sealed candidate detects tgz, guide, identity and provenance tampering
   await assert.rejects(verifyDownloaded(directory, candidate.tgzSHA256, '0.6.4-test.100'), /version/);
   assert(checklist.includes('NOT RUN'), 'Generated identity must not fabricate human acceptance');
   await assert.rejects(verifyDownloaded(directory, '0'.repeat(64)));
+  const notesFile = path.join(directory, 'release-notes.md'), notes = await readFile(notesFile);
+  assert.equal(candidate.schemaVersion, 3);
+  await writeFile(notesFile, 'changed notes');
+  await assert.rejects(verifyDownloaded(directory, candidate.tgzSHA256), /Candidate file changed/);
+  await writeFile(notesFile, notes);
   const file = path.join(directory, 'install.md'), original = await readFile(file);
   await writeFile(file, 'changed'); await assert.rejects(verifyDownloaded(directory, candidate.tgzSHA256), /Candidate file changed/);
   await writeFile(file, original); await writeFile(path.join(directory, 'provenance.json'), JSON.stringify({ head_sha: 'f'.repeat(40), runId: 123, attempt: 1 }));
@@ -510,4 +540,15 @@ test('no-publication rehearsal carries one accepted candidate through npm and st
   const result = await waitForRegistry(f.candidate, state => state.tags.test === f.candidate.version, { fetcher, wait, attempts: 4 });
   assert.equal(result.tags.test, f.candidate.version); assert.equal(waits, 3);
   await assert.rejects(waitForRegistry(f.candidate, () => false, { fetcher, wait, attempts: 2 }), /timed out/);
+});
+
+test('manual npm release roots are enabled only for the official repository', async () => {
+  for (const [file, job] of [['motion-candidate.yml', 'candidate'], ['motion-publish-test.yml', 'verify'], ['motion-publication-recovery.yml', 'select-ref']]) {
+    const workflow = await readFile(new URL('../.github/workflows/' + file, import.meta.url), 'utf8');
+    const block = workflow.split('  ' + job + ':')[1]?.split(/\n  [a-z][a-z-]*:/)[0];
+    assert.match(block || '', /if: github.repository == 'nexu-io\/openmotion'/, file);
+    const triggers = workflow.split('\npermissions:')[0];
+    assert.match(triggers, /workflow_dispatch:/, file);
+    assert.doesNotMatch(triggers, /(?:^|\n)  (?:push|pull_request|schedule):/, file);
+  }
 });

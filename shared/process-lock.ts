@@ -41,7 +41,7 @@ export async function withProcessLock<T>(filename: string, work: () => Promise<T
         const code = (error as NodeJS.ErrnoException).code!;
         if (code !== 'EEXIST' && !(process.platform === 'win32' && busyCodes.has(code))) throw error;
         const owner = await retryBusy(() => ownerOf(filename));
-        if (owner === null) throw new Error(`Lock has no verifiable owner: ${filename}. Close all OpenMotion processes before removing this legacy lock.`);
+        if (owner === null) throw new Error(`Lock has no verifiable owner: ${filename}. Close all OpenMotion processes before removing this legacy lock. For an empty workspace.lock, run scripts/recover-workspace-lock.ts --data-dir with this workspace directory to inspect offline recovery.`);
         if (owner && !alive(owner.pid)) {
           await withProcessLock(filename + '.reclaim', async () => {
             if ((await ownerOf(filename))?.token === owner.token) await retryBusy(() => unlink(filename));

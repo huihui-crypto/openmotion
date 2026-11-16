@@ -1,6 +1,6 @@
 # Install OpenMotion from source
 
-For an Agent asked to install OpenMotion from this repository, use the source installation below. This is the default repository installation route. Do not use a published application package, npx package setup, or a prebuilt application candidate. npm remains required to install this checkout's locked dependencies and build Studio.
+For an Agent asked to install OpenMotion from this repository, use the source installation below. This is the default repository installation route. Only use npm installation when the user explicitly selects it; follow the [published application guide](docs/install.md) instead of mixing source and package setup. npm remains required to install this checkout's locked dependencies and build Studio.
 
 ## Codex: automatic source installation
 

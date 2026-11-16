@@ -158,8 +158,8 @@ test('WebMCP schemas traverse local admission and the existing Node sender witho
   const packets: PendingEvent[] = webMcpToolNames.flatMap(tool_name => {
     const common = { tool_name, transport: 'webmcp' }, call_id = crypto.randomUUID();
     return [
-      { event: 'webmcp_tool_started', properties: { ...common, call_id } },
-      { event: 'webmcp_tool_finished', properties: { ...common, call_id, outcome: 'success', duration_ms: 12 } },
+      { event: 'webmcp_tool_started', properties: { ...common, call_id, ...(tool_name === 'openmotion_assets_use' ? { action: 'read' } : {}) } },
+      { event: 'webmcp_tool_finished', properties: { ...common, call_id, outcome: 'success', duration_ms: 12, ...(tool_name === 'openmotion_assets_use' ? { action: 'read' } : {}) } },
       { event: 'webmcp_registration_result', properties: { ...common, outcome: 'success', duration_ms: 1 } },
     ].map(event => ({ ...event, event_id: crypto.randomUUID(), occurred_at: new Date().toISOString(),
       entrypoint: 'studio' as const, ...deviceContext() }));
@@ -169,12 +169,14 @@ test('WebMCP schemas traverse local admission and the existing Node sender witho
     await tracking.flush();
   }
   assert.equal(indexed.length, webMcpToolNames.length * 3);
+  assert.deepEqual(indexed.filter(event => event.properties.action === 'read').map(event => event.event), ['webmcp_tool_started', 'webmcp_tool_finished']);
   assert(indexed.every(event => event.properties.entrypoint === 'studio' && event.properties.transport === 'webmcp'));
   for (const properties of [
     { ...packets[1].properties, transport: 'mcp' },
     { ...packets[1].properties, tool_name: 'openmotion_studio_set_text' },
     { ...packets[1].properties, arguments: 'PRIVATE_ARGUMENTS' },
     { ...packets[1].properties, result: 'PRIVATE_SOURCE' },
+    { ...packets[1].properties, action: 'PRIVATE_ACTION' },
     { ...packets[1].properties, duration_ms: -1 },
     { ...packets[1].properties, duration_ms: 86_400_001 },
   ]) assert.equal((await send([{ ...packets[1], properties }])).status, 400);

@@ -19,8 +19,7 @@ permissions:
 
 jobs:
   select-ref:
-    # Retired: repository installations use the source bootstrap.
-    if: ${{ false }}
+    if: github.repository == 'nexu-io/openmotion'
     runs-on: ubuntu-24.04
     steps:
       - name: Require Motion integration branch
@@ -32,7 +31,8 @@ jobs:
   recover:
     needs: select-ref
     permissions:
-      contents: read
+      # Reusable-workflow permission ceiling; its Release job is skipped for archive-only.
+      contents: write
       actions: read
       id-token: write
     uses: ./.github/workflows/motion-publish-test.yml

@@ -182,7 +182,8 @@ it('keeps chrome, sidebar search and geometry mounted while replacing only the p
       setter.call(search, 'Project');
       search.dispatchEvent(new Event('input', { bubbles: true }));
     });
-    const row = [...container.querySelectorAll<HTMLButtonElement>('.motion-session')].find(button => button.title === 'Project 2')!;
+    const rows = [...container.querySelectorAll<HTMLButtonElement>('.motion-session')];
+    const row = rows.find(button => button.textContent === 'Project 2')!;
     await act(async () => row.click());
     expect(assign).not.toHaveBeenCalled();
     expect(container.querySelector('.om-app-header')).toBe(header);
@@ -192,7 +193,7 @@ it('keeps chrome, sidebar search and geometry mounted while replacing only the p
     expect(search.value).toBe('Project');
     expect(sidebar?.querySelector('[data-testid="project-list-skeleton"]')).toBeNull();
     expect(sidebar?.querySelector('.motion-session-empty')).toBeNull();
-    expect([...sidebar!.querySelectorAll('.motion-session')]).toEqual([row.previousElementSibling, row]);
+    expect([...sidebar!.querySelectorAll('.motion-session')]).toEqual(rows);
     expect(firstViewer?.isConnected).toBe(false);
     expect(content?.querySelectorAll('.motion-loading')).toHaveLength(1);
     expect(row.disabled).toBe(true);
@@ -201,7 +202,7 @@ it('keeps chrome, sidebar search and geometry mounted while replacing only the p
     expect(content?.querySelector('.motion-loading')).toBeNull();
     expect(location.search).toContain('embed=1');
     expect(location.search).toContain('tracking_context=33333333-3333-3333-3333-333333333333');
-    const firstRow = [...container.querySelectorAll<HTMLButtonElement>('.motion-session')].find(button => button.title === 'Project 1')!;
+    const firstRow = [...container.querySelectorAll<HTMLButtonElement>('.motion-session')].find(button => button.textContent === 'Project 1')!;
     expect(firstRow.disabled).toBe(false);
     await act(async () => firstRow.click());
     expect(content?.querySelector('[data-viewer-project]')?.getAttribute('data-viewer-project')).toBe(id);

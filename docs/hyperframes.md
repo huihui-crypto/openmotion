@@ -4,6 +4,10 @@
 
 目标是封装原生 Studio 与渲染能力，让 Agent 创作和手工编辑共享原生工程。
 
+## Engine documentation scope
+
+The pinned upstream guide and engine resources remain intact technical references. Before reading them, Agents apply the [OpenMotion engine boundary](../skills/openmotion-production/references/native.md#engine-guidance-boundary). Composition, media timing, seeking, lint and renderer constraints remain authoritative for the installed engine. Supplier setup, upstream Skill/slash-command routes, mandatory creative stages and soundtrack defaults do not become OpenMotion workflow requirements. Material acquisition follows the [shared policy](../skills/openmotion-production/references/materials.md#tool-selection-and-discovery): sources follow content need, OpenMotion takes priority for matching available capabilities, and external tools can fill capability gaps. This guidance does not implement a runtime tool block or alter third-party package files and licenses.
+
 ```mermaid
 flowchart LR
   Agent --> MCP[Motion MCP]

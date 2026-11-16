@@ -6,6 +6,12 @@ Old `motion_*` / legacy `design_*` Tool names and `motion://` resource addresses
 
 Renaming does not change schemas, defaults, engine versions, permissions or project data formats. Internal request identities and telemetry keys retain their original names so retries cannot duplicate saved changes or exports. Compatible running backends are negotiated using either Tool spelling. See [installation and migration](npm-installation.md#public-names-and-compatibility). Generic terms such as motion graphics and motion blur remain animation terminology.
 
+## Media tools and upstream guidance
+
+All production entries share the [material tool policy](../skills/openmotion-production/references/materials.md#tool-selection-and-discovery): choose sources by content need, then prefer OpenMotion when its available capabilities match the operation. Retrieval of original material is distinct from generation. External tools, including other video platforms' stock search, can fill capability gaps within existing authorization without requiring the user to name a platform. Keep supported project operations in OpenMotion and external contributions scoped to the needed operation.
+
+The [native engine boundary](../skills/openmotion-production/references/native.md#engine-guidance-boundary) applies to both filesystem guides and MCP engine resources. Hyperframes supplies technical constraints, not supplier onboarding, creative routes, mandatory soundtrack defaults or delivery policy. These are Agent instructions, not host-level tool isolation; refreshed Skills must be loaded before evaluating model behavior.
+
 ## 可选社区资源
 
 [`library/`](../library/README.zh-CN.md) 收纳可选创作 Skills、模板索引、组件配方、`MOTION_DESIGN.md` 设计体系与 Brandkits。首个 [`brandkit`](../library/skills/openmotion-brandkit/SKILL.md) 只整理品牌上下文，可用 `npx skills add ./library/skills --skill openmotion-brandkit` 单独安装。它不进入以下五个核心制作入口、不自动注册为 MCP resource，也不改变制作意图路由。资源需要由用户或 Agent 明确选择与提供；新增条目遵循[贡献清单](../library/ENTRY_TEMPLATE.md)。
@@ -20,11 +26,11 @@ Renaming does not change schemas, defaults, engine versions, permissions or proj
 
 Director and its existing quality references now cover concrete visual events, joint material/motion design, recognizable action windows, representative prototypes and reuse of accepted implementations. Shared intake/runtime guidance covers scoped material acquisition; edit and verification own timing-evidence invalidation and evidence classification. No Skill, Resource section, public Tool or media service is added.
 
-The current five-route, thirteen-Tool contract, editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
+The current five-route contract with fourteen registered Tool names (one compatibility alias), editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
 
 ## Reference reconstruction guidance
 
-The recreate route carries a shot/action-unit process with concrete worker briefs, source ownership, time/coordinate mapping and inspected-source handoffs. Reference observations become timed controls consumed by the renderer, with conditional methods for camera transforms, relative part motion, changing shapes, mark-based materials, text and exposure. Local iteration compares observed and intermediate states, repairs the responsible mechanism, and rechecks shared assets, overlap and the complete layer stack after integration. One Agent can execute the same units sequentially. Observation density and implementation remain scene-dependent. The guidance is based on segment-production retrospectives that include reused implementations and directed corrections. Reliability across fresh sessions and different references still requires evaluation. See [the reconstruction reference](../skills/openmotion-recreate/references/rebuild.md#establish-a-difficult-visual-system).
+The recreate route carries a shot/action-unit process with concrete worker briefs, source ownership, time/coordinate mapping and inspected-source handoffs. Reference observations become timed controls consumed by the renderer, with conditional methods for camera transforms, relative part motion, changing shapes, mark-based materials, text and exposure. Local iteration compares observed and intermediate states, repairs the responsible mechanism, and rechecks shared assets, overlap and the complete layer stack after integration. One Agent can execute the same units sequentially. Observation density and implementation remain scene-dependent. The guidance is based on segment-production retrospectives that include reused implementations and directed corrections. Reliability across fresh sessions and different references still requires evaluation. See [the reconstruction reference](../skills/openmotion-recreate/references/reconstruction.md).
 
 Before material grouping, the recreation guidance distinguishes object motion, internal content changes and exposure. Timed comparisons cover the defining changes and stationary anchors, including the handoff from intact content into fragments during breakup or assembly. An optional host-Python registration helper measures planar camera observations with explicit coordinate and fit evidence. The visible-motion helper records source travel before authoring and compares local movement in the actual export. Material review includes the reassembled background and occlusion. The maker chooses the representation from observed behavior and checks its source controls in the actual output.
 
@@ -47,6 +53,8 @@ Before material grouping, the recreation guidance distinguishes object motion, i
 
 专业入口可由宿主 Skill 自动匹配、用户指定或准确模板指引直接选中，只读取共享 context 后继续，不返回 production 重做选路。局部创作/声音重新设计/创作品质审片由 director 承接；按既定决定修改、替换已选音乐、技术检查和仅导出由 production 承接；仅脚本或审片停在当前范围；共享质量参考不会要求重启 director 的完整创作流程。Skills 是同一 Agent 的文档，不是相互递归执行的独立进程。
 
+An exact editable template with no requested content changes and explicit HTML/MP4 delivery uses the template route's [unchanged file-delivery branch](../skills/openmotion-template-to-video/references/unchanged-export.md), available at `openmotion://workflow/template/unchanged`. It preserves source and pins the version after required editor normalization, then coordinates export, packaging and bounded host presentation without reopening creative intake. Actual exported-file checks and the existing project, request and revision protections still apply; a display limitation is reported separately from verified file delivery.
+
 Original motion-video requests on a user-supplied topic, including esports recaps and explainers, use openmotion-director. Its discovery description covers both creation and concept-only requests. Shared context directs the Agent to discover the host's OpenMotion tools and promptly disclose missing or failed connections, including during planning. Planning can finish without a project mutation, and production continues through the host MCP connection. Reading guidance and an independent CLI probe each have their own evidence scope. Skill matching remains the host model's decision. See [the official Skill discovery guidance](https://developers.openai.com/plugins/build/skills#write-skillmd).
 
 ## 同源文档接口
@@ -59,8 +67,8 @@ MCP 工具说明和领域执行位于 `mcp-tools.ts`；`mcp.ts` 保留初始化�
 | --- | --- | --- |
 | openmotion-production | production（默认） | start、context、intake、templates、native、production、verification、edit、portable、materials、account、compatible、fal、opendesign、atlascloud、wavespeed、typography、fonts |
 | openmotion-director | director | start、actions、craft、phrases、decisions、sound、review、examples |
-| openmotion-template-to-video | template | start |
-| openmotion-recreate | recreate | start、rebuild、verification |
+| openmotion-template-to-video | template | start、unchanged |
+| openmotion-recreate | recreate | start、rebuild、reconstruction、verification |
 | openmotion-video-to-template | video-to-template | start、measure、rebuild、project、verification、sources |
 | openmotion-media | media（辅助素材生成，非成片主入口） | start |
 
@@ -102,7 +110,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 | [production.md](../skills/openmotion-production/references/production.md) 第 3 条 | 一期 MCP 包不提供生成 Tool，生成交给宿主或 Studio | 与上一行同步修改 |
 | SKILL.md §5 Sound | 默认沿用原片音轨并重新对齐；删去念出原品牌的旁白 | 有 TTS 后可改为重新配音，不只删除 |
 | SKILL.md §5 原片作底层（用户自有成片只改几处细节） | 仅此情况可把原片放在时间线上并打补丁 | 支持实拍局部修改或分镜混排时扩展适用条件 |
-| [rebuild.md](../skills/openmotion-recreate/references/rebuild.md) 重建方式、[verify.md](../skills/openmotion-recreate/references/verify.md) 与 `measure_frame.mjs` | 按代码重建的动态图形设计测量和对比 | 新画面类型需确认测量指标和取样是否仍适用 |
+| [rebuild.md](../skills/openmotion-recreate/references/rebuild.md) 重建方式、[reconstruction.md](../skills/openmotion-recreate/references/reconstruction.md) 难画面分段重建、[verify.md](../skills/openmotion-recreate/references/verify.md) 与 `measure_frame.mjs` | 按代码重建的动态图形设计测量和对比 | 新画面类型需确认测量指标和取样是否仍适用 |
 
 以下是交付底线，不随能力扩展放开：不得把整条原片、整帧序列或烘焙进背景的可编辑内容冒充重建（rebuild.md）；不交付在工程外修改的 MP4（SKILL.md §5）。
 

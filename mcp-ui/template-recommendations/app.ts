@@ -17,9 +17,13 @@ type CardState = {
 const record = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === 'object' && !Array.isArray(value));
 function sameKeys(value: Record<string, unknown>, keys: string[]) { return Object.keys(value).sort().join('|') === keys.sort().join('|'); }
 
-export function recreationPrompt(card: Pick<RecommendationCard, 'title' | 'templateId'>, language: Language = 'zh'): string {
+export function recreationPrompt(card: Pick<RecommendationCard, 'title' | 'templateId' | 'templateKind'>, language: Language = 'zh'): string {
   const text = translations[language].prompt, colon = language === 'zh' ? '：' : ': ';
-  return `${text.brief}${colon}${text.instruction}\n\n${text.template}${colon}${card.title}\n${text.id}${colon}${card.templateId}\n\n${text.requirements}${colon.trimEnd()}\n`;
+  return `${text.brief}${colon}${text.instruction}${card.templateKind === 'reference' ? '\n' + text.referenceInstruction : ''}\n\n${text.template}${colon}${card.title}\n${text.id}${colon}${card.templateId}\n\n${text.requirements}${colon.trimEnd()}\n`;
+}
+
+function posterSource(asset: TemplateAsset): string {
+  return asset.posterUrl ?? `data:${asset.posterMimeType};base64,${asset.posterBase64}`;
 }
 
 /** Validate and copy the host result before it can become an actionable choice. */
@@ -38,16 +42,20 @@ export function readRecommendation(value: unknown, bootstrap: TemplateCardsBoots
     if (!asset || !templateIds.includes(input.templateId as typeof templateIds[number]) || used.has(asset.id)
       || input.position !== index + 1 || input.title !== asset.title || input.description !== asset.description
       || input.durationSeconds !== asset.durationSeconds || typeof input.actionRequestId !== 'string'
-      || !uuid.test(input.actionRequestId) || requests.has(input.actionRequestId) || !record(args)
+      || !uuid.test(input.actionRequestId) || requests.has(input.actionRequestId)) return null;
+    if (asset.kind === 'reference') {
+      if (input.templateKind !== 'reference' || args !== undefined) return null;
+    } else if (input.templateKind !== undefined || !record(args)
       || !sameKeys(args, ['requestId', 'projectType', 'templateId', 'title', 'requirements'])
       || args.requestId !== input.actionRequestId || args.projectType !== 'template'
       || args.templateId !== asset.id || args.title !== asset.title || typeof args.requirements !== 'string'
       || !args.requirements.trim() || args.requirements.length > 8000) return null;
     used.add(asset.id); requests.add(input.actionRequestId);
-    const createArgs: CreateArgs = Object.freeze({ requestId: input.actionRequestId, projectType: 'template',
-      templateId: asset.id, title: asset.title, requirements: args.requirements });
+    const action = asset.kind === 'reference' ? { templateKind: 'reference' as const }
+      : { createArgs: Object.freeze({ requestId: input.actionRequestId, projectType: 'template' as const,
+        templateId: asset.id, title: asset.title, requirements: (args as CreateArgs).requirements }) };
     cards.push(Object.freeze({ position: index + 1, templateId: asset.id, title: asset.title, description: asset.description,
-      durationSeconds: asset.durationSeconds, actionRequestId: input.actionRequestId, createArgs }));
+      durationSeconds: asset.durationSeconds, actionRequestId: input.actionRequestId, ...action }));
   }
   return Object.freeze({ schemaVersion: 1, resourceVersion: bootstrap.resourceVersion,
     recommendationId: value.recommendationId, ...(isLanguage(value.language) ? { language: value.language } : {}), cards: Object.freeze(cards), selectionGuide: value.selectionGuide,
@@ -143,8 +151,12 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
     root.querySelector('.omtc-list')?.setAttribute('aria-label', t('listLabel'));
     for (const node of root.querySelectorAll<HTMLElement>('[data-copy-key]')) label(node, node.dataset.copyKey as CopyKey);
     for (const state of states) {
-      state.article.querySelector('.omtc-description')!.textContent = translations[language()].descriptions[state.card.templateId as TemplateId];
-      state.cover.setAttribute('aria-label', `${t('preview')} ${state.card.title}`);
+      state.article.querySelector('.omtc-description')!.textContent = state.asset.descriptions?.[language()]
+        ?? translations[language()].descriptions[state.card.templateId as TemplateId] ?? state.card.description;
+      const category = state.asset.videoCategories?.[language()]?.trim() ?? '';
+      const categoryLabel = state.cover.querySelector<HTMLElement>('[data-video-category]')!;
+      categoryLabel.textContent = category; categoryLabel.title = category; categoryLabel.hidden = !category;
+      state.cover.setAttribute('aria-label', `${t('preview')} ${state.card.title}${category ? ' · ' + category : ''}`);
       state.cover.querySelector('[data-preview-label]')!.textContent = t('preview');
       state.clone.textContent = t('clone'); state.clone.setAttribute('aria-label', `${t('clone')} ${state.card.title}`);
       state.clone.disabled = busy || !connected;
@@ -153,7 +165,6 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
       detail.back.textContent = t('back'); detail.clone.textContent = t('clone'); detail.clone.disabled = busy || !connected;
       detail.video.setAttribute('aria-label', t('player'));
     }
-    const hint = root.querySelector('[data-selection-hint]'); if (hint) hint.textContent = t('numeric');
     if (context.theme === 'dark' || context.theme === 'light') {
       doc.documentElement.style.colorScheme = context.theme; root.dataset.theme = context.theme;
     }
@@ -174,7 +185,8 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
     for (const cleanup of cleanups.splice(0)) cleanup();
     if (detail) { detail.video.pause(); detail.video.removeAttribute('src'); detail.video.load(); }
     for (const state of states) {
-      state.video.pause(); state.video.removeAttribute('src'); state.video.load(); win.URL.revokeObjectURL(state.url);
+      state.video.pause(); state.video.removeAttribute('src'); state.video.load();
+      if (state.url.startsWith('blob:')) win.URL.revokeObjectURL(state.url);
     }
     states = []; detail = undefined; root.replaceChildren();
   }
@@ -195,7 +207,7 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
     current.selected = state; current.trigger = trigger; current.intent = state.intent; current.visible = true;
     current.title.textContent = state.card.title; current.feedback.hidden = state.feedback.hidden;
     current.feedback.textContent = state.feedback.textContent; current.status.hidden = true;
-    current.video.poster = `data:${state.asset.posterMimeType};base64,${state.asset.posterBase64}`;
+    current.video.poster = posterSource(state.asset);
     current.video.muted = true;
     current.video.src = state.url;
     const time = state.video.currentTime;
@@ -291,15 +303,20 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
     }
     for (const card of next.cards) {
       const asset = bootstrap.templates.find(item => item.id === card.templateId)!;
-      const binary = win.atob(asset.videoBase64), bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-      const url = win.URL.createObjectURL(new win.Blob([bytes.buffer], { type: 'video/mp4' }));
+      let url = asset.videoUrl;
+      if (url === undefined) {
+        const binary = win.atob(asset.videoBase64!), bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        url = win.URL.createObjectURL(new win.Blob([bytes.buffer], { type: 'video/mp4' }));
+      }
       const article = element('article', 'omtc-card'); article.dataset.templateId = card.templateId;
       const cover = element('button', 'omtc-cover'); cover.type = 'button';
-      const poster = element('img'); poster.src = `data:${asset.posterMimeType};base64,${asset.posterBase64}`; poster.alt = '';
+      const poster = element('img'); poster.src = posterSource(asset); poster.alt = '';
       const video = element('video'); video.defaultMuted = true; video.muted = true; video.loop = true; video.playsInline = true; video.preload = 'metadata'; video.setAttribute('aria-hidden', 'true');
       const previewLabel = element('span', 'omtc-preview-label'); previewLabel.dataset.previewLabel = '';
-      cover.append(poster, video, previewLabel);
+      const categoryLabel = element('span', 'motion-media-label omtc-category-label');
+      categoryLabel.dataset.videoCategory = ''; categoryLabel.hidden = true;
+      cover.append(poster, video, categoryLabel, previewLabel);
       const info = element('div', 'omtc-info'), heading = element('div', 'omtc-heading');
       const position = element('span', 'omtc-position', String(card.position)), titleButton = element('button', 'omtc-title', card.title);
       titleButton.type = 'button'; titleButton.title = card.title; titleButton.dataset.templateTitle = '';
@@ -316,7 +333,6 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
       observer?.observe(article); video.src = url; video.load();
     }
     observer?.observe(detailSection);
-    if (!next.onboarding) { const hint = element('p', 'omtc-hint'); hint.dataset.selectionHint = ''; root.append(hint); }
     refreshLabels(); reconcile();
   }
   listen(doc, 'visibilitychange', () => reconcile(), true);

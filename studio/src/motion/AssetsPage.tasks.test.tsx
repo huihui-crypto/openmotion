@@ -41,6 +41,7 @@ beforeEach(() => {
     }
     if (args.action === 'list') return { assets: [structuredClone(asset)], total: 1, nextOffset: null };
     if (args.action === 'get') return { asset: structuredClone(asset) };
+    if (args.action === 'retry_save') return { job: { ...structuredClone(jobs.find(job => job.id === args.jobId)!), state: 'queued', phase: 'saving', updatedAt: 50 } };
     throw new Error(`Unexpected action ${args.action}`);
   });
   vi.mocked(gatewayRequest).mockImplementation(async () => ({ conversations: structuredClone(chats) }));
@@ -122,4 +123,14 @@ it('does not lose a new submission when an older empty poll resolves after the c
   await act(async () => pending.resolve({ jobs: [] })); await flush();
   expect(trigger().textContent).toContain('1 in progress');
   await selectTask('Add a warm glow'); expect(composer.taskIds.direct).toBe('edit');
+});
+
+it('opens a recoverable project task and retries local saving through the shared asset operation', async () => {
+  jobs = [{ ...job('project-save', 40, 'failed'), library: undefined, projectId: 'project', saveToLibrary: true, savePending: true }];
+  await render(); await selectTask('Add a warm glow');
+  expect(composer.taskIds.direct).toBe('project-save');
+  await act(async () => composer.onRetrySave!(jobs[0]));
+  expect(vi.mocked(assetRequest).mock.calls.some(([args]) => args.action === 'retry_save' && args.jobId === 'project-save' && args.requestId === 'save-project-save')).toBe(true);
+  expect(composer.jobs.find(job => job.id === 'project-save')?.state).toBe('queued');
+  expect(vi.mocked(assetRequest).mock.calls.some(([args]) => args.action === 'generate')).toBe(false);
 });

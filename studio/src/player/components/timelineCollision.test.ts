@@ -42,6 +42,14 @@ describe("isLaneFree", () => {
 describe("resolveNearestFreeStart", () => {
   const row = [el("a", 0, 2, 3), el("b", 0, 8, 2)]; // busy [2,5) and [8,10)
 
+  it("never stabilizes onto an occupied or below-floor previous landing", () => {
+    const busy = [el("block", 0, 10, 10)];
+    expect(resolveNearestFreeStart(busy, 0, 13, 4, null, 0, null,
+      { start: 13, switchMargin: 100 })).toBe(20);
+    expect(resolveNearestFreeStart(busy, 0, 13, 4, null, 7, null,
+      { start: 6, switchMargin: 100 })).toBe(20);
+  });
+
   it("keeps a start whose span is already free", () => {
     expect(resolveNearestFreeStart(row, 0, 5, 3, null)).toBe(5);
     expect(resolveNearestFreeStart(row, 1, 3, 4, null)).toBe(3); // another row
@@ -173,6 +181,14 @@ describe("resolveZoneDropPlacement (a drop on a row stays on that row, no overla
     isAudio: false,
   };
   const allVisualOccupied = () => [el("a", 0, 0, 10), el("b", 1, 0, 10), el("c", 2, 0, 10)];
+
+  it("does not carry collision stabilization into another row or a deliberate insertion", () => {
+    const drop = { ...base, elements: [el("block", 1, 10, 10)], desiredTrack: 1,
+      start: 13.01, duration: 4, previous: { track: 0, start: 6, switchMargin: 1 } };
+    expect(resolveZoneDropPlacement(drop)).toEqual({ track: 1, insertRow: null, start: 20 });
+    expect(resolveZoneDropPlacement({ ...drop, previous: { ...drop.previous, track: 1 },
+      deliberateInsertRow: 1 })).toEqual({ track: 1, insertRow: 1, start: 13.01 });
+  });
 
   it("lands on the aimed track when it is free at that time", () => {
     expect(

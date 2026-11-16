@@ -99,7 +99,7 @@ test('HTTP catalog, local posters and copied guides resolve the exact selected t
       for (const host of ['codex', 'claude', 'deepseek', 'mcp'] as const) {
         const prompt = templatePrompt(info, host, template);
         assert.ok(prompt.includes(id)); assert.ok(prompt.includes(template.title));
-        assert.match(prompt, /https:\/\/releases.open-design.ai\/open-motion\/install.md/);
+        assert.ok(prompt.includes('https://github.com/nexu-io/openmotion'));
         assert.match(prompt, /并交付 HTML 和 MP4/); assert.ok(prompt.endsWith('我的要求：\n'));
         assert.doesNotMatch(prompt, /dataDirectory|openmotion_write_files|expectedRevision/);
         assert.doesNotMatch(prompt, /localhost|127\.0\.0\.1|connect\/guide/);
@@ -169,14 +169,14 @@ test('the visual gallery only includes verified local covers and keeps coverless
   assert.ok(listTemplates({ covered: true, query: 'shapelayer' }).items.some(item => item.sourceUrl === 'https://x.com/shapelayer/status/2070884943199150467'));
 });
 
-test('template prompts use public installation URLs for the effective package environment', () => {
+test('template prompts use the public repository URL in every package environment', () => {
   const info = { templateEnvironment: 'dev', previewUrl: 'http://127.0.0.1:1234', transport: { env: {} } } as Parameters<typeof templatePrompt>[0];
   const template = { id: 'exact-id', title: 'Selected template' };
-  assert.match(templatePrompt(info, 'codex', template), /open-motion\/dev\/install.md/);
+  assert.ok(templatePrompt(info, 'codex', template).includes('https://github.com/nexu-io/openmotion'));
   info.templateEnvironment = 'prod';
   info.transport.env.MOTION_TEMPLATE_ENV = 'dev';
   const prompt = templatePrompt(info, 'claude', template, 'en');
-  assert.match(prompt, /open-motion\/install.md/); assert.doesNotMatch(prompt, /\/dev\/|127\.0\.0\.1|localhost/);
+  assert.ok(prompt.includes('https://github.com/nexu-io/openmotion')); assert.doesNotMatch(prompt, /releases\.open-design\.ai|127\.0\.0\.1|localhost/);
   assert.match(prompt, /Selected template \(exact-id\)/); assert.match(prompt, /HTML and MP4/);
 });
 
@@ -189,7 +189,7 @@ test('template prompts cover all eleven locales and preserve literal template va
   assert.equal(new Set(prompts).size, 11);
   for (const prompt of prompts) {
     assert.ok(prompt.includes(template.title)); assert.ok(prompt.includes(template.id));
-    assert.ok(prompt.includes('https://releases.open-design.ai/open-motion/dev/install.md'));
+    assert.ok(prompt.includes('https://github.com/nexu-io/openmotion'));
     assert.match(prompt, /HTML.*MP4/); assert.doesNotMatch(prompt, /\{installUrl\}|\{id\}/);
   }
   assert.equal(templatePrompt(info, 'codex', template, 'pt-BR'), templatePrompt(info, 'codex', template, 'pt-br'));

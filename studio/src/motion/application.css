@@ -8,6 +8,9 @@
 .om-application[data-navigation-collapsed="true"] > .motion-workspace { margin-left: var(--motion-space-4); }
 .om-app-brand { display: flex; align-items: center; gap: var(--motion-space-8); flex: 0 0 auto; }
 .om-app-brand .motion-brand-lockup { height: var(--motion-space-16); }
+@container (width > 700px) {
+  .om-app-brand .motion-brand-lockup { width: 104px; height: auto; }
+}
 .om-app-navigation { display: flex; align-items: center; flex: 1; gap: var(--motion-space-8); min-width: 0; font-size: var(--motion-text-sm); }
 .motion-studio-header.motion-studio-header-compact { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--motion-space-8); height: var(--motion-control); min-height: var(--motion-control); padding: 0 var(--motion-space-12); }
 .motion-studio-header.motion-studio-header-compact > div { width: auto; min-width: 0; }

@@ -1,6 +1,6 @@
 <p align="center"><img src="readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-<p align="center"><strong>CapCut 与 Claude Motion 的开源替代方案</strong></p>
+<p align="center"><strong>Claude Motion 与 CapCut 的开源替代方案</strong></p>
 
 <p align="center">
   <picture>
@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://open-design.ai/motion/"><img src="readme/badges/website.zh-CN.svg" alt="OpenMotion 官网" /></a>
+  <a href="https://open-design.ai/zh/motion/"><img src="readme/badges/website.zh-CN.svg" alt="OpenMotion 官网" /></a>
   <a href="https://go.open-design.ai/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=openmotion&amp;utm_content=readme_zh"><img src="readme/badges/opendesign-go.svg" alt="OpenDesign Go 模型订阅" /></a>
   <a href="https://discord.com/invite/M7NnHS9gNa"><img src="readme/badges/discord.svg" alt="加入 OpenMotion Discord 社区" /></a>
   <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841"><img src="readme/badges/feishu.zh-CN.svg" alt="加入 OpenMotion 飞书群" /></a>
@@ -37,7 +37,7 @@
 
 # OpenMotion
 
-OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **CapCut 与 Claude Motion 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
+OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也是 **Claude Motion 与 CapCut 的开源替代方案**。上传参考视频或粘贴社交平台上的视频链接，就能**用自己的品牌视觉规范和文案复刻原片**。
 
 - 🎬 **全栈视频复刻。** Agent 拆解参考片，用 HTML 重建镜头和转场，并生成缺少的素材。你可以在同一工程里用 Studio 调整剪辑节奏，再渲染导出 MP4。
 - 🔑 **BYOA（自带 Agent）与 BYOK（自带 API 密钥）。** OpenMotion 开源免费。直接在[常用的本地 Agent](#agent-wall) 里复刻视频，每一层都能用自己的 API 密钥。
@@ -63,6 +63,16 @@ OpenMotion 是一个**由 AI Agent 驱动的全栈视频创作工作台**，也�
 ```
 
 安装完成后，Agent 会打开本地模板库并推荐一个模板，确认选择后再创建工程。[源码安装指南](../install.md)
+
+### 安装已发布的 npm 应用（可选）
+
+上方源码安装仍是仓库安装的默认方式。如需明确选择包含预构建 Studio 及已配置在线模板库的已发布应用，请复制下面的指令，发给你的本地 Agent：
+
+```text
+阅读 https://github.com/nexu-io/openmotion/blob/main/docs/install.md，按照指南在当前的 Agent 中安装并连接已发布的 npm 应用。
+```
+
+[已发布应用的安装与版本通道选择](install.md)。已发布的版本可能落后于当前检出的源码。
 
 ### 克隆仓库并在本地启动
 
@@ -502,7 +512,7 @@ npx skills add ./skills --skill openmotion-director openmotion-production openmo
 
 <a id="local-agent-connection"></a>
 
-**连接其他本地 Agent** · 按照官方安装指南在客户端完成接入。支持 stdio MCP 的客户端可以使用下方配置。对于通过终端工作的 Agent，打开工程目录，用[本机引擎 CLI](../skills/openmotion-production/references/native.md) 预览和渲染 HTML 场景。
+**连接其他本地 Agent** · 按照官方安装指南在客户端完成接入。支持 stdio MCP 的客户端可以使用下方配置。对于通过终端工作的 Agent，打开工程目录，用[本机引擎 CLI](../skills/openmotion-production/references/native.md) 预览和渲染 HTML 场景。 使用 npm 发布版时，运行 `openmotion setup --host <Agent 名称>`（例如 `opencode`）。setup 会安装应用和 Skills，并返回需要添加的启动器配置。[其他本地 Agent](npm-installation.md#other-local-agents)
 
 <a id="manual-mcp"></a>
 
@@ -709,7 +719,7 @@ BYOA 让 Agent 留在已有客户端，BYOK 连接受支持的模型账号。Stu
 
 OpenMotion 独立官网将上线于 `open-design.ai/openmotion`。
 
-[OpenDesign 动效展示](https://open-design.ai/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_zh) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
+[OpenDesign 动效展示](https://open-design.ai/zh/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_zh) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
 
 [**在 GitHub 上给 OpenMotion 点个 Star**](https://github.com/nexu-io/openmotion)
 
@@ -725,7 +735,7 @@ OpenMotion 采用 [Apache-2.0](../LICENSE)许可。第三方代码、模板、�
 
 | 来源 | 关联 |
 | --- | --- |
-| [OpenDesign](https://github.com/nexu-io/open-design) | 界面来源、资源结构和品牌方向；[设计体系](design-system.md) 和 [Motion 展示](https://open-design.ai/motion/) |
+| [OpenDesign](https://github.com/nexu-io/open-design) | 界面来源、资源结构和品牌方向；[设计体系](design-system.md) 和 [Motion 展示](https://open-design.ai/zh/motion/) |
 | [Hyperframes](https://github.com/heygen-com/hyperframes) | HTML 视频合成、Studio 和渲染基础，固定为 0.9.7；创作者参考、外部改编演示与组件源码；[引擎说明](hyperframes.md)、[模板声明](../template-library/NOTICE.md) 和[目录来源](template-catalog.md) |
 | [MotionGit](https://motiongit.com/) / adunext | Kinetic Tech 源码以 Presenter Tech 打包；[许可与署名](../library/templates/presenter-tech/NOTICE.md) |
 | [Hypit](https://github.com/hypit-ai/hypit) | Agent 主导热门视频复刻与可编辑版本的灵感来源；未引入运行时 |

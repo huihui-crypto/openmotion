@@ -3,6 +3,7 @@ import { lstat, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const presentationTool = 'openmotion_show_template_recommendations';
 const languages = ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'];
@@ -64,7 +65,7 @@ export async function prepareCodexHostHandoff(options = {}) {
   const threadId = options.threadId ?? env.CODEX_THREAD_ID ?? env.CODEX_SESSION_ID;
   const language = options.language ?? env.OPENMOTION_ONBOARDING_LANGUAGE ?? 'en';
   const presentation = { tool: presentationTool, arguments: {
-    templateIds: ['product-promo', 'nyt-graph', 'decision-tree'], onboarding: true,
+    templateIds: options.templateIds ?? selectOnboardingTemplateIds(), onboarding: true,
     language: languages.includes(language) ? language : 'en',
   }, prerequisite: 'Visibly open the template library, then invoke this tool natively in the calling chat. Do not call the presentation through a shell probe.' };
   const base = { hostSessionVerified: false, presentationVerified: false, presentation };

@@ -1813,5 +1813,6 @@
   "Unlock track": "트랙 잠금 해제",
   "Delete track": "트랙 삭제",
   "Unlock the track before deleting it": "삭제하기 전에 트랙 잠금을 해제하세요",
-  "Open the composition to delete this track": "이 트랙을 삭제하려면 컴포지션을 여세요"
+  "Open the composition to delete this track": "이 트랙을 삭제하려면 컴포지션을 여세요",
+  "Screen too small to expand this panel": "화면이 너무 작아 패널을 펼칠 수 없습니다"
 }

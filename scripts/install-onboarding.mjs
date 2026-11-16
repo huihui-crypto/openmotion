@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import { realpathSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import { access, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runFile } from './runtime-assets.mjs';
 import { prepareCodexHostHandoff } from './codex-host-handoff.mjs';
+import { selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 export async function installationInstructions(appRoot) {
   const guide = await readFile(path.join(appRoot, 'docs/install-onboarding.md'), 'utf8');
@@ -15,34 +16,8 @@ export async function installationInstructions(appRoot) {
   return sections[0][1].trim();
 }
 
-// Inspect shipped manifests and files only; never copy a project or download assets here.
-export async function bundledOnboardingTemplates(appRoot) {
-  const templates = [];
-  // These unchanged examples have been reviewed for self-contained sample content.
-  // A new bundled directory is not automatically a no-input/no-generation experience.
-  const reviewed = new Set(['product-promo', 'nyt-graph', 'decision-tree']);
-  const directory = path.join(appRoot, 'template-library');
-  for (const entry of await readdir(directory, { withFileTypes: true }).catch(() => [])) {
-    if (!entry.isDirectory() || !reviewed.has(entry.name)) continue;
-    try {
-      const root = path.join(directory, entry.name);
-      const item = JSON.parse(await readFile(path.join(root, 'registry-item.json'), 'utf8'));
-      assert.equal(item.name, entry.name);
-      assert(item.title && Array.isArray(item.files) && item.files.some(file => file.target === 'index.html'));
-      for (const file of item.files) {
-        assert(typeof file.path === 'string' && !file.path.includes('\\') && !path.isAbsolute(file.path) && !file.path.split('/').includes('..'));
-        await access(path.join(root, file.path));
-      }
-      await access(path.join(appRoot, 'node_modules/gsap/dist/gsap.min.js'));
-      templates.push({ templateId: item.name, name: String(item.title).slice(0, 120),
-        summary: String(item.description || '').slice(0, 240), durationSeconds: item.duration,
-        kind: 'builtin', eligibility: 'confirmed', requirements: 'Unchanged bundled example; no user assets or paid generation required.' });
-    } catch { /* An incomplete example must not become an eligible offer. */ }
-  }
-  return templates.sort((a, b) => a.templateId.localeCompare(b.templateId));
-}
-
 export async function prepareInstallationOnboarding({ appRoot, dataDirectory, templateEnvironment, host = 'codex', onboardingOutput,
+  templateIds = selectOnboardingTemplateIds(),
   language = process.env.OPENMOTION_ONBOARDING_LANGUAGE || 'en' }) {
   // A missing canonical contract fails before host registration.
   const instructions = await installationInstructions(appRoot);
@@ -54,23 +29,22 @@ export async function prepareInstallationOnboarding({ appRoot, dataDirectory, te
         dataDirectory = new WorkspaceStore().directory;
       }
       const { prepareInlineOnboarding } = await import('./inline-onboarding.mjs');
-      return await prepareInlineOnboarding({ appRoot, language,
+      return await prepareInlineOnboarding({ appRoot, language, templateIds,
         output: onboardingOutput || path.join(dataDirectory, 'onboarding', `welcome-${randomUUID()}.html`) });
     } catch (error) { return { status: 'unavailable', warning: error.message }; }
   })();
-  const bundled = await bundledOnboardingTemplates(appRoot);
   let catalog;
   try {
     catalog = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', path.join(appRoot, 'scripts/onboarding-catalog.ts'),
-      ...(dataDirectory ? [dataDirectory] : [])], {
+      ...(dataDirectory ? [dataDirectory] : []), '--template-ids', JSON.stringify(templateIds)], {
       cwd: appRoot, timeout: 5_000, killSignal: 'SIGKILL',
       env: { ...process.env, MOTION_TEMPLATE_ENV: templateEnvironment },
     }));
     assert(Array.isArray(catalog.templates), 'Invalid onboarding catalog');
   } catch {
-    catalog = { source: 'bundled', environment: templateEnvironment, catalogVersion: null,
-      catalogTotal: null, included: bundled.length, truncated: false, stale: false,
-      warning: 'Remote catalog unavailable; using verified bundled examples only.', templates: bundled };
+    catalog = { source: 'unavailable', environment: templateEnvironment, catalogVersion: null,
+      catalogTotal: null, included: 0, truncated: false, stale: false, recommendedTemplateId: null,
+      warning: 'Approved onboarding recommendations unavailable. Preserve any accepted template ID and report the limitation; do not substitute another template.', templates: [] };
   }
   const inlinePresentation = await inline;
   return { hostSessionVerified: false, instructions, catalog,
@@ -97,6 +71,7 @@ export async function prepareInstallationPreview({ appRoot, dataDirectory }) {
 // Shared by packaged setup, source setup and the plugin's setup Skill. A ready
 // artifact is an installation handoff, never proof of visible host delivery.
 export async function prepareInstallationFlow(options) {
+  options = { ...options, templateIds: options.templateIds ?? selectOnboardingTemplateIds() };
   if (!options.dataDirectory) {
     let configuration;
     try { configuration = JSON.parse(await readFile(path.join(options.appRoot, '.mcp.json'), 'utf8')); }
@@ -133,7 +108,7 @@ export async function prepareInstallationFlow(options) {
   if ((options.host || 'codex') === 'codex' && onboarding.inlinePresentation?.status !== 'prepared') {
     hostHandoff = await prepareCodexHostHandoff({ dataDirectory: options.dataDirectory,
       expectedVersion: options.expectedVersion || JSON.parse(await readFile(path.join(options.appRoot, 'package.json'), 'utf8')).version,
-      codex: options.codex });
+      codex: options.codex, templateIds: options.templateIds });
   }
   return { ...onboarding, installationStatus: 'installed', applicationRoot: options.appRoot,
     dataDirectory: options.dataDirectory, preview,

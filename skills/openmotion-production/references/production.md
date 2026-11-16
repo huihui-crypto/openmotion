@@ -17,6 +17,8 @@ When selecting, obtaining or replacing media, apply the [shared material policy]
 
 ## Final video delivery
 
+Unchanged-template requests for HTML/project or MP4 files use [unchanged file export](../../openmotion-template-to-video/references/unchanged-export.md). Its version-pinned parallel delivery and scoped reading/check sequence take precedence over the authoring work-round flow below; retain the actual final-file checks and separate editor presentation status.
+
 During generation and editing, do not create an inline progress or video component and do not open the right-hand editor for intermediate saves. Begin a business work round silently with `openmotion_open_preview({action:"begin",projectId,requestId,mode:"create"|"modify"})`; retain `inlineWork.id` as `workId` through saves and the final export. This call presents no UI.
 
 Once the final authored video and supporting assets are ready for preview, complete the editable Studio handoff on the right. Do not open an empty carrier or partial draft merely to show activity. Explicit editor-only or show-now requests retain their scope, and an explicit background preference still skips presentation.
@@ -46,7 +48,7 @@ If only an independent folder can be produced, state that the editable Studio ha
 
 1. Reuse complete guidance already read. Installed Skills and MCP resources/read provide the same documents; production start only routes a task that lacks a specialist. Changes to existing content use [edit workflow](edit.md). Missing instructions/source reads return to the model before dependent writes.
 2. Reuse the target projectId or explicitly create a new one. Read its current revision and content version. No global most-recent project fallback. Five is a list page size, not a retention policy.
-3. Use returned asset paths and native HTML/CSS/JS. Import and file save are separate operations. For BYOK image, video, speech or music generation, follow [openmotion-media](../../openmotion-media/SKILL.md); pure motion graphics stay native without it. Host media tools remain available within the request's scope. Missing media capabilities must be stated.
+3. Use returned asset paths and native HTML/CSS/JS. Import and file save are separate operations. For BYOK image, video, speech or music generation, follow [openmotion-media](../../openmotion-media/SKILL.md); pure motion graphics stay native without it. Select sources by content need and tools by matching capability under the [shared material policy](materials.md#tool-selection-and-discovery): prefer OpenMotion when suitable, and use external tools for capability gaps. Missing media capabilities must be stated.
 4. Follow the [native loop](native.md), preserve locked content and existing Studio manifests. Inspect actual frames, motion and sound. A saved source file or successful lint is not creative acceptance.
 5. Export for a requested finished video or content-edit delivery; do not export explicit draft, editor-only or review-only work. Reuse an applicable job before submitting another. Save a stable requestId per action: exact retry returns the original outcome; changed input with the same requestId is rejected. Failed request correction uses a new requestId.
 6. Poll the named job through project details. Only completed exposes its real MP4 and technical verification. Inspect [final playback and evidence](verification.md) separately; record unavailable checks as not_run.

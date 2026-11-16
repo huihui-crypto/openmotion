@@ -1,3 +1,4 @@
+import { Tooltip } from "../components/ui/Tooltip";
 import { useState } from 'react';
 import { hostNames, integrationHost, integrationHosts, manualConnection, setupPrompt, setupGuideUrl } from '../../../shared/integration';
 import { useI18n } from '../i18n/I18n';
@@ -24,7 +25,7 @@ export function AgentConnectionDialog({ onClose, returnFocus }: { onClose: () =>
     <div className="om-agent-connection">
       <p className="om-muted">{t('Choose your Agent, then paste the connection instruction into its conversation.')}</p>
       <div className="om-label"><span>{t('Agent client')}</span><Select label={t('Agent client')} value={host} onCommit={value => setHost(integrationHost(value))} options={integrationHosts.map(value => ({ value, label: hostNames[value] }))} /></div>
-      {info && <div className="om-settings-row"><span className="om-badge">{t('Workspace reachable')} · v{info.version}</span><button className="motion-icon-button" aria-label={t('Refresh status')} title={t('Refresh status')} onClick={retry}><RemixIcon name="refresh-line" size={16} /></button></div>}
+      {info && <div className="om-settings-row"><span className="om-badge">{t('Workspace reachable')} · v{info.version}</span><Tooltip label={t('Refresh status')}><button className="motion-icon-button" aria-label={t('Refresh status')} onClick={retry}><RemixIcon name="refresh-line" size={16} /></button></Tooltip></div>}
           <div className="om-card om-card-stack"><h3 className="om-subtitle">{t(host === 'chatgpt' ? 'Remote connection unavailable' : 'Connect from your Agent')}</h3>
             <p className="om-muted">{t(host === 'chatgpt' ? 'ChatGPT cloud cannot connect to this local workspace. Choose a local Agent above.' : 'Send this instruction to your Agent. It will check installation, start OpenMotion if needed, and verify the connection.')}</p>
             <pre className="om-code-block">{prompt}</pre>

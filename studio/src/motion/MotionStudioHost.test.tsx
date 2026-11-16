@@ -3,8 +3,10 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { MotionEditorFrame, MotionStudioHost } from './MotionStudioHost';
-import { COMMUNITY_URL } from './CommunityLink';
+import englishReadme from '../../../README.md?raw';
+import chineseReadme from '../../../README.zh-CN.md?raw';
 import discordLogo from './community-discord.svg';
+import feishuLogo from '../../../packages/design-system/brand/community-feishu.svg';
 import { GITHUB_REPOSITORY } from './githubRepository';
 import { StudioHeader } from '../components/StudioHeader';
 import { useMotionHistoryOperation } from './MotionHistoryState';
@@ -110,7 +112,7 @@ it('keeps project switching, templates, history actions and native export in the
   expect(container.querySelector('.om-app-project-title > svg')).toBeNull();
   expect(container.querySelector('.om-app-header [aria-label="项目名称"]')).toBeNull();
   openSidebar();
-  const project = document.querySelector<HTMLButtonElement>('.motion-session[title="Second"]')!;
+  const project = [...document.querySelectorAll<HTMLButtonElement>('.motion-session')].find(button => button.textContent === "Second")!;
   expect(header.contains(project)).toBe(false);
   expect(document.querySelector('.motion-session[aria-current="page"]')?.textContent).toContain('Demo');
   expect(header.contains(button('导出'))).toBe(true);
@@ -123,6 +125,7 @@ it('keeps project switching, templates, history actions and native export in the
   expect(container.querySelector('.motion-save-state')).toBeNull();
   expect(container.querySelector('a[download]')).toBeNull();
   expect(container.querySelector('.om-app-brand [role=img]')?.getAttribute('aria-label')).toBe('OpenMotion');
+  expect(container.querySelector('.om-app-brand .motion-brand-lockup--responsive')).not.toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="模型供应商"]')).not.toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="设置"]')).not.toBeNull();
   expect(container.querySelector('.om-app-rail [aria-label="编辑器"]')).toBeNull();
@@ -329,7 +332,7 @@ it.each(['pinned', 'drawer', 'hover'] as const)('keeps the %s project list open 
   expect(sidebar.hasAttribute('data-ending-style')).toBe(false);
   expect(state.open).not.toHaveBeenCalled();
   expect(container.querySelector('.motion-studio-header')).toBe(editor);
-  act(() => sidebar.querySelector<HTMLButtonElement>('.motion-session[title="Second"]')!.click());
+  act(() => [...sidebar.querySelectorAll<HTMLButtonElement>('.motion-session')].find(button => button.textContent === "Second")!.click());
   expect(state.open).toHaveBeenCalledExactlyOnceWith('projects', 'second');
 });
 
@@ -489,12 +492,15 @@ it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr']
   localStorage.setItem('motion.studio.locale', locale);
   render();
   const link = container.querySelector<HTMLAnchorElement>('.motion-community-link')!;
-  expect(link.href).toBe(COMMUNITY_URL);
+  const readme = locale === 'zh-CN' ? chineseReadme : englishReadme;
+  const channel = locale === 'zh-CN' ? '飞书群' : 'Discord';
+  expect(readme).toContain(`[${channel}](${link.href})`);
   expect(link.target).toBe('_blank');
   expect(link.rel).toContain('noopener');
   expect(container.querySelector<HTMLAnchorElement>(`a[href="${GITHUB_REPOSITORY}"]`)?.target).toBe('_blank');
-  expect(link.querySelector('img')?.getAttribute('src')).toBe(discordLogo);
-  expect(link.getAttribute('aria-label')).toBeTruthy();
+  expect(link.querySelector('img')?.getAttribute('src')).toBe(locale === 'zh-CN' ? feishuLogo : discordLogo);
+  expect(link.getAttribute('aria-label')).toContain(channel);
+  expect(link.getAttribute('aria-label')).toContain('OpenMotion');
   expect(container.querySelector('.om-app-header')?.contains(link)).toBe(true);
   expect(container.querySelector('.om-app-header')?.contains(container.querySelector(`a[href="${GITHUB_REPOSITORY}"]`))).toBe(true);
   expect(container.querySelector('.om-app-header .om-model-switcher')).not.toBeNull();

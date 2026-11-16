@@ -10,9 +10,10 @@ import type { GenerationJob, Model } from '../shared/gateway.ts';
 import type { EventFields } from '../tracking/core.ts';
 import { accountErrorKinds, accountStages, type omEvents } from '../tracking/events.ts';
 import { readSettings, writeSettings } from './settings-storage.ts';
+import { registeredProvider } from '../shared/provider-registry.ts';
 
 const execute = promisify(execFile);
-const consoleUrl = 'https://open-design.ai/cloud';
+const consoleUrl = registeredProvider('account')!.website!;
 const connectorVersion = '0.1.10';
 export type SignInRecord = EventFields<typeof omEvents['account_sign_in_result']>;
 type Profile = { apiUrl?: string; controlKey?: string; controlKeyId?: string; runtimeKey?: string; pendingLogin?: unknown; user?: { id?: string; name?: string; email?: string } };
@@ -407,10 +408,13 @@ export class OpenDesignAccount {
     const media = JSON.parse(await this.run(['media', 'models', '--json']));
     if (!Array.isArray(media.models)) throw new Error('OpenDesign media catalogue is unavailable');
     for (const row of media.models) {
-      // The connector reports speech models as `audio_speech`; music models are not supported here.
-      const kind = ({ image: 'image', video: 'video', audio_speech: 'audio' } as const)[row.kind as 'image' | 'video' | 'audio_speech'];
+      // The connector reports speech and music models as `audio_speech` and `audio_music`.
+      const kind = ({ image: 'image', video: 'video', audio_speech: 'audio', audio_music: 'audio' } as const)[row.kind as 'image' | 'video' | 'audio_speech' | 'audio_music'];
       if (typeof row.model !== 'string' || !/^[\w./:-]{1,180}$/.test(row.model) || !kind) continue;
-      models.push({ id: 'account:' + row.model, provider: 'account', modelId: row.model, label: row.model, kind, enabled: row.enabled !== false, source: 'live', mode: kind === 'audio' ? 'text-to-speech' : `text-to-${kind}` });
+      const mode = row.kind === 'audio_speech' ? 'text-to-speech' : row.kind === 'audio_music' ? 'text-to-audio' : `text-to-${kind}`;
+      // An image model publishes `edits` only when this account is entitled to edit input images.
+      const editable = kind === 'image' && row.capabilities?.edits === true;
+      models.push({ id: 'account:' + row.model, provider: 'account', modelId: row.model, label: row.model, kind, enabled: row.enabled !== false, source: 'live', mode, ...(editable ? { supportsImageReference: true } : {}) });
     }
     if (generation !== this.generation) return [];
     await this.commit(generation, async () => {
@@ -423,13 +427,17 @@ export class OpenDesignAccount {
   async mediaModels(): Promise<Model[]> {
     return (await this.models()).filter(model => model.enabled && ['image', 'video', 'audio'].includes(model.kind)).map(model => ({ ...model, modality: model.kind as Model['modality'], mode: model.mode! }));
   }
-  async generate(job: GenerationJob, directory: string, signal: AbortSignal, progress: (phase: string, id?: string) => Promise<void>) {
+  /** `reference` is the job's snapshotted input image; it turns an image job into an edit of that image. */
+  async generate(job: GenerationJob, directory: string, signal: AbortSignal, progress: (phase: string, id?: string) => Promise<void>, reference?: string) {
     if (job.providerOrigin !== await this.identity() || (await this.summary()).state !== 'signed-in') throw new Error('Account changed; the queued task was not submitted');
     const kind = job.modality, params = { ...job.model.defaults, ...job.parameters };
-    const allowed = kind === 'image' ? ['aspect_ratio', 'resolution', 'quality', 'size'] : kind === 'video' ? ['ratio', 'resolution', 'duration', 'generate_audio'] : ['voice'];
+    const music = kind === 'audio' && job.model.mode === 'text-to-audio';
+    if (reference && kind !== 'image') throw new Error('Account reference images are supported for image editing only');
+    const allowed = kind === 'image' ? ['aspect_ratio', 'resolution', 'quality', 'size'] : kind === 'video' ? ['ratio', 'resolution', 'duration', 'generate_audio'] : music ? ['duration'] : ['voice'];
     if (Object.keys(params).some(key => !allowed.includes(key))) throw new Error('Unsupported account model parameter');
-    if (kind === 'audio' && (typeof params.voice !== 'string' || !params.voice)) throw new Error('Choose a voice in parameters.voice');
-    const args = [kind, kind === 'audio' ? 'speech' : 'gen', '--model', job.model.modelId, '--prompt', job.prompt, '--no-wait', '--json'];
+    if (kind === 'audio' && !music && (typeof params.voice !== 'string' || !params.voice)) throw new Error('Choose a voice in parameters.voice');
+    const operation = kind === 'audio' ? music ? 'music' : 'speech' : reference ? 'edit' : 'gen';
+    const args = [kind, operation, '--model', job.model.modelId, '--prompt', job.prompt, ...(reference ? ['--image', reference] : []), '--no-wait', '--json'];
     for (const [key, value] of Object.entries(params)) {
       if (key === 'generate_audio') { if (value === true) args.push('--generate-audio'); }
       else if (typeof value === 'string' || typeof value === 'number') args.push('--' + key.replaceAll('_', '-'), String(value));

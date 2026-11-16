@@ -175,7 +175,12 @@ describe("Timeline row virtualization", { timeout: 30_000 }, () => {
       const clip = host.querySelector<HTMLElement>('[data-el-id="clip-0"]');
       expect(scroller).not.toBeNull();
       expect(clip).not.toBeNull();
-      expect(clip?.title).toBe("Clip 0 • 0.0s to 10.0s");
+      expect(clip?.hasAttribute("title")).toBe(false);
+      await act(async () => {
+        clip?.focus();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      expect(document.querySelector('[role="tooltip"]')?.textContent).toBe("Clip 0 • 0.0s to 10.0s");
       const picture = host.querySelector("[data-rich-content]");
       expect(picture).not.toBeNull();
 

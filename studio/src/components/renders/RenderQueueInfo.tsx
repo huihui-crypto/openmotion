@@ -1,3 +1,4 @@
+import { Tooltip } from "../ui/Tooltip";
 import { useI18n } from "../../i18n/I18n";
 import type { Translate } from "../../i18n/messages";
 import type { RenderJob } from "./useRenderQueue";
@@ -28,7 +29,7 @@ export function RenderQueueInfo({ job }: { job: RenderJob }) {
   return (
     <div className="flex-1 min-w-0 pr-2">
       <div className="flex items-center gap-1.5">
-        <span title={filename} className="text-step-12 font-medium text-text-2 truncate">{filename}</span>
+        <Tooltip label={filename} wrap><span className="text-step-12 font-medium text-text-2 truncate">{filename}</span></Tooltip>
       </div>
 
       {isRendering && (

@@ -47,3 +47,11 @@
 :root[data-motion-ui][data-motion-studio] :is(.motion-studio-header-compact, .om-app-header) :is(button, a) {
   border-radius: var(--motion-radius-md);
 }
+
+/* One tooltip surface across navigation, editor controls and modal dialogs. */
+:root[data-motion-ui] .studio-tooltip {
+  background: var(--motion-tooltip-bg);
+  color: var(--motion-tooltip-fg);
+  border-color: var(--motion-tooltip-bg);
+  font-size: var(--motion-text-sm);
+}

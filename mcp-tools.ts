@@ -13,6 +13,7 @@ import { verifyExport } from './scripts/verify-export.ts';
 import type { ExportExpectation } from './shared/export-spec.ts';
 import { creationModes, creationMode } from './shared/session.ts';
 import { sessionPath } from './shared/workspace-url.ts';
+import type { OmTracking } from './shared/tracking.ts';
 import { gatewayFor } from './gateway/service.ts';
 import type { GenerateInput } from './shared/gateway.ts';
 import { editorHeaders } from './editor-runtime.ts';
@@ -40,7 +41,7 @@ export const tools = [
   { name: 'openmotion_register_model', title: 'OpenMotion · Register Model', description: 'Register a provider model missing from the catalogue, with its exact endpoint ID, output modality, mode and optional provider-native defaults. Uses the existing Atlas or fal adapter; registration is not proof of remote availability.',
     inputSchema: { ...empty, properties: { provider: { enum: ['atlascloud', 'fal'] }, modelId: { type: 'string' }, label: { type: 'string' }, modality: mediaKind, mode: { type: 'string', description: 'e.g. text-to-image, image-to-video, text-to-speech' }, defaults: modelParameters }, required: ['provider', 'modelId', 'label', 'modality', 'mode'] }, annotations: { ...writes, idempotentHint: true } },
   { name: 'openmotion_generate_asset', title: 'OpenMotion · Generate Asset', description: 'Queue image, video or audio generation via the shared Model Gateway. Uses the selected local Codex login or configured paid provider. Returns queued, not a finished asset. Poll openmotion_get_generation; only completed assets may be composed into a video. Files are imported under assets/generated in the project captured at submission. Does not edit a composition. Supply an idempotencyKey to avoid duplicate paid requests.',
-    inputSchema: { ...empty, properties: { modality: mediaKind, prompt: { type: 'string', minLength: 1, maxLength: 20000 }, model: { type: 'string', description: 'Gateway model key from openmotion_list_models; omit to use default route' }, projectId: { type: 'string' }, referenceAsset: { type: 'string', description: 'Optional project-relative PNG/JPEG/WebP under 20 MB to edit. Requires a model with supportsImageReference (currently Codex). Snapshotted when queued; does not modify the original.' }, parameters: modelParameters, idempotencyKey: { type: 'string', maxLength: 100 }, usage: { type: 'object', properties: { compositionId: { type: 'string' }, elementId: { type: 'string' }, property: { type: 'string' } }, additionalProperties: false } }, required: ['modality', 'prompt'] }, annotations: { ...writes, openWorldHint: true } },
+    inputSchema: { ...empty, properties: { modality: mediaKind, prompt: { type: 'string', minLength: 1, maxLength: 20000 }, model: { type: 'string', description: 'Gateway model key from openmotion_list_models; omit to use default route' }, projectId: { type: 'string' }, referenceAsset: { type: 'string', description: 'Optional project-relative PNG/JPEG/WebP under 20 MB to edit. Requires a model with supportsImageReference (local Codex, or an OpenDesign account image model that supports editing). Snapshotted when queued; does not modify the original.' }, parameters: modelParameters, idempotencyKey: { type: 'string', maxLength: 100 }, usage: { type: 'object', properties: { compositionId: { type: 'string' }, elementId: { type: 'string' }, property: { type: 'string' } }, additionalProperties: false } }, required: ['modality', 'prompt'] }, annotations: { ...writes, openWorldHint: true } },
   { name: 'openmotion_get_generation', title: 'OpenMotion · Get Generation', description: 'Read one generation job. completed includes real imported asset paths, MIME types and sizes. Failed/cancelled jobs are not resubmitted automatically. Use the returned projectId and assets[].path when authoring native compositions.', inputSchema: { ...empty, properties: { jobId: { type: 'string' } }, required: ['jobId'] }, annotations: reads },
   { name: 'openmotion_list_generations', title: 'OpenMotion · List Generations', description: 'List the most recent 50 generation jobs, optionally scoped to a project.', inputSchema: { ...empty, properties: { projectId: { type: 'string' } } }, annotations: reads },
   { name: 'openmotion_cancel_generation', title: 'OpenMotion · Cancel Generation', description: 'Cancel a pending or running generation. Stops local execution and import; requests fal cancellation when supported. Remote provider work/charges may still complete.', inputSchema: { ...empty, properties: { jobId: { type: 'string' } }, required: ['jobId'] }, annotations: { ...writes, idempotentHint: true, openWorldHint: true } },
@@ -87,7 +88,7 @@ async function designRequest(origin: string, path: string, data: object, store: 
   if (!response.ok) throw new Error(result.error || '会话操作失败');
   return result;
 }
-export async function callTool(name: string, args: Record<string, unknown> = {}, store = new WorkspaceStore()) {
+export async function callTool(name: string, args: Record<string, unknown> = {}, store = new WorkspaceStore(), tracking?: OmTracking) {
   name = legacyToolName(name);
   if (!tools.some(tool => tool.name === publicToolName(name))) throw new Error('Unknown tool: ' + name);
   if (args.projectId !== undefined) {
@@ -117,7 +118,7 @@ export async function callTool(name: string, args: Record<string, unknown> = {},
       return { ...artifact, session: await store.session(result.sessionId), ...viewerLinks(origin, result.sessionId, artifact.projectId, args.embedded !== false) };
     } catch (error) { return { ...result, artifactError: (error as Error).message, ...viewerLinks(origin, result.sessionId) }; }
   }
-  const gateway = gatewayFor(store);
+  const gateway = gatewayFor(store, tracking);
   if (name === 'motion_get_capabilities') return gateway.status(args.refresh === true);
   if (name === 'motion_list_models') return gateway.listModels(args);
   if (name === 'motion_configure_provider') return gateway.configureProvider(args.provider, args);

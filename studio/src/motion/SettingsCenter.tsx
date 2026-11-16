@@ -12,6 +12,7 @@ import { useProviderDirectory } from './useProviderDirectory';
 import { gatewayRequest } from './gatewayClient';
 import { SettingsError, SettingsLoading } from './settingsPrimitives';
 import { AgentSettings, DefaultAgentCard } from './AgentSettings';
+import { discord, feishu } from './CommunityLink';
 import { GITHUB_REPOSITORY, repositorySupportLinks } from './githubRepository';
 
 import type { SettingsSection } from './workspacePageRouting';
@@ -64,12 +65,19 @@ function GeneralSettings({ openConnections }: { openConnections: () => void }) {
   return <div className="om-settings-page"><h1 className="om-title">{t('General')}</h1><div className="om-card"><div className="om-preference-row"><div><h2 className="om-subtitle">{t('Language')}</h2><p className="om-muted">{t('Display language for the workspace')}</p></div><div className="om-preference-control"><Select label={t('Language')} value={locale} onCommit={value => setLocale(value as Locale)} options={languages.map(item => ({ value: item.locale, label: item.label }))} /></div></div><div className="om-preference-row"><div><h2 className="om-subtitle">{t('Connect Agent')}</h2><p className="om-muted">{t('Connect your preferred Agent to this workspace.')}</p></div><button className="om-button" onClick={openConnections}>{t('Set up connection')}</button></div></div><section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Keyboard shortcuts')}</h2><div className="om-preference-row"><span>{t('Open settings')}</span><kbd>⌘ / Ctrl + ,</kbd></div><div className="om-preference-row"><span>{t('Toggle project list')}</span><kbd>Alt + B</kbd></div><div className="om-preference-row"><span>{t('Close menu or dialog')}</span><kbd>Esc</kbd></div></section></div>;
 }
 function ResourceSettings({ about, openConnections }: { about: boolean; openConnections: () => void }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const communityLinks = locale === 'zh-CN' ? [feishu, discord] : [discord, feishu];
   const [version, setVersion] = useState<string>();
   useEffect(() => { let active = true; void gatewayRequest<{ version: string }>('health').then(data => { if (active) setVersion(data.version); }).catch(() => {}); return () => { active = false; }; }, []);
   const links = [{ label: 'Documentation', href: `${GITHUB_REPOSITORY}/tree/main/docs`, icon: 'file-text-line' }, ...repositorySupportLinks, { label: 'View source code', href: GITHUB_REPOSITORY, icon: 'code-s-slash-line' }];
   return <div className="om-settings-page"><h1 className="om-title">{t(about ? 'About OpenMotion' : 'Help')}</h1>{about && <section className="om-card om-about-identity"><h2 className="om-product-brand" aria-label="OpenMotion" /><p className="om-muted">{t('An editable workspace for AI video and motion.')}</p><span className="om-badge">{version ? `${t('Version')} ${version}` : t('Version unavailable')}</span></section>}
     <div className="om-card om-resource-links">{links.map(link => <a className="om-nav-item om-resource-link" key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"><span className="om-menu-label"><RemixIcon name={link.icon} size={16} />{t(link.label)}</span><RemixIcon name="external-link-line" size={16} /></a>)}<button className="om-nav-item om-resource-link" onClick={openConnections}><span className="om-menu-label"><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</span><RemixIcon name="arrow-right-line" size={16} /></button></div>
+    {!about && <section className="om-card om-resource-links" aria-labelledby="om-community-heading">
+      <h2 id="om-community-heading" className="om-subtitle">{t('Community')}</h2>
+      {communityLinks.map(link => <a key={link.href} className="om-nav-item om-resource-link" href={link.href} target="_blank" rel="noopener noreferrer">
+        <span>{link === feishu ? t('Feishu group') : link.platform}</span><RemixIcon name="external-link-line" size={16} />
+      </a>)}
+    </section>}
     {about && <section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Acknowledgements')}</h2><p className="om-muted">{t('Built with Hyperframes and the OpenMotion design system. Provider presets include the MIT-licensed Cherry Studio registry. Account connections use OpenDesign.')}</p><a className="om-text-link" href="https://github.com/nexu-io/openmotion/blob/main/shared/provider-registry-NOTICE.md" target="_blank" rel="noreferrer">{t('Licenses & acknowledgements')}</a></section>}
   </div>;
 }

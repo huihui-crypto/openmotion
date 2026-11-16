@@ -8,7 +8,7 @@ export function packageTemplateConfig(environment = 'prod') {
 }
 
 export function templateConfig(): ReturnType<typeof packageTemplateConfig> & { source: 'repository' | 'cms' } {
-  const source = process.env.MOTION_TEMPLATE_SOURCE ?? (existsSync(new URL('../library/templates/catalog/', import.meta.url)) ? 'repository' : 'cms');
+  const source = process.env.MOTION_TEMPLATE_SOURCE ?? (existsSync(new URL('../library/templates/catalog/catalog.json', import.meta.url)) ? 'repository' : 'cms');
   if (source !== 'repository' && source !== 'cms') throw new Error('MOTION_TEMPLATE_SOURCE must be repository or cms');
   return {
     ...packageTemplateConfig(process.env.MOTION_TEMPLATE_ENV ?? defaults.environment),

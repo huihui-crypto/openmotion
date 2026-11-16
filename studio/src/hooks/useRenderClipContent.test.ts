@@ -195,7 +195,23 @@ describe("useRenderClipContent", () => {
     });
 
     expect(isValidElement(content)).toBe(true);
-    if (isValidElement(content)) expect(content.type).toBe(AudioWaveform);
+    if (isValidElement<{ sourceKind: string }>(content)) {
+      expect(content.type).toBe(AudioWaveform);
+      expect(content.props.sourceKind).toBe("audio");
+    }
+  });
+
+  it("treats detached audio that still points at a video file as a video source", () => {
+    const content = renderClipContent({
+      id: "talk-audio",
+      tag: "audio",
+      start: 0,
+      duration: 4,
+      track: 1,
+      src: "assets/talk.mp4?v=2",
+    });
+
+    expect(isValidElement<{ sourceKind: string }>(content) && content.props.sourceKind).toBe("video");
   });
 
   it("routes root-relative iframe media back through the active project", () => {
@@ -288,6 +304,7 @@ describe("useRenderClipContent", () => {
     expect(isValidElement<{ waveformUrl: string }>(waveform) && waveform.props.waveformUrl).toBe(
       "/api/projects/my-project/waveform/talk.mp4",
     );
+    expect(isValidElement<{ sourceKind: string }>(waveform) && waveform.props.sourceKind).toBe("video");
     expect(isValidElement<{ labelInset?: number }>(waveform) && waveform.props.labelInset).toBe(0);
   });
 
@@ -342,6 +359,10 @@ describe("useRenderClipContent", () => {
       null,
     );
     expect(isValidElement(content) && content.type).toBe(AudibleVideoClipContent);
+    if (isValidElement<{ waveform: ReactNode }>(content)) {
+      const waveform = unwrapPeakMarks(content.props.waveform);
+      expect(isValidElement<{ sourceKind: string }>(waveform) && waveform.props.sourceKind).toBe("video");
+    }
   });
 
   it("gives a layer spanning the whole film its own frame, whatever its id", () => {

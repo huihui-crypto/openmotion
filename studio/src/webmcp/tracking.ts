@@ -1,4 +1,4 @@
-import { webMcpToolNames } from '../../../tracking/events';
+import { assetToolAction, webMcpToolNames } from '../../../tracking/events';
 import type { studioEvents } from '../../../tracking/events';
 import type { EventFields } from '../../../tracking/core';
 import type { ModelContextTool } from './types';
@@ -39,14 +39,16 @@ export function withWebMcpTracking(tool: ModelContextTool): ModelContextTool {
   const toolName = tool.name;
   return { ...tool, execute: async (input, options) => {
     let call: { call_id: string; started: number } | undefined;
+    let action: ReturnType<typeof assetToolAction>;
     try {
+      action = assetToolAction(toolName, input);
       call = { call_id: crypto.randomUUID(), started: performance.now() };
-      report('webmcp_tool_started', { tool_name: toolName, transport: 'webmcp', call_id: call.call_id });
+      report('webmcp_tool_started', { tool_name: toolName, transport: 'webmcp', call_id: call.call_id, ...(action ? { action } : {}) });
     } catch { /* Measurement must not prevent a tool invocation. */ }
     const finish = (result: unknown, failure?: Outcome) => {
       if (!call) return;
       try {
-        report('webmcp_tool_finished', { tool_name: toolName, transport: 'webmcp', call_id: call.call_id,
+        report('webmcp_tool_finished', { tool_name: toolName, transport: 'webmcp', call_id: call.call_id, ...(action ? { action } : {}),
           outcome: failure ?? outcome(result),
           duration_ms: duration(call.started) });
       } catch { /* Results, errors and private contents belong to the caller, not telemetry. */ }

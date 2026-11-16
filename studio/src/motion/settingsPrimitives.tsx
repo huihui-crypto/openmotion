@@ -1,3 +1,4 @@
+import { Tooltip } from "../components/ui/Tooltip";
 import { useState, type ReactNode } from 'react';
 import { Dialog } from '@base-ui/react/dialog';
 import { designSystemAsset, providerIcons, modelBrandId } from '../../../packages/design-system/index.js';
@@ -25,7 +26,7 @@ export function SettingsDialog({ title, onClose, children, returnFocus }: { titl
   </Dialog.Portal></Dialog.Root>;
 }
 export function Toggle({ label, checked, disabled, onChange }: { label: string; checked: boolean; disabled?: boolean; onChange: (checked: boolean) => void }) {
-  return <button type="button" className="om-switch" role="switch" aria-label={label} title={label} aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)} />;
+  return <Tooltip label={label} wrap><button type="button" className="om-switch" role="switch" aria-label={label} aria-checked={checked} disabled={disabled} onClick={() => onChange(!checked)} /></Tooltip>;
 }
 export function ProviderAvatar({ name, provider }: { name: string; provider?: Pick<ProviderConnection, 'id' | 'custom'> }) {
   const [failed, setFailed] = useState<string>();

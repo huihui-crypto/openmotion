@@ -1,4 +1,5 @@
 import { phase1Tools, validateInput } from './phase1-tools.ts';
+import { assetReadToolResult } from './asset-library.ts';
 
 function failure(message: string, applied: boolean | 'unknown', fallback = 'WEBMCP_CALL_FAILED') {
   const code = /^([A-Z][A-Z_]+):/.exec(message)?.[1] ?? fallback;
@@ -26,7 +27,8 @@ export function buildOpenMotionWebMcpTools(request: (url: string, init?: Request
         const result = await response.json();
         if (!response.ok) return { ...result, ...failure(typeof result.error === 'string' ? result.error : `HTTP ${response.status}`,
           typeof result.applied === 'boolean' ? result.applied : 'unknown', result.code ?? 'WEBMCP_CALL_FAILED') };
-        return result;
+        return tool.name === 'openmotion_assets_use' && (input as { action?: string }).action === 'read'
+          ? assetReadToolResult(result) : result;
       } catch (error) {
         return failure(error instanceof Error ? error.message : String(error), dispatched ? 'unknown' : false,
           options?.signal.aborted ? 'ABORTED' : dispatched ? 'WEBMCP_TRANSPORT_ERROR' : 'INVALID_ARGUMENT');

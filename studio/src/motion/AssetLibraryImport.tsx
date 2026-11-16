@@ -76,8 +76,8 @@ function ProjectAssetImportMenu({ projectId, importing, onUpload, onImported }: 
   }
 
   return <>
-    <Menu modal={false} align="end" aria-label={t('Import media')} className="om-menu-panel" trigger={
-      <IconButton type="button" className="shrink-0" disabled={pending || chrome?.switchingDisabled} aria-busy={pending} aria-label={t(pending ? 'Importing…' : 'Import media')} title={t(pending ? 'Importing…' : 'Import media')}
+    <Menu tooltip={t(pending ? 'Importing…' : 'Import media')} modal={false} align="end" aria-label={t('Import media')} className="om-menu-panel" trigger={
+      <IconButton type="button" className="shrink-0" disabled={pending || chrome?.switchingDisabled} aria-busy={pending} aria-label={t(pending ? 'Importing…' : 'Import media')}
         icon={<RemixIcon name={pending ? 'loader-4-line' : 'upload-2-line'} size={16} className={pending ? 'animate-spin motion-reduce:animate-none' : undefined} />} />
     }>
       <MenuItem onClick={onUpload}><span className="om-menu-label"><RemixIcon name="upload-2-line" size={16} />{t('Upload from computer')}</span></MenuItem>

@@ -280,7 +280,8 @@
 [data-motion-studio] .om-asset-workspace-header { border-bottom: 1px solid var(--motion-border-subtle); }
 [data-motion-studio] .om-asset-viewer { background: var(--motion-panel); }
 [data-motion-studio] .om-asset-inspector-pane { border-inline-start: 1px solid var(--motion-border-subtle); }
-[data-motion-studio] .om-asset-workspace-header > strong { font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); }
+[data-motion-studio] .om-asset-workspace-header > strong,
+[data-motion-studio] .om-asset-workspace-header > :where(.contents) > strong { font-size: var(--motion-text-md); font-weight: var(--motion-weight-medium); }
 [data-motion-studio] .om-asset-metadata { font-size: var(--motion-text-sm); }
 [data-motion-studio] .om-asset-metadata dt { color: var(--motion-muted); }
 [data-motion-studio] .om-asset-metadata dd { margin: 0; color: var(--motion-text); }
@@ -332,9 +333,21 @@
 
 /* Application control rows share one baseline, with or without leading icons. */
 [data-motion-studio] .om-control-row > :is(.hf-od-field, .om-field, .om-button, .om-nav-item),
+[data-motion-studio] .om-control-row > :where(.contents) > :is(.hf-od-field, .om-field, .om-button, .om-nav-item),
 [data-motion-studio] .om-field:has(input):not(:has(textarea)) { box-sizing: border-box; height: var(--motion-control); min-height: var(--motion-control); padding-block: 0; font-size: var(--motion-text-md); font-weight: var(--motion-weight-regular); }
-[data-motion-studio] .om-control-row > .hf-od-field { padding-inline: var(--motion-space-10); border-radius: var(--motion-radius-md); background: var(--motion-panel); }
-[data-motion-studio] .om-control-row > .om-icon-button { width: var(--motion-control); padding: 0; flex: none; justify-content: center; }
+[data-motion-studio] .om-control-row > .hf-od-field,
+[data-motion-studio] .om-control-row > :where(.contents) > .hf-od-field { padding-inline: var(--motion-space-10); border-radius: var(--motion-radius-md); background: var(--motion-panel); }
+[data-motion-studio] .om-control-row > .om-icon-button,
+[data-motion-studio] .om-control-row > :where(.contents) > .om-icon-button { width: var(--motion-control); padding: 0; flex: none; justify-content: center; }
+/* Search and discovery controls share the ordinary application control recipes. */
+[data-motion-studio] .om-search-field > svg { flex: none; width: var(--motion-icon); height: var(--motion-icon); }
+[data-motion-studio] .om-search-field input { flex: 1; padding: 0; border-radius: 0; appearance: none; font: inherit; line-height: var(--motion-leading-body); box-shadow: none; }
+[data-motion-studio] .om-search-field kbd { flex: none; font-family: inherit; font-size: var(--motion-text-xs); line-height: var(--motion-leading-body); white-space: nowrap; }
+[data-motion-studio] .om-control-row > .om-button[data-popup-open],
+[data-motion-studio] .om-control-row > :where(.contents) > .om-button[data-popup-open] { background: var(--motion-hover); color: var(--motion-strong); }
+[data-motion-studio] .om-button.om-filter-pill { border-color: transparent; border-radius: var(--motion-radius-full); background: var(--motion-gallery-control); color: var(--motion-muted); }
+[data-motion-studio] .om-button.om-filter-pill:hover { background: var(--motion-hover); color: var(--motion-strong); }
+[data-motion-studio] .om-button.om-filter-pill[aria-pressed="true"] { background: var(--motion-accent-soft); color: var(--motion-accent); }
 [data-motion-studio] .om-creation-mode { padding: var(--motion-space-2); }
 [data-motion-studio] .om-creation-mode .om-nav-item { padding-block: var(--motion-space-4); }
 [data-motion-studio] .om-generation-settings .om-nav-item { min-height: var(--motion-control-sm); padding-block: var(--motion-space-4); font-size: var(--motion-text-sm); }
@@ -359,8 +372,9 @@
 [data-motion-studio] .om-task-filters .om-nav-item[aria-pressed="true"] { color: var(--motion-creative-agent); background: color-mix(in srgb, var(--motion-creative-agent) 10%, var(--motion-bg)); }
 [data-motion-studio] .om-task-item { padding: var(--motion-space-8); border-radius: var(--motion-radius-md); }
 [data-motion-studio] .om-task-item[aria-current="true"] { background: var(--motion-hover); }
-[data-motion-studio] .om-task-item-copy > strong { font-size: var(--motion-text-sm); font-weight: var(--motion-weight-medium); line-height: var(--motion-leading-body); color: var(--motion-strong); }
-[data-motion-studio] :is(.om-task-item-copy > span, .om-task-item-end, .om-task-history-footer) { font-size: var(--motion-text-xs); color: var(--motion-muted); }
+[data-motion-studio] .om-task-item-copy > strong,
+[data-motion-studio] .om-task-item-copy > :where(.contents) > strong { font-size: var(--motion-text-sm); font-weight: var(--motion-weight-medium); line-height: var(--motion-leading-body); color: var(--motion-strong); }
+[data-motion-studio] :is(.om-task-item-copy > span:not(:where(.contents)), .om-task-item-end, .om-task-history-footer) { font-size: var(--motion-text-xs); color: var(--motion-muted); }
 [data-motion-studio] .om-task-item-end > svg { color: var(--motion-creative-agent); }
 [data-motion-studio] .om-task-item[data-state="failed"] .om-task-state { color: var(--motion-danger); }
 [data-motion-studio] .om-task-item[data-state="waiting"] .om-task-state { color: var(--motion-warning); }

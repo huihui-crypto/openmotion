@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { createToolRegistry } from '../shared/mcp-registry.ts';
 import { loadTemplatePresentation } from '../shared/mcp-template-recommendations.ts';
 import { inlineVideoUri } from '../shared/inline-video.ts';
+import { onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const name = 'openmotion_show_template_recommendations';
 const ids = ['decision-tree', 'product-promo', 'nyt-graph'];
@@ -23,7 +24,7 @@ test('a negotiated native presentation is discoverable, readable and project-fre
   const before = await store.get();
   await call('initialize', { protocolVersion: '2025-06-18', capabilities });
   const listed = await call('tools/list');
-  assert.equal(listed.result.tools.length, 15);
+  assert.equal(listed.result.tools.length, 16);
   const definition = listed.result.tools.find((tool: any) => tool.name === name);
   assert.equal(definition.annotations.readOnlyHint, true);
   const shown = await call('tools/call', { name, arguments: { templateIds: ids } });
@@ -43,7 +44,7 @@ test('a negotiated native presentation is discoverable, readable and project-fre
   const resource = await call('resources/read', { uri });
   const content = resource.result.contents[0];
   assert.equal(content.mimeType, 'text/html;profile=mcp-app');
-  assert.deepEqual(content._meta.ui.csp.resourceDomains, ['blob:']);
+  assert.deepEqual(content._meta.ui.csp.resourceDomains, ['blob:', 'https://r.open-design.ai']);
   assert.match(content.text, /__OPENMOTION_TEMPLATE_CARDS__/);
   assert.ok(Buffer.byteLength(JSON.stringify(resource)) < 1.5 * 1024 * 1024);
   assert.deepEqual(await store.get(), before);
@@ -55,9 +56,9 @@ test('presentation capability is connection-local and cleared by reinitializatio
     (rpc as any)(message(method, params), store, registry, undefined, state);
   await call(a, 'initialize', { capabilities });
   const toolsA = await call(a, 'tools/list');
-  assert.equal(toolsA.result.tools.length, 15);
+  assert.equal(toolsA.result.tools.length, 16);
   const uri = toolsA.result.tools.find((tool: any) => tool.name === name)._meta.ui.resourceUri;
-  assert.equal((await call(b, 'tools/list')).result.tools.length, 13);
+  assert.equal((await call(b, 'tools/list')).result.tools.length, 14);
   const denied = await call(b, 'tools/call', { name, arguments: { templateIds: ids } });
   assert.equal(denied.result.structuredContent.error.code, 'MCP_TOOL_NOT_EXPOSED');
   assert.equal(denied.result.structuredContent.error.applied, false);
@@ -67,9 +68,9 @@ test('presentation capability is connection-local and cleared by reinitializatio
   assert.ok(baseResources.result.resources.some((item: any) => item.uri.startsWith('openmotion://workflow/')));
   for (const invalid of [{}, { extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: ['text/html+skybridge'] } } }, { extensions: { 'io.modelcontextprotocol/ui': { mimeTypes: 'text/html;profile=mcp-app' } } }]) {
     await call(a, 'initialize', { capabilities });
-    assert.equal((await call(a, 'tools/list')).result.tools.length, 15);
+    assert.equal((await call(a, 'tools/list')).result.tools.length, 16);
     await call(a, 'initialize', { capabilities: invalid });
-    assert.equal((await call(a, 'tools/list')).result.tools.length, 13);
+    assert.equal((await call(a, 'tools/list')).result.tools.length, 14);
     assert.equal((await call(a, 'resources/read', { uri })).error.code, -32602);
   }
 }));
@@ -108,10 +109,10 @@ test('onboarding is an explicit read-only presentation mode and ordinary calls r
   await call('initialize', { protocolVersion: '2025-06-18', capabilities });
   const regular = (await call('tools/call', { name, arguments: { templateIds: ids } })).result;
   assert.equal('onboarding' in regular.structuredContent, false);
-  const welcome = (await call('tools/call', { name, arguments: { templateIds: ids, onboarding: true } })).result;
+  const welcome = (await call('tools/call', { name, arguments: { templateIds: onboardingTemplateIds.slice(0, 3), onboarding: true } })).result;
   assert.equal(welcome.isError, undefined);
   assert.equal(welcome.structuredContent.onboarding, true);
-  assert.deepEqual(welcome.structuredContent.cards.map((card: any) => card.templateId), ids);
+  assert.deepEqual(welcome.structuredContent.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(0, 3));
   assert.match(welcome.content[0].text, /Do not append/);
   const invalid = await call('tools/call', { name, arguments: { templateIds: ids, onboarding: 'true' } });
   assert.equal(invalid.result.isError, true);
@@ -128,10 +129,10 @@ test('presentation carries every supported conversation language without changin
   assert.deepEqual(definition.inputSchema.properties.language.enum, languages);
   assert.match(definition.description, /latest user request/);
   for (const language of languages) {
-    const shown = (await call('tools/call', { name, arguments: { templateIds: ids, onboarding: true, language } })).result;
+    const shown = (await call('tools/call', { name, arguments: { templateIds: onboardingTemplateIds.slice(0, 3), onboarding: true, language } })).result;
     assert.equal(shown.isError, undefined);
     assert.equal(shown.structuredContent.language, language);
-    assert.deepEqual(shown.structuredContent.cards.map((card: any) => card.templateId), ids);
+    assert.deepEqual(shown.structuredContent.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(0, 3));
   }
   assert.deepEqual(await store.get(), before);
 }));
@@ -148,7 +149,7 @@ test('actual stdio preserves negotiated UI state and disabling template cards re
     });
     assert.equal(child.status, 0, child.stderr);
     const responses = child.stdout.trim().split('\n').map(line => JSON.parse(line));
-    assert.equal(responses[1].result.tools.length, disabled ? 14 : 15);
+    assert.equal(responses[1].result.tools.length, disabled ? 15 : 16);
     if (disabled) assert.equal(responses[2].result.structuredContent.error.code, 'MCP_TOOL_NOT_EXPOSED');
     else assert.deepEqual(responses[2].result.structuredContent.cards.map((card: any) => card.templateId), ids);
   }

@@ -355,7 +355,7 @@ describe("PropertyPanel — STUDIO_FLAT_INSPECTOR_ENABLED on", () => {
   it("collapses the Text group on caret click and can reopen it", async () => {
     const { host, root } = await renderPanel(true);
     const collapseButton = host.querySelector<HTMLButtonElement>(
-      '[data-flat-group-open="true"] button[title="Collapse"]',
+      '[data-flat-group-open="true"] button[aria-label="Collapse"]',
     );
     act(() => collapseButton?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(host.querySelector('[data-flat-group-open="true"]')).toBeNull();
@@ -845,7 +845,7 @@ describe("PropertyPanel — fixed headers + scrollable open section (Plan 11)", 
     const { host, root } = await renderPanel(true, sixGroupElement());
     // Collapse the default-open Text group so openGroupId becomes "".
     const collapseButton = host.querySelector<HTMLButtonElement>(
-      '[data-flat-group-open="true"] button[title="Collapse"]',
+      '[data-flat-group-open="true"] button[aria-label="Collapse"]',
     );
     act(() => collapseButton?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(host.querySelector('[data-flat-group-open="true"]')).toBeNull();

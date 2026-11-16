@@ -1,6 +1,6 @@
 <p align="center"><img src="readme/openmotion-logo.svg" width="420" alt="OpenMotion"></p>
 
-<p align="center"><strong>CapCut と Claude Motion に代わるオープンソースの動画スタジオ</strong></p>
+<p align="center"><strong>Claude Motion と CapCut に代わるオープンソースの動画スタジオ</strong></p>
 
 <p align="center">
   <picture>
@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://open-design.ai/motion/"><img src="readme/badges/website.ja.svg" alt="OpenMotion 公式サイト" /></a>
+  <a href="https://open-design.ai/ja/motion/"><img src="readme/badges/website.ja.svg" alt="OpenMotion 公式サイト" /></a>
   <a href="https://go.open-design.ai/?utm_source=github&amp;utm_medium=referral&amp;utm_campaign=openmotion&amp;utm_content=readme_ja"><img src="readme/badges/opendesign-go.svg" alt="OpenDesign Go のモデル利用プラン" /></a>
   <a href="https://discord.com/invite/M7NnHS9gNa"><img src="readme/badges/discord.svg" alt="OpenMotion の Discord コミュニティに参加" /></a>
   <a href="https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841"><img src="readme/badges/feishu.svg" alt="OpenMotion の Feishu グループに参加" /></a>
@@ -37,7 +37,7 @@
 
 # OpenMotion
 
-OpenMotion は、**AI エージェントが動画制作の全工程を担うフルスタックの動画スタジオ**であり、**CapCut と Claude Motion に代わるオープンソースの選択肢**です。参考動画をアップロードするか SNS の動画リンクを貼り付けると、**自分のブランドキットとコピーで元の演出を再現できます**。
+OpenMotion は、**AI エージェントが動画制作の全工程を担うフルスタックの動画スタジオ**であり、**Claude Motion と CapCut に代わるオープンソースの選択肢**です。参考動画をアップロードするか SNS の動画リンクを貼り付けると、**自分のブランドキットとコピーで元の演出を再現できます**。
 
 - 🎬 **動画の分析から再現・書き出しまで。** エージェントが参考動画を分析し、カットとトランジションを HTML で組み直し、足りない素材を生成します。同じプロジェクトを Studio で開き、間合いを調整して MP4 に書き出せます。
 - 🔑 **BYOA（自分のエージェント）と BYOK（自分の API キー）。** OpenMotion は無料のオープンソースソフトウェアです。[使い慣れたローカルエージェント](#agent-wall)で動画を再現し、各工程に自分の API キーを使えます。
@@ -63,6 +63,16 @@ https://github.com/nexu-io/openmotion/blob/main/install.md を読み、手順に
 ```
 
 セットアップ後、エージェントがローカルのテンプレートライブラリを開き、テンプレートを提案します。選択を確認してからプロジェクトを作成します。[ソースインストールガイド](../install.md)
+
+### 公開 npm アプリをインストール（任意）
+
+上記のソースセットアップがリポジトリインストールの既定です。ビルド済み Studio と設定済みのオンラインテンプレートライブラリを含む公開アプリを明示的に選ぶ場合は、次の指示をローカルエージェントにコピーしてください：
+
+```text
+https://github.com/nexu-io/openmotion/blob/main/docs/install.md を読み、手順に従って現在のエージェントに公開 npm アプリをインストールして接続してください。
+```
+
+[公開アプリのインストールとチャネルの選択](install.md)。公開バージョンはこのチェックアウトより古い場合があります。
 
 ### リポジトリをローカルで起動する
 
@@ -502,7 +512,7 @@ npx skills add ./skills --skill openmotion-director openmotion-production openmo
 
 <a id="local-agent-connection"></a>
 
-**そのほかのローカルエージェントを接続する** · 公式インストールガイドに従い、クライアントに接続します。stdio MCP 対応のクライアントには下記の設定を使えます。ターミナルを使うエージェントでは、プロジェクトのディレクトリを開き、[ローカルエンジンの CLI](../skills/openmotion-production/references/native.md) で HTML シーンをプレビュー・レンダリングできます。
+**そのほかのローカルエージェントを接続する** · 公式インストールガイドに従い、クライアントに接続します。stdio MCP 対応のクライアントには下記の設定を使えます。ターミナルを使うエージェントでは、プロジェクトのディレクトリを開き、[ローカルエンジンの CLI](../skills/openmotion-production/references/native.md) で HTML シーンをプレビュー・レンダリングできます。 npm 公開版では `openmotion setup --host <エージェント名>`（例: `opencode`）を実行します。setup がアプリと Skills をインストールし、追加すべきランチャー設定を返します。[そのほかのローカルエージェント](npm-installation.md#other-local-agents)
 
 <a id="manual-mcp"></a>
 
@@ -709,7 +719,7 @@ BYOA は既存クライアントを使い、BYOK は対応するモデルアカ�
 
 OpenMotion の専用サイトは `open-design.ai/openmotion` に開設予定です。
 
-[OpenDesign の動画ギャラリー](https://open-design.ai/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_ja) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [Feishu](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
+[OpenDesign の動画ギャラリー](https://open-design.ai/ja/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_ja) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [Feishu](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
 
 [**GitHub で OpenMotion にスターを付ける**](https://github.com/nexu-io/openmotion)
 
@@ -725,7 +735,7 @@ OpenMotion のライセンスは [Apache-2.0](../LICENSE)です。第三者の�
 
 | 出典 | 関係 |
 | --- | --- |
-| [OpenDesign](https://github.com/nexu-io/open-design) | UI の由来、リソース構成、ブランドの方針。[デザインシステム](design-system.md) と [Motion ショーケース](https://open-design.ai/motion/) |
+| [OpenDesign](https://github.com/nexu-io/open-design) | UI の由来、リソース構成、ブランドの方針。[デザインシステム](design-system.md) と [Motion ショーケース](https://open-design.ai/ja/motion/) |
 | [Hyperframes](https://github.com/heygen-com/hyperframes) | HTML 動画合成、Studio、レンダリングの基盤（0.9.7 固定）。制作者の参考、外部改編デモ、部品ソース。[エンジンの説明](hyperframes.md)、[テンプレートの告知](../template-library/NOTICE.md) と[カタログの出典](template-catalog.md) |
 | [MotionGit](https://motiongit.com/) / adunext | Kinetic Tech ソースを Presenter Tech として収録。[ライセンスとクレジット](../library/templates/presenter-tech/NOTICE.md) |
 | [Hypit](https://github.com/hypit-ai/hypit) | エージェントによる話題の動画の再構築と編集可能な派生版の着想。ランタイムの導入なし |

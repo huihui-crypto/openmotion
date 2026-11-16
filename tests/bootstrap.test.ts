@@ -17,7 +17,7 @@ async function fixture(run: (context: { directory: string; destination: string; 
     const destination = path.join(directory, 'new user', 'open-motion');
     const log = path.join(directory, 'commands.log');
     await mkdir(bin);
-    for (const file of ['scripts/install-motion.command', 'scripts/source-marketplace.mjs', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'scripts/runtime-assets.mjs',
+    for (const file of ['scripts/install-motion.command', 'scripts/source-marketplace.mjs', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs',
       'docs/install-onboarding.md', 'shared/template-config.json', 'marketplace.example.json']) {
       await mkdir(path.dirname(path.join(source, file)), { recursive: true });
       await copyFile(path.join(root, file), path.join(source, file));
@@ -25,7 +25,7 @@ async function fixture(run: (context: { directory: string; destination: string; 
     await writeFile(path.join(source, 'scripts/open-template-library.ts'), `import fs from 'node:fs'; fs.appendFileSync(process.env.MOTION_TEST_LOG, 'Template library prepared' + String.fromCharCode(10)); console.log(JSON.stringify({target:'templates',projectCreated:false,previewUrl:'http://127.0.0.1:4173/?templates=1&embed=1'}));`);
     await writeFile(path.join(source, 'workspace.ts'), `export class WorkspaceStore { directory = '/isolated/test-workspace'; }`);
     await writeFile(path.join(source, 'package.json'), JSON.stringify({ type: 'module', version: '0.0.1' }));
-    // No remote catalog or template assets in this isolated checkout: exercise the bundled fallback.
+    // No remote catalog or template assets in this isolated checkout: exercise the unavailable-catalog boundary.
     const commands = {
       git: 'echo "git $*" >> "$MOTION_TEST_LOG"\n[ "${MOTION_TEST_DOWNLOAD_FAIL:-0}" = 0 ] || exit 8\nwhile [ "$1" = -c ]; do shift 2; done\n[ "$1" = clone ] || exit 0\nfor destination; do :; done\nmkdir -p "$destination"\ncp -R "$MOTION_TEST_SOURCE/." "$destination/"',
       npm: 'echo "npm $*" >> "$MOTION_TEST_LOG"\nif [ "$1" = ci ]; then [ "${MOTION_TEST_DEPENDENCY_FAIL:-0}" = 0 ] || exit 9; fi\nif [ "$*" = "run build:studio" ]; then [ "${MOTION_TEST_BUILD_FAIL:-0}" = 0 ] || exit 9; mkdir -p studio/build; touch studio/build/index.html; fi',
@@ -64,7 +64,7 @@ test('remote entry point builds a fresh checkout before registering and checking
     assert.equal(onboarding.onboardingStatus, 'host_action_required');
     assert.equal(onboarding.instructions, undefined);
     assert.match(await readFile(onboarding.detailsFile, 'utf8'), /Installation-success reply/);
-    assert.equal(JSON.parse(await readFile(onboarding.detailsFile, 'utf8')).catalog.source, 'bundled');
+    assert.equal(JSON.parse(await readFile(onboarding.detailsFile, 'utf8')).catalog.source, 'unavailable');
     assert.equal(onboarding.preview.status, 'ready');
     assert.ok(result.stdout.length < 7000, 'terminal summary must not include the full success contract');
     const phases = (await readFile(path.join(destination, '.artifacts/install/timings.jsonl'), 'utf8'))
@@ -210,7 +210,9 @@ test('the onboarding entry runs through a symlinked checkout path', async () => 
     const onboarding = JSON.parse(result.stdout);
     assert.equal(onboarding.hostSessionVerified, false);
     assert.match(onboarding.instructions, /OpenMotion 安装好啦/);
-    assert.equal(onboarding.catalog.source, 'bundled');
+    assert.equal(onboarding.catalog.source, 'unavailable');
+    assert.deepEqual(onboarding.catalog.templates, []);
+    assert.equal(onboarding.catalog.recommendedTemplateId, null);
   });
 });
 

@@ -10,6 +10,7 @@ import { protocolClient } from '../scripts/smoke-test-package.mjs';
 import { packagedSkills } from '../shared/workflow.ts';
 import { mcpRegistry } from '../mcp.ts';
 import { stableReports } from '../.github/scripts/motion-release.mjs';
+import { onboardingSourceFiles, onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const json = async (file: string) => JSON.parse(await readFile(file, 'utf8'));
 async function verifyTrackingPolicy(application: string, mode: 'test' | 'stable' | 'local') {
@@ -32,16 +33,18 @@ async function verifyBundledTemplates(application: string) {
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
-test('shared Agent instructions keep npm retirement controls synchronized', async () => {
+test('shared Agent instructions keep source-default, optional npm and release controls synchronized', async () => {
   const section = async file => {
     const text = await readFile(new URL(`../${file}`, import.meta.url), 'utf8');
     return text.split('## Candidate and publication controls\n')[1].split('\n## ')[0].trim();
   };
   const shared = await section('AGENTS.md');
   assert(shared.includes('New repository installations use the source bootstrap in install.md'));
-  assert(shared.includes('Published npm application installation is retired'));
-  assert(shared.includes('Candidate-build, npm-publication and snapshot-recovery workflow roots are disabled'));
-  assert(shared.includes('without separate authorization') && shared.includes('Preserve existing installations, projects, credentials'));
+  assert(shared.includes('Published npm application installation is optional') && shared.includes('explicit user choice'));
+  assert(shared.includes('Never silently substitute npm for source or mix installations'));
+  assert(shared.includes('Test publishes under `candidate`') && shared.includes('non-blocking Mac/Windows cold installs'));
+  assert(shared.includes('Stable publishes publicly under `stage`') && shared.includes('requires both exact prod cold installs to pass'));
+  assert(shared.includes('separately authorized manual publication/recovery') && shared.includes('Preserve existing installations, projects, credentials'));
   assert(shared.includes('npm remains the source dependency/build tool'));
   assert.equal(await section('CLAUDE.md'), shared, 'CLAUDE.md must mirror the AGENTS.md release controls');
 });
@@ -87,13 +90,18 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const sourceMode = await runFile(process.execPath, ['--input-type=module', '-e', `import {templateConfig} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/template-config.ts')).href)}; process.stdout.write(templateConfig().source);`], { env: sourceEnv });
     assert.equal(sourceMode, 'cms', 'An npm application without repository templates must retain its CMS source');
     await assert.rejects(readFile(path.join(application, 'library/templates/catalog/catalog.json')), { code: 'ENOENT' });
+    for (const file of onboardingSourceFiles) assert.equal(await sha256(path.join(application, file)), await sha256(file));
+    const cards = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types', '--input-type=module', '-e',
+      `import {loadTemplatePresentation,showTemplateRecommendations} from ${JSON.stringify(pathToFileURL(path.join(application, 'shared/mcp-template-recommendations.ts')).href)}; console.log(JSON.stringify(showTemplateRecommendations(loadTemplatePresentation(),{templateIds:${JSON.stringify(onboardingTemplateIds.slice(-3))}})));`]));
+    assert.deepEqual(cards.cards.map((card: any) => card.templateId), onboardingTemplateIds.slice(-3));
+    assert(cards.cards.every((card: any) => card.templateKind === 'reference' && !card.createArgs));
     const readme = await readFile(path.join(installer, 'package/README.md'), 'utf8');
     const media = new Map<string, string>((await json('repository-media.json')).files.map((file: { path: string; url: string }) => [file.path, file.url]));
     const hero = media.get('docs/readme/brand-hero.jpg');
     const mobileHero = media.get('docs/readme/brand-hero.mobile.jpg');
     const studioCapture = media.get('docs/readme/live-product/studio-in-use.png');
     assert(hero && mobileHero && studioCapture, 'Public README previews must retain registered media identities');
-    assert(readme.includes('The open-source CapCut &amp; Claude Motion alternative'));
+    assert(readme.includes('The open-source Claude Motion &amp; CapCut alternative'));
     assert(readme.includes(`srcset="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/capcut-claude-motion-cover.webp"`));
     assert(readme.includes(hero));
     assert(readme.includes(`src="https://raw.githubusercontent.com/nexu-io/openmotion/${release.commit}/docs/readme/openmotion-logo.svg"`));
@@ -165,7 +173,7 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     const entries = await runFile('tar', ['-tf', built.application]);
     assert(!/\/(node_modules|runtime)\//.test(entries));
     assert(entries.includes('skills/openmotion-production/SKILL.md'));
-    for (const file of ['gateway/media-use.ts', 'gateway/opendesign.ts', 'skills/openmotion-production/references/media-providers/fal.md', 'skills/openmotion-production/references/media-providers/opendesign.md', 'skills/openmotion-production/references/media-providers/atlascloud.md', 'skills/openmotion-production/references/media-providers/wavespeed.md']) assert(entries.includes(file), 'BYOK runtime and guidance must ship: ' + file);
+    for (const file of ['shared/provider-registry.ts', 'gateway/connections.ts', 'gateway/media-use.ts', 'gateway/opendesign.ts', 'skills/openmotion-production/references/media-providers/fal.md', 'skills/openmotion-production/references/media-providers/opendesign.md', 'skills/openmotion-production/references/media-providers/atlascloud.md', 'skills/openmotion-production/references/media-providers/wavespeed.md']) assert(entries.includes(file), 'BYOK runtime and guidance must ship: ' + file);
     assert(!entries.includes('skills/openmotion-debug-media/'), 'Removed debugging Skill must not ship');
     for (const file of unapproved) assert(!entries.includes(file), 'Unapproved file shipped: ' + file);
     assert(!/\/(tests|src)\//.test(entries), 'Development sources and fixtures must not ship');
@@ -174,12 +182,12 @@ test('test npm artifacts contain their application, locked manifest and no bundl
       assert(entries.includes(filename), 'Missing recreation helper: ' + script);
       assert.equal(await readFile(path.join(application, filename), 'utf8'), await readFile(filename, 'utf8'));
     }
-    assert(entries.includes('skills/openmotion-recreate/references/verify.md'));
+    for (const file of ['rebuild.md', 'reconstruction.md', 'verify.md']) assert(entries.includes('skills/openmotion-recreate/references/' + file), 'Missing recreation reference: ' + file);
     assert(entries.includes('studio/build/index.html'));
     assert(entries.includes('scripts/inline-onboarding.mjs'));
     assert(entries.includes('mcp-ui/template-recommendations/inline.fragment.html'));
     assert(entries.includes('shared/editor-launch.pl'), 'macOS shared editor launcher must ship');
-    for (const script of ['vision-runtime.mjs', 'lint-project.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
+    for (const script of ['vision-runtime.mjs', 'lint-project.mjs', 'recover-workspace-lock.ts', 'cleanup-harness-bundles.mjs', 'npm-installer.mjs', 'npm-hosts.mjs', 'check-installed-mcp.mjs', 'mcp-client.mjs', 'diagnostics.mjs', 'zip.mjs', 'diagnostic-redaction.mjs', 'install-onboarding.mjs', 'onboarding-catalog.ts', 'open-template-library.ts']) assert(entries.includes('scripts/' + script), 'Runtime diagnostic and lint entry must ship: ' + script);
     await readFile(path.join(installer, 'package/scripts/check-installed-mcp.mjs'));
     const diagnosticFile = path.join(directory, 'packaged-diagnostics.zip');
     await runFile(process.execPath, [cli, 'diagnostics', '--home', path.join(directory, 'not-installed'), '--output', diagnosticFile]);

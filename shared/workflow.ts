@@ -42,12 +42,13 @@ export const workflowRegistry = {
       examples: 'skills/openmotion-director/references/examples.md',
     },
   },
-  template: { status: 'ready', sections: { start: 'skills/openmotion-template-to-video/SKILL.md' } },
+  template: { status: 'ready', sections: { start: 'skills/openmotion-template-to-video/SKILL.md', unchanged: 'skills/openmotion-template-to-video/references/unchanged-export.md' } },
   recreate: {
     status: 'ready',
     sections: {
       start: 'skills/openmotion-recreate/SKILL.md',
       rebuild: 'skills/openmotion-recreate/references/rebuild.md',
+      reconstruction: 'skills/openmotion-recreate/references/reconstruction.md',
       verification: 'skills/openmotion-recreate/references/verify.md',
     },
   },
@@ -102,27 +103,84 @@ for (const [workflow, definition] of Object.entries(workflowRegistry)) for (cons
   if (!documents.has(documentId)) documents.set(documentId, { workflow, section, documentId });
 }
 
+// A fence closes only on a run of the same character at least as long as its opener; an unclosed fence runs to the end of the document.
+function withoutFences(content: string) {
+  let fence: string | undefined;
+  return content.split(/\r\n?|\n/).filter(line => {
+    if (fence) {
+      if (new RegExp(`^ {0,3}${fence[0] === '`' ? '`' : '~'}{${fence.length},}[ \\t]*$`).test(line)) fence = undefined;
+      return false;
+    }
+    fence = line.match(/^ {0,3}(`{3,}(?=[^`]*$)|~{3,})/)?.[1];
+    return !fence;
+  }).join('\n');
+}
+
+// Inline links and reference-link definitions; ignore fenced examples and inline code.
+function markdownHrefs(content: string) {
+  const prose = withoutFences(content).replace(/(`+)[^\n]*?\1/g, '');
+  return [
+    ...prose.matchAll(/\]\(\s*(?:<([^>]+)>|([^\s)]+))(?:\s+[^)]*)?\)/g),
+    ...prose.matchAll(/^ {0,3}\[[^\]]+\]:\s*(?:<([^>]+)>|(\S+))/gm),
+  ].map(link => link[1] ?? link[2]);
+}
+
+function registeredTarget(href: string, documentId: string) {
+  if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) return null;
+  const target = decodeURIComponent(href.split(/[?#]/, 1)[0]);
+  if (!/\.md$/i.test(target)) return null;
+  const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(documentId), target));
+  const reference = !target.startsWith('/') && !target.includes('\\') ? documents.get(resolved) : undefined;
+  if (!reference) throw new Error(`Unregistered workflow Markdown link in ${documentId}: ${href}`);
+  return reference;
+}
+
 /** Resolve packaged Markdown links through the registry, never through a caller-supplied path. */
 export function workflowReferences(content: string, documentId: string) {
   if (!documents.has(documentId)) throw new Error('Unknown workflow document: ' + documentId);
   const references = new Map<string, { workflow: string; section: string; documentId: string }>();
-  // Inline links and reference-link definitions; ignore fenced examples and inline code.
-  const prose = content.replace(/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*(?:\n|$)/gm, '').replace(/(`+)[^\n]*?\1/g, '');
-  const links = [
-    ...prose.matchAll(/\]\(\s*(?:<([^>]+)>|([^\s)]+))(?:\s+[^)]*)?\)/g),
-    ...prose.matchAll(/^ {0,3}\[[^\]]+\]:\s*(?:<([^>]+)>|(\S+))/gm),
-  ];
-  for (const link of links) {
-    const href = link[1] ?? link[2];
-    if (/^(?:[a-z][a-z\d+.-]*:|\/\/|#)/i.test(href)) continue;
-    const target = decodeURIComponent(href.split(/[?#]/, 1)[0]);
-    if (!/\.md$/i.test(target)) continue;
-    const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(documentId), target));
-    const reference = !target.startsWith('/') && !target.includes('\\') ? documents.get(resolved) : undefined;
-    if (!reference) throw new Error(`Unregistered workflow Markdown link in ${documentId}: ${href}`);
-    references.set(reference.documentId, reference);
+  for (const href of markdownHrefs(content)) {
+    const reference = registeredTarget(href, documentId);
+    if (reference) references.set(reference.documentId, reference);
   }
   return [...references.values()];
+}
+
+/**
+ * GitHub-style anchors for ATX (`#`) headings: visible text without link, emphasis or HTML markup,
+ * with -1, -2 suffixes that never collide with another heading's slug. Setext headings and custom
+ * HTML anchors are outside the supported subset for workflow documents.
+ */
+export function markdownAnchors(content: string) {
+  const anchors = new Set<string>();
+  const repeats = new Map<string, number>();
+  for (const [, heading] of withoutFences(content).matchAll(/^ {0,3}#{1,6}[ \t]+(.+?)(?:[ \t]+#+)?[ \t]*$/gm)) {
+    const visible = heading.split(/(`+[^`]*`+)/).map((part, index) => index % 2 ? part
+      : part.replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/<[^>]+>/g, '').replace(/(^|[^\p{L}\p{N}_])(_+)(?=\S)(.+?)(?<=\S)\2(?=$|[^\p{L}\p{N}_])/gu, '$1$3')).join('');
+    const base = visible.trim().toLowerCase().replace(/[^\p{L}\p{M}\p{N}\p{Pc} -]/gu, '').replace(/ /g, '-');
+    let anchor = base;
+    while (anchors.has(anchor)) {
+      const repeat = (repeats.get(base) ?? 0) + 1;
+      repeats.set(base, repeat);
+      anchor = `${base}-${repeat}`;
+    }
+    anchors.add(anchor);
+  }
+  return anchors;
+}
+
+/** `#fragment` links to registered documents, including same-document links. Stripping fragments in workflowReferences keeps them out of MCP identity, so they are validated separately. */
+export function workflowLinkAnchors(content: string, documentId: string) {
+  const self = documents.get(documentId);
+  if (!self) throw new Error('Unknown workflow document: ' + documentId);
+  const anchors: Array<{ workflow: string; section: string; documentId: string; anchor: string; href: string }> = [];
+  for (const href of markdownHrefs(content)) {
+    const hash = href.indexOf('#');
+    if (hash < 0 || hash === href.length - 1) continue;
+    const reference = href.startsWith('#') ? self : registeredTarget(href, documentId);
+    if (reference) anchors.push({ ...reference, anchor: decodeURIComponent(href.slice(hash + 1)), href });
+  }
+  return anchors;
 }
 
 export async function getWorkflow(section: unknown = 'start', workflow: unknown = 'production') {

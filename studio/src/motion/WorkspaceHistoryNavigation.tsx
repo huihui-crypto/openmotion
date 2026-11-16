@@ -14,12 +14,12 @@ function subscribe(listener: () => void) {
 }
 
 /** Shared by the shell and modal pages, which make the shell itself inert. */
-export function WorkspaceHistoryNavigation({ tooltips = false }: { tooltips?: boolean } = {}) {
+export function WorkspaceHistoryNavigation({ tooltips = true }: { tooltips?: boolean } = {}) {
   const { t } = useI18n();
   useEffect(initializeWorkspaceHistory, []);
   const available = useSyncExternalStore(subscribe, workspaceHistoryAvailability);
-  const back = <button type="button" className="om-nav-item" aria-label={t('Back')} title={tooltips ? undefined : t('Back')} disabled={!(available & 1)} onClick={() => traverseWorkspaceHistory(-1)}><RemixIcon name="arrow-left-line" size={18} /></button>;
-  const forward = <button type="button" className="om-nav-item" aria-label={t('Forward')} title={tooltips ? undefined : t('Forward')} disabled={!(available & 2)} onClick={() => traverseWorkspaceHistory(1)}><RemixIcon name="arrow-right-line" size={18} /></button>;
+  const back = <button type="button" className="om-nav-item" aria-label={t('Back')} disabled={!(available & 1)} onClick={() => traverseWorkspaceHistory(-1)}><RemixIcon name="arrow-left-line" size={18} /></button>;
+  const forward = <button type="button" className="om-nav-item" aria-label={t('Forward')} disabled={!(available & 2)} onClick={() => traverseWorkspaceHistory(1)}><RemixIcon name="arrow-right-line" size={18} /></button>;
   return <nav className="om-history-navigation" aria-label={t('Page navigation')}>
     {tooltips ? <Tooltip label={t('Back')} withinDialog>{back}</Tooltip> : back}
     {tooltips ? <Tooltip label={t('Forward')} withinDialog>{forward}</Tooltip> : forward}

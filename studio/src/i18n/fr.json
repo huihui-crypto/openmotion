@@ -1849,5 +1849,6 @@
   "Unlock track": "Déverrouiller la piste",
   "Delete track": "Supprimer la piste",
   "Unlock the track before deleting it": "Déverrouillez la piste avant de la supprimer",
-  "Open the composition to delete this track": "Ouvrez la composition pour supprimer cette piste"
+  "Open the composition to delete this track": "Ouvrez la composition pour supprimer cette piste",
+  "Screen too small to expand this panel": "L’écran est trop petit pour déployer ce panneau"
 }

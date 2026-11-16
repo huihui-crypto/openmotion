@@ -31,7 +31,7 @@ assert.equal(remix.status,0,remix.stderr);
 assert.equal(JSON.parse(await readFile(path.join(root,'shared/mcp-release.json'))).profile,'phase1');
 await assert.rejects(stat(path.join(root,'node_modules')),{code:'ENOENT'});
 const version=JSON.parse(await readFile(path.join(root,'package.json'))).version;
-const sock=createServer();await new Promise(resolve=>sock.listen(0,'127.0.0.1',resolve));const port=sock.address().port;await new Promise(resolve=>sock.close(resolve));
+const sock=createServer();await new Promise(resolve=>sock.listen(Number(process.env.PLAYWRIGHT_WEB_PORT||0),'127.0.0.1',resolve));const port=sock.address().port;await new Promise(resolve=>sock.close(resolve));
 // A deterministic published catalog, injected only into this isolated package test.
 const catalogFixture=path.join(work,'prism-fixture.mjs');
 await writeFile(catalogFixture, `const original=globalThis.fetch; const publication=${JSON.stringify(publication())}; const contents=${JSON.stringify(contents)};
@@ -70,10 +70,17 @@ try{
  const wav=path.join(work,'tone.wav');assert.equal(spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','sine=duration=1',wav]).status,0);
  const wavSha256=createHash('sha256').update(await readFile(wav)).digest('hex');
  const assetInput={action:'import',requestId:'asset-import',sourcePath:wav,name:'Packaged tone'};
- const libraryAsset=(await tool('openmotion_assets',assetInput)).asset;
+ const libraryAsset=(await tool('openmotion_assets_use',assetInput)).asset;
  assert.equal((await tool('openmotion_assets',assetInput)).asset.id,libraryAsset.id);
  assert.equal(libraryAsset.modality,'audio');assert.equal(libraryAsset.versions.length,1);assert.equal(libraryAsset.versions[0].sha256,wavSha256);
  assert.ok(libraryAsset.currentVersionId===libraryAsset.versions[0].id);
+ const read=await rpc('tools/call',{name:'openmotion_assets_use',arguments:{action:'read',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId,duration:0.25}});
+ assert.ok(!read.isError,JSON.stringify(read));assert.equal(read.structuredContent.versionId,libraryAsset.currentVersionId);assert.ok(read.content.some(item=>item.type==='audio'&&item.mimeType==='audio/wav'&&Buffer.from(item.data,'base64').subarray(0,4).toString()==='RIFF'));assert.ok(!('content' in read.structuredContent));
+ calls.push({name:'openmotion_assets_use',arguments:{action:'read',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId},result:read.structuredContent,contentTypes:read.content.map(item=>item.type)});
+ const png=path.join(work,'read.png');assert.equal(spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','color=c=red:s=32x24','-frames:v','1',png]).status,0);
+ const picture=(await tool('openmotion_assets_use',{action:'import',requestId:'picture',sourcePath:png})).asset;
+ const pictureRead=await rpc('tools/call',{name:'openmotion_assets_use',arguments:{action:'read',assetId:picture.id,versionId:picture.currentVersionId}});assert.ok(!pictureRead.isError,JSON.stringify(pictureRead));assert.ok(pictureRead.content.some(item=>item.type==='image'&&item.mimeType==='image/png'&&Buffer.from(item.data,'base64').subarray(1,4).toString()==='PNG'));assert.equal(pictureRead.structuredContent.previews[0].width,32);
+ calls.push({name:'openmotion_assets_use',arguments:{action:'read',assetId:picture.id,versionId:picture.currentVersionId},result:pictureRead.structuredContent,contentTypes:pictureRead.content.map(item=>item.type)});
  assert.equal((await tool('openmotion_assets',{action:'get',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId})).version.sha256,wavSha256);
  assert.ok((await tool('openmotion_assets',{action:'list',modality:'audio'})).assets.some(asset=>asset.id===libraryAsset.id));
  const imported=await tool('openmotion_import_assets',{projectId:p.projectId,requestId:'import',items:[{itemId:'audio',sourcePath:wav}]});assert.equal(imported.status,'completed');

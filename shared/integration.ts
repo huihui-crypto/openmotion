@@ -1,4 +1,4 @@
-import { templatePrompts, repositoryTemplatePrompts } from './template-prompts.ts';
+import { templatePrompts } from './template-prompts.ts';
 import { catalogLocale } from './template-locale.ts';
 import { workflowEntryGuide } from './workflow-entry.js';
 
@@ -97,14 +97,9 @@ Follow the installation guide: ${setupGuideUrl(info)}
 3. 在当前 Agent 中发现 OpenMotion 工具，调用 openmotion_get_project 验证工作区。仅写入配置不代表连接成功；遇到阻碍请说明。
 4. ${host === 'codex' ? '在本轮完成引导：先准备好欢迎语和视频卡片，再打开模板库并立即展示已就绪的内容，不把内部指令发成新的用户消息。' : '接入后打开模板库，'}等我给出创作要求后再创建或修改工程。`;
 }
-export function templatePrompt(info: IntegrationInfo, _host: IntegrationHost, template: { id: string; title: string }, locale = 'zh-CN') {
-  if (info.templateSource === 'repository') {
-    const message = repositoryTemplatePrompts[catalogLocale(Object.keys(repositoryTemplatePrompts), locale, 'en')];
-    return message.replace(/\{(name|id)\}/g, (_, key: 'name' | 'id') => template[key === 'name' ? 'title' : 'id']);
-  }
-  const installUrl = setupGuideUrl(info);
+export function templatePrompt(_info: IntegrationInfo, _host: IntegrationHost, template: { id: string; title: string }, locale = 'zh-CN') {
   const message = templatePrompts[catalogLocale(Object.keys(templatePrompts), locale, 'en')];
-  const values = { installUrl, name: template.title, id: template.id };
+  const values = { installUrl: 'https://github.com/nexu-io/openmotion', name: template.title, id: template.id };
   return message.replace(/\{(installUrl|name|id)\}/g, (_, key: keyof typeof values) => values[key]);
 }
 
@@ -162,8 +157,8 @@ ${workflowEntryGuide}
 
 新项目用 openmotion_create_project，提供 requestId、projectType、title、requirements。模板可从 Studio 选择，或调用 openmotion_list_templates 取得本地 JSONL 索引路径后用本机工具检索，再用 openmotion_get_template 读取详情。已知 ID 可直接读详情。内置及 Prism 模板用 projectType=template 创建；参考视频创建的是重建载体，由宿主 Agent 看参考并编写内容，不宣称已经生成影片。现有项目先 openmotion_get_project 列表/详情核对 projectId、sessionId、revision 与 currentVersionId。
 
-Workspace Assets use openmotion_assets: list/get, import, generate, jobs/status/cancel, update (rename, trash/restore, current version) and import_to_project. Upload and generation do not require a project. References pin assetId + versionId; editing appends a version. Import a chosen version into an explicit project before composing. Studio Assets supports direct models and an in-app Codex conversation using the local Codex login; external local Agents use the same asset operations through MCP.
-Local fonts use openmotion://fonts/index and per-family resources for selection and on-demand preparation; openmotion_import_assets imports the selected local files and optional licenses with actual metadata and relative CSS. Check required copy and mixed-script rendering before delivery. 素材通过 openmotion_import_assets 批量持久导入实际本机附件，检查逐项结果；再用 openmotion_edit_project 保存原生 HTML/CSS/JS 和可选需求，传 expectedRevision、expectedVersionId 及稳定 requestId。冲突时重新读，不盲目覆盖 GUI 修改。媒体生成使用 openmotion_media_use：先 inspect，读取选中供应商 reference，再查 models 和 schema；明确 projectId、稳定 requestId、provider、model、modality 后 generate，用同一 jobId 查 status 或 cancel。供应商和 Key 只在 Studio 的模型供应商设置中配置，不把凭据放进对话。完成素材不自动编排进时间轴；费用由实际供应商决定，不自动付费回退或重新提交。
+Workspace Assets use openmotion_assets_use (openmotion_assets remains compatible): list/get (metadata), read (bounded media at explicit assetId/versionId), import, generate, jobs/status/cancel/retry_save, update (rename, trash/restore, current version) and import_to_project. Upload and generation do not require a project. References pin assetId + versionId; editing appends a version. Import a chosen version into an explicit project before composing. Studio Assets supports direct models; external local Agents use the same asset operations through MCP.
+Local fonts use openmotion://fonts/index and per-family resources for selection and on-demand preparation; openmotion_import_assets imports the selected local files and optional licenses with actual metadata and relative CSS. Check required copy and mixed-script rendering before delivery. 素材通过 openmotion_import_assets 批量持久导入实际本机附件，检查逐项结果；再用 openmotion_edit_project 保存原生 HTML/CSS/JS 和可选需求，传 expectedRevision、expectedVersionId 及稳定 requestId。冲突时重新读，不盲目覆盖 GUI 修改。媒体生成使用 openmotion_media_use：先 inspect，读取选中供应商 reference，再查 models 和 schema；明确 projectId、稳定 requestId、provider、model、modality 后 generate，用同一 jobId 查 status 或 cancel。没有可用供应商时，用 openmotion_open_preview 的 target=providers 打开模型供应商页面并完成宿主交接，引导用户选择供应商、填入 Key 并保存，配置好后告诉 Agent；确认后再次 inspect 并接续原需求。已有可用供应商时，按已有需求继续，或了解要生成的内容和参考视频。供应商和 Key 只在 Studio 的模型供应商设置中配置，不把凭据放进对话。完成结果自动保存到本机工作区资产库，同时保留项目原有文件路径；libraryAssets 返回固定 assetId/versionId。savePending 为 true 时，用原 projectId/jobId 和稳定 requestId 调 retry_save，仅重试本地保存，不重新调用模型。完成素材不自动编排进时间轴；费用由实际供应商决定，不自动付费回退或重新提交。
 
 After each content edit or restore, follow previewHandoff and production/native#continuing-edits. Request the same project on the calling chat's right panel, preserving embed/query/hash and reusing the actual native Tab ID. Default foreground preserves the current chat: queue while inactive, resolve the latest version on return, and verify actual visibility and changed live content before action=record_display. Codex IAB visibility synchronization is scoped to the calling chat and does not navigate. queued is only an acknowledgment, not proof that the calling chat is inactive. Apply the same visibility checks to first delivery; hidden automation tabs, markDeliverable and completed MP4 export do not replace the editor handoff. Use visibility=queued only for confirmed inactive-chat deferral; otherwise report the display failure. Only this turn's explicit show-now request permits presentation=now and switching back; background skips presentation. Never guess a project from another chat or workspace.
 

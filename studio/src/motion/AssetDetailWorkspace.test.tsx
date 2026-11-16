@@ -17,6 +17,40 @@ beforeEach(() => { vi.clearAllMocks(); container = document.createElement('div')
 afterEach(async () => { await act(async () => root.unmount()); container.remove(); });
 async function render(versionId = 'v2', editor?: ReactNode) { await act(async () => root.render(<AssetDetailWorkspace asset={asset} versionId={versionId} navigation={<div>Asset navigation</div>} active uploading={false} editor={editor} onBack={back} onVersion={version} onUpdate={update} onEdit={edit} onReference={vi.fn()} onOpenReference={reference} onUpload={vi.fn()} onDownload={vi.fn()} />)); }
 const button = (text: string) => [...container.querySelectorAll('button')].find(node => node.textContent?.includes(text))!;
+it('pauses media when the responsive layout hides the preview', async () => {
+  let notify!: ResizeObserverCallback;
+  const observer = vi.spyOn(globalThis, 'ResizeObserver').mockImplementation(function (callback) {
+    notify = callback;
+    return { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
+  });
+  try {
+    await render();
+    const viewer = container.querySelector<HTMLElement>('.om-asset-viewer')!;
+    const video = document.createElement('video'), pause = vi.spyOn(video, 'pause');
+    viewer.append(video);
+    const rects = vi.spyOn(viewer, 'getClientRects').mockReturnValue([] as unknown as DOMRectList);
+    notify([], {} as ResizeObserver);
+    expect(pause).toHaveBeenCalledOnce();
+    rects.mockReturnValue([{}] as DOMRectList);
+    notify([], {} as ResizeObserver);
+    expect(pause).toHaveBeenCalledOnce();
+  } finally { observer.mockRestore(); }
+});
+it('opens editing in the narrow details view and preserves the mounted editor while switching to preview', async () => {
+  await render();
+  expect(container.querySelector('.om-asset-workspace')?.getAttribute('data-mobile-view')).toBe('preview');
+  await render('v2', <input aria-label="Version draft" defaultValue="Keep editing" />);
+  expect(container.querySelector('.om-asset-workspace')?.getAttribute('data-mobile-view')).toBe('details');
+  const input = container.querySelector('[aria-label="Version draft"]');
+  const buttons = container.querySelectorAll<HTMLButtonElement>('.om-asset-detail-switch button');
+  await act(async () => buttons[0].click());
+  expect(container.querySelector('.om-asset-workspace')?.getAttribute('data-mobile-view')).toBe('preview');
+  await act(async () => buttons[1].click());
+  expect(container.querySelector('[aria-label="Version draft"]')).toBe(input);
+  expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
+  await render();
+  expect(container.querySelector('.om-asset-workspace')?.getAttribute('data-mobile-view')).toBe('preview');
+});
 it('shows an inline preview, pins download and restoration to the selected immutable version', async () => {
   await render('v1');
   expect(container.querySelector('dialog, [role="dialog"]')).toBeNull();

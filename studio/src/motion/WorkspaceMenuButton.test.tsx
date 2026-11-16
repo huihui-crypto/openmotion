@@ -39,15 +39,22 @@ it('keeps a state-aware tooltip on the project-list toggle in both states', asyn
   await act(async () => root.render(<I18nProvider initialLocale="en"><WorkspaceFrame waitForSaves={async () => {}}><WorkspaceMenuButton /></WorkspaceFrame></I18nProvider>));
   // Collapsing the docked navigation is a toggle, so it keeps its label and tooltip.
   expect(menu().getAttribute('aria-label')).toBe('Collapse project list');
-  expect(menu().getAttribute('title')).toBe('Collapse project list');
+  await expectHint(menu(), 'Collapse project list');
   await act(async () => menu().click());
   expect(menu().getAttribute('aria-label')).toBe('Open project list');
-  expect(menu().getAttribute('title')).toBe('Open project list');
+  await expectHint(menu(), 'Open project list');
 });
 
 it('keeps the state-aware tooltip on the docked sidebar toggle', async () => {
   await act(async () => root.render(<I18nProvider initialLocale="en"><WorkspaceFrame waitForSaves={async () => {}}><WorkspaceMenuButton /></WorkspaceFrame></I18nProvider>));
   // The docked layout's collapse control is the same toggle, so it keeps its tooltip.
   expect(sidebarToggle().getAttribute('aria-label')).toBe('Close project list');
-  expect(sidebarToggle().getAttribute('title')).toBe('Close project list');
+  await expectHint(sidebarToggle(), 'Close project list');
 });
+
+async function expectHint(trigger: HTMLButtonElement, label: string) {
+  act(() => trigger.blur());
+  await act(async () => { trigger.focus(); await new Promise(resolve => setTimeout(resolve, 0)); });
+  expect(trigger.hasAttribute('title')).toBe(false);
+  expect(document.querySelector('[role="tooltip"]')?.textContent).toBe(label);
+}

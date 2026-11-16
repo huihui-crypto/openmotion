@@ -1,13 +1,16 @@
+import type { OmTracking } from '../shared/tracking.ts';
 import path from 'node:path';
 import type { WorkspaceStore } from '../workspace.ts';
 import { AssetLibrary } from './asset-library.ts';
 import { gatewayFor } from './service.ts';
 import { requireNativeRuntime } from '../scripts/npm-runtime.mjs';
 import { pluginRoot } from '../hyperframes.ts';
+import { readLibraryAsset } from './asset-read.ts';
 
-export async function assetOperation(store: WorkspaceStore, args: any, importProject?: (input: any) => Promise<any>) {
-  const library = new AssetLibrary(store), gateway = gatewayFor(store);
+export async function assetOperation(store: WorkspaceStore, args: any, importProject?: (input: any) => Promise<any>, tracking?: OmTracking) {
+  const library = new AssetLibrary(store), gateway = gatewayFor(store, tracking);
   if (args.action === 'list') return library.list(args);
+  if (args.action === 'read') return readLibraryAsset(library, args);
   if (args.action === 'get') {
     const asset = await library.get(args.assetId);
     return { asset, ...(args.versionId ? { version: (await library.resolve({ assetId: args.assetId, versionId: args.versionId }, true)).version } : {}) };
@@ -25,11 +28,12 @@ export async function assetOperation(store: WorkspaceStore, args: any, importPro
       library: { assetId: args.assetId, title: args.name, parentVersionId: args.parentVersionId, references: args.references, conversationId: args.conversationId } });
     return { job, next: { action: 'status', jobId: job.id } };
   }
-  if (args.action === 'jobs') return { jobs: (await gateway.listJobs()).filter(job => job.library && (!args.conversationId || job.library.conversationId === args.conversationId)).slice(0, 100) };
-  if (args.action === 'status' || args.action === 'cancel') {
+  if (args.action === 'jobs') return { jobs: (await gateway.listJobs()).filter(job => (job.library || job.saveToLibrary) && (!args.conversationId || job.library?.conversationId === args.conversationId)).slice(0, 100) };
+  if (args.action === 'status' || args.action === 'cancel' || args.action === 'retry_save') {
     const job = await gateway.getJob(args.jobId);
-    if (!job.library) throw new Error('ASSET_JOB_NOT_FOUND');
-    return { job: args.action === 'cancel' ? await gateway.cancel(job.id) : job };
+    if (!job.library && !job.saveToLibrary) throw new Error('ASSET_JOB_NOT_FOUND');
+    if (args.action === 'retry_save' && !args.requestId) throw new Error('A stable requestId is required');
+    return { job: args.action === 'retry_save' ? await gateway.retrySave(job.id) : args.action === 'cancel' ? await gateway.cancel(job.id) : job };
   }
   if (args.action === 'import_to_project') {
     if (!importProject || !args.projectId || !args.requestId) throw new Error('Explicit projectId and requestId are required');

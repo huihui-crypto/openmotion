@@ -46,15 +46,19 @@ test('public setup retains repository and published catalog environments', () =>
   assert.match(setupPrompt(null, 'chatgpt', 'en'), /requires a public HTTPS MCP service/);
 });
 
-test('template prompt reuses the shared published install guide', () => {
+test('template prompt uses the public GitHub link independently of setup guide environments', () => {
   const template = { id: 'prism-a', title: 'Prism A' };
   for (const published of [
+    info,
     { ...info, templateSource: 'cms' } as IntegrationInfo,
     { ...info, templateSource: 'cms', templateEnvironment: 'dev' } as IntegrationInfo,
     { ...info, templateSource: 'cms', transport: { ...info.transport, env: { ...info.transport.env, MOTION_TEMPLATE_ENV: 'dev' } } } as IntegrationInfo,
   ]) {
     for (const locale of ['en', 'zh-CN']) {
-      assert.ok(templatePrompt(published, 'codex', template, locale).includes(setupGuideUrl(published)));
+      const prompt = templatePrompt(published, 'codex', template, locale);
+      assert.ok(prompt.includes('https://github.com/nexu-io/openmotion'));
+      assert.ok(prompt.includes(template.title) && prompt.includes(template.id));
+      assert.doesNotMatch(prompt, /releases\.open-design\.ai/);
     }
   }
 });

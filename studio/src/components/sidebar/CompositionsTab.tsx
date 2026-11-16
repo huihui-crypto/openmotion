@@ -21,6 +21,7 @@ import { thumbnailRevisionOf } from "../../player/store/thumbnailSlice";
 import { encodePreviewPath } from "../../player/components/thumbnailUtils";
 import { TIMELINE_COMPOSITION_MIME } from "../../utils/timelineCompositionDrop";
 import { Tooltip } from "../ui/Tooltip";
+import { OverflowText } from "../ui/OverflowText";
 
 interface CompositionsTabProps {
   projectId: string;
@@ -383,23 +384,21 @@ function CompCard({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          <span className="motion-composition-name text-[11px] font-medium text-neutral-300 truncate">{name}</span>
+        <div className="flex flex-wrap items-center gap-1">
+          <OverflowText text={name} className="motion-composition-name text-[11px] font-medium text-neutral-300 truncate" />
           {isRoot && (
-            <span
+            <Tooltip label={t("Root composition: opens automatically on load")} wrap><span
               aria-label={t("Root composition: opens automatically on load")}
-              title={t("Root composition: opens automatically on load")}
-              className="flex-shrink-0 rounded-full bg-neutral-700/60 px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-neutral-300"
+              className="max-w-full truncate flex-shrink-0 rounded-full bg-neutral-700/60 px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-neutral-300"
             >
-              {t("Root")}</span>
+              {t("Root")}</span></Tooltip>
           )}
         </div>
-        <span className="text-[9px] text-neutral-600 truncate block">{comp}</span>
+        <OverflowText text={comp} className="text-[9px] text-neutral-600 truncate block" />
       </div>
       {onAddToTimeline && (
-        <button
+        <Tooltip label={t("Add {name} to timeline at playhead", { name: name })} wrap><button
           type="button"
-          title={t("Add {name} to timeline at playhead", { name: name })}
           aria-label={t("Add {name} to timeline at playhead", { name: name })}
           onClick={(event) => {
             event.stopPropagation();
@@ -408,7 +407,7 @@ function CompCard({
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm text-neutral-600 opacity-0 transition-[color,background-color,opacity] hover:bg-neutral-800 hover:text-accent-ink group-hover/card:opacity-100 group-focus-within/card:opacity-100 focus:opacity-100"
         >
           <span aria-hidden="true">+</span>
-        </button>
+        </button></Tooltip>
       )}
       {onRender && (
         <Tooltip label={isRendering ? t("A render is already in progress") : t("Render {name}", { name: name })}>

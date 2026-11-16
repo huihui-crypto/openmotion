@@ -19,6 +19,26 @@ function result(order = [2, 0, 1], recommendationId = '11111111-1111-4111-8111-1
     selectionGuide: 'Use the selected exact template.' };
 }
 
+test('purpose badges follow the conversation language and omit missing catalog values', () => {
+  const window = new Window(), root = window.document.createElement('main');
+  window.document.body.append(root);
+  window.URL.createObjectURL = () => 'blob:test'; window.URL.revokeObjectURL = () => {};
+  const source = structuredClone(bootstrap);
+  Object.assign(source.templates[0], { videoCategories: { zh: '产品演示', en: 'Product demo' } });
+  const host = { sendMessage: async () => ({}), getHostCapabilities: () => ({}), getHostContext: () => ({ locale: 'en' }) };
+  const ui = mountTemplateCards(root as unknown as HTMLElement, source, host);
+  try {
+    ui.update({ ...result(), language: 'zh' });
+    const labels = () => [...root.querySelectorAll('[data-video-category]:not([hidden])')];
+    assert.deepEqual(labels().map(label => label.textContent), ['产品演示']);
+    assert.equal(labels()[0].tagName, 'SPAN');
+    assert.equal(labels()[0].closest('button')?.className, 'omtc-cover');
+    ui.update({ ...result(), language: 'en' });
+    assert.deepEqual(labels().map(label => label.textContent), ['Product demo']);
+    assert.equal(root.querySelectorAll('.omtc-card .omtc-clone').length, 3);
+  } finally { ui.destroy(); window.happyDOM.abort(); }
+});
+
 test('the real component waits for a result and renders the frozen ordered selection', () => {
   const window = new Window();
   const root = window.document.createElement('main'); window.document.body.append(root);

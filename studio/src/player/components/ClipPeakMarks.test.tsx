@@ -72,8 +72,8 @@ describe("ClipPeakMarks", () => {
     await act(async () => clip.focus());
     await vi.waitFor(() => expect(document.querySelector('[role="tooltip"]')).not.toBeNull());
     await setGain(0.25);
-    await vi.waitFor(() => expect(document.querySelector('[role="tooltip"]')).toBeNull());
-    expect(clip.getAttribute("aria-describedby")).toBeNull();
+    await vi.waitFor(() => expect(document.querySelector('[role="tooltip"]')?.textContent).toBe("audio • 0.0s to 2.0s"));
+    expect(clip.getAttribute("aria-describedby")).toBe(document.querySelector('[role="tooltip"]')?.id);
     expect(document.activeElement).toBe(clip);
     expect(host.querySelector("button")).toBe(clip);
     expect(host.querySelector("[data-peak-badge]")).toBeNull();

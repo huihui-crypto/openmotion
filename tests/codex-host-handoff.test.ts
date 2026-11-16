@@ -1,3 +1,4 @@
+import { onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, readFile, rm, copyFile } from 'node:fs/promises';
@@ -28,7 +29,7 @@ function host({ tools = true, directory = dataDirectory, loaded = true, denied =
 
 test('CLI handoff refreshes the existing host and verifies this chat before native presentation', async () => {
   const { request, calls } = host();
-  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, expectedVersion: '0.0.1', request, language: 'zh' });
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, expectedVersion: '0.0.1', request, language: 'zh', templateIds: onboardingTemplateIds.slice(-3) });
   assert.equal(result.status, 'ready_for_presentation');
   assert.equal(result.hostSessionVerified, true);
   assert.equal(result.presentationVerified, false);
@@ -37,7 +38,7 @@ test('CLI handoff refreshes the existing host and verifies this chat before nati
   assert.equal(calls[2].params.threadId, threadId);
   assert.equal(calls[3].params.threadId, threadId);
   assert.equal(calls[3].params.tool, 'openmotion_get_project');
-  assert.deepEqual(result.presentation.arguments, { templateIds: ['product-promo', 'nyt-graph', 'decision-tree'],
+  assert.deepEqual(result.presentation.arguments, { templateIds: onboardingTemplateIds.slice(-3),
     onboarding: true, language: 'zh' });
 });
 

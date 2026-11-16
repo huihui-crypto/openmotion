@@ -6,7 +6,6 @@ import { CLIP_Y, type TimelineRowGeometry } from "./timelineLayout";
 import { TimelineClip } from "./TimelineClip";
 import { getTimelineEditCapabilities } from "./timelineEditing";
 import { renderClipChildren } from "./timelineClipChildren";
-import { getTimelineDragOverlayPosition } from "./timelineClipDragPreview";
 import type { DraggedClipState } from "./timelineClipDragTypes";
 import type { TrackVisualStyle } from "./timelineIcons";
 import { isTimelineClipActive } from "./useTimelineActiveClips";
@@ -52,13 +51,15 @@ export const TimelineGestureOverlay = memo(function TimelineGestureOverlay({
     previewStart: drag.previewStart,
     previewTrack: drag.previewTrack,
   });
-  let position = getTimelineDragOverlayPosition(drag, scrollRef.current);
   const insertRow = drag.insertRow;
-  if (insertRow !== null)
-    position = {
-      left: contentOrigin + drag.previewStart * pixelsPerSecond,
-      top: rowGeometry.getRowTop(insertRow) + CLIP_Y,
-    };
+  // The actor and landing outline must show the same resolved destination. A
+  // pointer-following actor lies about the drop when collision avoidance, snapping
+  // or the audio/visual zone boundary changes that destination.
+  const landingRow = insertRow ?? rowGeometry.getRowIndex(drag.previewTrack);
+  const position = landingRow < 0 ? null : {
+    left: contentOrigin + drag.previewStart * pixelsPerSecond,
+    top: rowGeometry.getRowTop(landingRow) + CLIP_Y,
+  };
   const clipWidth = Math.max(element.duration * pixelsPerSecond, 4);
   const viewport = scrollRef.current;
   let labelLeft = clipWidth + 10;

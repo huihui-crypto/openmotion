@@ -47,7 +47,8 @@ beforeEach(() => {
     if (url.pathname.endsWith('/projects') && !init?.method) return Response.json(catalog);
     if (url.pathname.includes('/sessions/')) return Response.json(catalog.sessions.find(item => url.pathname.endsWith(item.id)));
     if (url.pathname.includes('/projects/') && url.pathname.endsWith('/open')) return Response.json({ projectId: url.pathname.split('/').at(-2), revision: 'r' });
-    if (url.pathname.endsWith('/settings/providers')) return Response.json({ providers: [provider, { ...provider, id: 'openai', label: 'OpenAI', protocol: 'openai', category: 'language' }], models: [], defaults: {} });
+    // The OpenAI preset carries media kinds, so it stays visible in the provider list.
+    if (url.pathname.endsWith('/settings/providers')) return Response.json({ providers: [provider, { ...provider, id: 'openai', label: 'OpenAI', protocol: 'openai', category: 'multimodal', kinds: ['text', 'image', 'audio'] }], models: [], defaults: {} });
     if (url.pathname.endsWith('/integration')) return Response.json(info);
     if (url.pathname.endsWith('/template-catalog')) return Response.json({ items: [{ id: 'product-promo', title: 'Product Promo', kind: 'builtin', tags: [] }], next: null, catalogVersion: 'test' });
     return Response.json({ projectId, revision: 'r', version: '1.2.3', agents: [], defaults: {}, state: 'signed-out' });
@@ -139,8 +140,10 @@ it('restores provider details and returns to the providers list through history'
 
 it('uses the header controls for visited pages, preserves Forward on reload and drops abandoned destinations', async () => {
   await mount();
-  expect(historyButton('Back').title).toBe('Back');
-  expect(historyButton('Forward').title).toBe('Forward');
+  expect(historyButton('Back').getAttribute('aria-label')).toBe('Back');
+  expect(historyButton('Back').hasAttribute('title')).toBe(false);
+  expect(historyButton('Forward').getAttribute('aria-label')).toBe('Forward');
+  expect(historyButton('Forward').hasAttribute('title')).toBe(false);
   expect(historyButton('Back').disabled).toBe(true);
   expect(historyButton('Forward').disabled).toBe(true);
   await click('MCP · Connect Agent'); await click('Settings');
@@ -171,7 +174,8 @@ it('keeps gallery history controls while headerless template previews retain bro
   expect(container.querySelector(`${detail} button[aria-label="Close template preview"]`)).not.toBeNull();
   expect(container.querySelector(`${detail} button[aria-label="Previous template"]`)).not.toBeNull();
   expect(container.querySelector(`${detail} button[aria-label="Next template"]`)).not.toBeNull();
-  expect(historyButton('Back').title).toBe('Back');
+  expect(historyButton('Back').getAttribute('aria-label')).toBe('Back');
+  expect(historyButton('Back').hasAttribute('title')).toBe(false);
   await traverse(-1); expect(page().template).toBeNull();
   expect(historyButton('Forward', library).disabled).toBe(false);
   await clickHistory('Forward', library); expect(page().template).toBe('product-promo');
@@ -211,6 +215,46 @@ it('keeps an MCP showcase selection in the URL through history and reloads', asy
   expect(container.querySelector('dialog[aria-label="Template preview"] h2')?.textContent).toBe('Product Promo');
   await click('Close template preview'); await click('Close template library');
   expect(page()).toMatchObject({ templates: false, template: null, settings: 'mcp', client: 'claude' });
+});
+
+it('keeps project rows in place while switching, updating selection and reloading', async () => {
+  const original = fetcher.getMockImplementation()!;
+  const opened: Record<string, number> = { [first]: 20, [second]: 10 };
+  let activeId = first, clock = 20;
+  fetcher.mockImplementation(async (input: string, init?: RequestInit) => {
+    const url = new URL(input, location.origin);
+    if (url.pathname.endsWith('/projects') && !init?.method) return Response.json({
+      ...catalog, activeId,
+      projects: catalog.projects.map(project => ({ ...project, openedAt: opened[project.id] })),
+      sessions: catalog.sessions.map(session => ({ ...session, openedAt: opened[session.id] })),
+    });
+    if (url.pathname.includes('/projects/') && url.pathname.endsWith('/open') && init?.method === 'POST') {
+      activeId = url.pathname.split('/').at(-2)!;
+      opened[activeId] = ++clock;
+      return Response.json({ projectId: activeId, revision: 'r' });
+    }
+    return original(input, init);
+  });
+  const rows = () => [...container.querySelectorAll('.motion-session-list button strong')].map(node => node.textContent);
+  const selected = () => container.querySelector('.motion-session-list button[aria-current="page"] strong')?.textContent;
+  await mount();
+  const initialOrder = rows();
+  expect(initialOrder).toEqual(['First project', 'Second project']);
+  expect(selected()).toBe('First project');
+  for (const [title, projectId] of [['Second project', second], ['First project', first]]) {
+    await click(title);
+    expect(rows()).toEqual(initialOrder);
+    expect(selected()).toBe(title);
+    expect(container.querySelector('[data-project]')?.getAttribute('data-project')).toBe(projectId);
+  }
+  const switches = () => fetcher.mock.calls.filter(([, init]) => init?.method === 'POST');
+  const completedSwitches = switches().length;
+  await click('First project');
+  expect(switches()).toHaveLength(completedSwitches);
+  expect(rows()).toEqual(initialOrder);
+  await mount(1);
+  expect(rows()).toEqual(initialOrder);
+  expect(selected()).toBe('First project');
 });
 
 it('restores a rejected project history entry without losing the later Forward destination', async () => {

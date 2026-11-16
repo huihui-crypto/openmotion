@@ -4,7 +4,11 @@ The application shell keeps navigation in the top bar, editor/project controls i
 
 ## Providers and models
 
+[`shared/provider-registry.ts`](../shared/provider-registry.ts) is the registration entry for dedicated media providers, local Codex, the OpenDesign account and the compatible presets imported from `shared/provider-presets.json`. It owns provider identity, protocol/category, setup links, endpoint editability, environment-key names and reference selection. Dedicated execution adapters remain in `gateway/providers.ts`; account authorization and local Agent login retain their own implementations. A listed preset does not establish executable model support.
+
 The settings directory combines the dedicated media adapters, local Codex, an account connection and 68 provider presets. It supports provider search, configured/custom/local/multimodal/media/language filters, masked saved keys, editable API base URLs, enablement, custom providers, remote catalogue sync, exact-ID manual models, model search, combined type/capability/input/status/source filters, sorting, collapsible groups and defaults. Provider status and protocol filters combine with category and search. Filter selections have immediate results, removable chips and clear-all. OpenAI-compatible, Anthropic and Google Gemini catalogue protocols retain their respective authentication and pagination. A provider can expose multiple capabilities; classification uses explicit catalogue output metadata, not guesses from model names. A model without output metadata is classified as language until the user adds a documented capability explicitly.
+
+The provider management list hides connections whose declared capabilities and saved models are exclusively text, including search results and direct provider links. Their registry entries, saved keys, models and defaults remain intact and available to existing APIs. New custom connections stay visible before models are configured; a saved non-text model also keeps its provider visible. A link to a hidden provider opens the account detail instead.
 
 | Connection | Configuration and discovery | Executable media |
 | --- | --- | --- |
@@ -12,7 +16,7 @@ The settings directory combines the dedicated media adapters, local Codex, an ac
 | OpenDesign Cloud | Separate workspace key and public HTTPS gateway origin | Existing image/video/speech contract |
 | OpenAI-compatible API | Versioned base URL, Bearer key, `/models` or manual entries | `/images/generations` and binary `/audio/speech`; voice required for speech |
 | Anthropic / Google Gemini API | Provider-specific catalogue auth and pagination | Catalogue/default configuration only; no generic media adapter |
-| OpenDesign account | Browser authorization, subscription/balance, remote language/media catalogues | Connector image/video/speech tasks |
+| OpenDesign account | Browser authorization, subscription/balance, remote language/media catalogues | Connector image/video/speech/music tasks; one-image editing where the account's image model supports edits |
 | Local Codex | Existing CLI installation/login/capability detection | Existing native image capability |
 | Dedicated OAuth, cloud IAM or local-network services | Presets are visible with a dedicated-integration notice | Not implied by a preset; no unimplemented login or local API is presented as working |
 
@@ -40,7 +44,9 @@ Successful login registers the account provider, synchronizes its enabled models
 
 ## Storage and verification
 
-Connection metadata and model defaults live in `model-gateway/connections.json`; keys live in `model-gateway/connection-secrets.json`. Legacy media credentials remain in `model-gateway/secrets.json`. Account runtime, CLI profile, session marker and model cache live under `account/`. New private files use `0600` and private directories use `0700`. This is local file storage, not an OS keychain. API responses, project exports and distribution artifacts contain no credentials.
+`gateway/connections.ts` owns configuration writes, credential resolution, endpoint resolution and default-model storage for dedicated and compatible providers. Settings HTTP, the legacy HTTP/MCP configuration entry and generation all use this boundary. Saved keys retain priority over environment keys; clearing a saved key can expose the existing environment fallback. Account sign-in and local Agent login cannot be replaced with a provider API key.
+
+Existing files are read and updated in place, without startup migration: compatible connection metadata, models, overrides and non-media defaults remain in `model-gateway/connections.json`, with keys in `model-gateway/connection-secrets.json`; dedicated provider configuration, media defaults and custom media models remain in `model-gateway/config.json`, with keys in `model-gateway/secrets.json`. The configuration service exposes the combined defaults and preserves existing provider/model IDs, verification records and queued-job snapshots. Account runtime, CLI profile, session marker and model cache remain under `account/`. New private files use `0600` and private directories use `0700`. This is local file storage, not an OS keychain. API responses, project exports and distribution artifacts contain no credentials.
 
 Deterministic tests cover protocol/authentication mapping, model pagination, failed-sync retention, private credential responses, exact-once generation, connection changes, account receipt/cancellation, sign-in failure classification, interrupted sign-ins, revocation retries, sign-in telemetry records, account panel states, billing tier/refusal/rejected-key handling, model entitlement flags and media import. Real Chrome checks exercise the local HTTP server, shell/settings navigation, custom provider CRUD, synchronization/defaults, account subprocess fixture, themes, narrow layouts, opened menus/dialogs and floating Toasts. Live account login, subscription entitlement, provider-specific execution and human visual acceptance remain separate checks.
 

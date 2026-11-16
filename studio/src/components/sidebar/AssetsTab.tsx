@@ -6,7 +6,7 @@ import { useMediaGateway } from "../../motion/MediaGatewayContext";
 import { mediaPopoverAnchor } from "../../motion/mediaPopoverPosition";
 import { buildProjectApiPath } from "../../utils/projectRouting";
 // fallow-ignore-file code-duplication
-import { memo, useState, useCallback, useRef, useMemo, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useMemo, useEffect, useId } from "react";
 import { SearchInput } from "../ui/SearchInput";
 import { FilterChip } from "../ui/FilterChip";
 import { MEDIA_EXT, FONT_EXT } from "../../utils/mediaTypes";
@@ -166,6 +166,11 @@ export const AssetsTab = memo(function AssetsTab({
   const [importing, setImporting] = useState(false);
   const [activeFilter, setActiveFilter] = useState<MediaCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const groupId = useId();
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<MediaCategory>>(new Set());
+  useEffect(() => {
+    setCollapsedCategories((previous) => (previous.size ? new Set() : previous));
+  }, [projectId, searchQuery, activeFilter]);
   const [manifest, setManifest] = useState<
     Map<string, { description?: string; duration?: number; width?: number; height?: number }>
   >(new Map());
@@ -335,6 +340,7 @@ export const AssetsTab = memo(function AssetsTab({
           <div className="flex gap-1.5 flex-wrap">
             <FilterChip
               onClick={() => setActiveFilter("all")}
+              className="max-w-full [overflow-wrap:anywhere]"
               active={activeFilter === "all"}
             >
               {t("All")}{" "}{counts.all}
@@ -344,6 +350,7 @@ export const AssetsTab = memo(function AssetsTab({
                 <FilterChip
                   key={cat}
                   onClick={() => setActiveFilter(activeFilter === cat ? "all" : cat)}
+                  className="max-w-full [overflow-wrap:anywhere]"
                   active={activeFilter === cat}
                 >
                   {t(CATEGORY_LABELS[cat])} {counts[cat]}
@@ -366,61 +373,79 @@ export const AssetsTab = memo(function AssetsTab({
           <EmptyState searchQuery={searchQuery} onClearSearch={() => setSearchQuery("")} />
         ) : (
           visibleCategories.map((cat) => (
-            <div key={cat} className="mb-1">
-              {activeFilter === "all" && visibleCategories.length > 1 && (
-                <div className="flex items-center gap-2 px-2 py-1.5">
-                  <h3 className="text-[12px] font-semibold text-panel-text-1">
-                    {t(CATEGORY_LABELS[cat])}
-                  </h3>
-                  <span className="text-[11px] text-panel-text-5">{categorized[cat].length}</span>
-                </div>
+            <div key={cat} className="mb-1" data-assets-category={cat}>
+              {activeFilter === "all" && (
+                <h3>
+                  <button
+                    type="button"
+                    className="om-nav-item flex w-full items-center gap-2 px-2 py-1.5 text-left"
+                    aria-expanded={!collapsedCategories.has(cat)}
+                    aria-controls={`${groupId}-${cat}`}
+                    onClick={() => setCollapsedCategories((previous) => {
+                      const next = new Set(previous);
+                      if (next.has(cat)) next.delete(cat);
+                      else next.add(cat);
+                      return next;
+                    })}
+                  >
+                    <RemixIcon name={collapsedCategories.has(cat) ? "arrow-right-s-line" : "arrow-down-s-line"} size={14} />
+                    <span className="text-[12px] font-semibold text-panel-text-1">{t(CATEGORY_LABELS[cat])}</span>
+                    <span className="text-[11px] text-panel-text-5">{categorized[cat].length}</span>
+                  </button>
+                </h3>
               )}
-              {cat === "audio" &&
-                categorized[cat].map((a) => (
-                  <AudioRow
-                    key={a}
-                    projectId={projectId}
-                    asset={a}
-                    used={usedPaths.has(a)}
-                    meta={manifest.get(a)}
-                    onCopy={handleCopyPath}
-                    copyFeedback={copyFeedback}
-                    onDelete={onDelete}
-                    onRename={onRename}
-                    onAddAssetToTimeline={onAddAssetToTimeline}
-                  />
-                ))}
-              {(cat === "images" || cat === "video") && (
-                <div className="hf-media-card-grid pb-1">
-                  {categorized[cat].map((a) => (
-                    <AssetCard
-                      key={a}
-                      projectId={projectId}
-                      asset={a}
-                      used={usedPaths.has(a)}
-                      duration={manifest.get(a)?.duration}
-                      onCopy={handleCopyPath}
-                      copyFeedback={copyFeedback}
-                      onDelete={onDelete}
-                      onRename={onRename}
-                      onAddAssetToTimeline={onAddAssetToTimeline}
-                    />
-                  ))}
-                </div>
-              )}
-              {cat === "fonts" &&
-                categorized[cat].map((a) => (
-                  <FontRow
-                    key={a}
-                    asset={a}
-                    used={usedPaths.has(a)}
-                    onCopy={handleCopyPath}
-                    copyFeedback={copyFeedback}
-                    onDelete={onDelete}
-                    onRename={onRename}
-                    onAddAssetToTimeline={onAddAssetToTimeline}
-                  />
-                ))}
+              <div id={`${groupId}-${cat}`} hidden={collapsedCategories.has(cat)}>
+                {!collapsedCategories.has(cat) && (
+                  <>
+                    {cat === "audio" &&
+                      categorized[cat].map((a) => (
+                        <AudioRow
+                          key={a}
+                          projectId={projectId}
+                          asset={a}
+                          used={usedPaths.has(a)}
+                          meta={manifest.get(a)}
+                          onCopy={handleCopyPath}
+                          copyFeedback={copyFeedback}
+                          onDelete={onDelete}
+                          onRename={onRename}
+                          onAddAssetToTimeline={onAddAssetToTimeline}
+                        />
+                      ))}
+                    {(cat === "images" || cat === "video") && (
+                      <div className="hf-media-card-grid pb-1">
+                        {categorized[cat].map((a) => (
+                          <AssetCard
+                            key={a}
+                            projectId={projectId}
+                            asset={a}
+                            used={usedPaths.has(a)}
+                            duration={manifest.get(a)?.duration}
+                            onCopy={handleCopyPath}
+                            copyFeedback={copyFeedback}
+                            onDelete={onDelete}
+                            onRename={onRename}
+                            onAddAssetToTimeline={onAddAssetToTimeline}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {cat === "fonts" &&
+                      categorized[cat].map((a) => (
+                        <FontRow
+                          key={a}
+                          asset={a}
+                          used={usedPaths.has(a)}
+                          onCopy={handleCopyPath}
+                          copyFeedback={copyFeedback}
+                          onDelete={onDelete}
+                          onRename={onRename}
+                          onAddAssetToTimeline={onAddAssetToTimeline}
+                        />
+                      ))}
+                  </>
+                )}
+              </div>
             </div>
           ))
         )}
