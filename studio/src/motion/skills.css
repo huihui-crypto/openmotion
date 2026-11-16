@@ -10,7 +10,6 @@
 @container (max-width: 760px) { .om-skills-library .om-skills-grid { columns: 2; } }
 @container (max-width: 420px) { .om-skills-library .om-skills-grid { columns: 1; } }
 .om-skills-title { flex-shrink: 0; }
-.om-skills-note { margin-top: var(--motion-space-24); }
 /* Skill names matter more than template titles: keep the caption readable without hover. */
 .om-skills-library .om-gallery-card-shade, .om-skills-library .om-gallery-card-caption { opacity: 1; transform: none; }
 .om-skills-library .om-gallery-cover { border-radius: var(--motion-radius-lg); overflow: hidden; background: var(--motion-inset); }

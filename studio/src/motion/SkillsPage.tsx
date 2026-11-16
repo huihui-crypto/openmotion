@@ -67,7 +67,6 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
           {visible.map(skill => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} category={t(skill.category)} tagline={t(skill.tagline)} source={sourceLabel(skill)} selected={skill.id === skillId} onSelect={() => open(skill)} />)}
         </div>
         {!visible.length && <div className={styles.empty}><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button onClick={() => { setQuery(''); setCategory(null); }}>{t('Clear filters')}</button></div>}
-        <p className="om-muted om-skills-note">{t('Open-source skills link to their upstream repository and license. OpenMotion borrows the workflow or technique; it does not bundle upstream code.')}</p>
       </main>
     </div>
     {selected && <aside className="om-skill-detail om-surface-divider" aria-label={displayName(selected)}>
