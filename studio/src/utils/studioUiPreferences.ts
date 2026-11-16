@@ -28,6 +28,7 @@ export interface StudioUiPreferences {
   /** Keeps the main track gapless: deleting a clip closes the gap. Distinct
    *  from `timelineSnapEnabled` ("Magnet", drag/trim snapping). */
   rippleEditEnabled?: boolean;
+  timelineLinkageEnabled?: boolean;
   /** Transport + ruler readout mode: timecode or frame number. */
   timeDisplayMode?: TimelineTimeDisplayMode;
   /**
@@ -83,6 +84,7 @@ function readStorage(storage: Storage | null, key: string): StudioUiPreferences 
     if (!isRecord(parsed)) return {};
 
     const preferences: StudioUiPreferences = {};
+    if (typeof parsed.timelineLinkageEnabled === "boolean") preferences.timelineLinkageEnabled = parsed.timelineLinkageEnabled;
     if (typeof parsed.timelineLabelWidth === "number" && Number.isFinite(parsed.timelineLabelWidth) && parsed.timelineLabelWidth >= 104 && parsed.timelineLabelWidth <= 320) preferences.timelineLabelWidth = parsed.timelineLabelWidth;
     if (typeof parsed.timelineVisible === "boolean") {
       preferences.timelineVisible = parsed.timelineVisible;

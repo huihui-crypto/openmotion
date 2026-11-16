@@ -488,11 +488,12 @@ export function StudioApp({ readOnlyPreview = false, readOnlyPreviewReason, reso
     () => (
       <TimelineToolbar
         domEditSession={toolbarSession}
+        onResizeElement={timelineEditing.handleTimelineElementResize}
         onSplitElement={timelineEditing.handleTimelineElementSplit}
         onSplitAtPlayhead={timelineEditing.handleSplitAtPlayhead}
       />
     ),
-    [toolbarSession, timelineEditing.handleTimelineElementSplit, timelineEditing.handleSplitAtPlayhead],
+    [toolbarSession, timelineEditing.handleTimelineElementSplit, timelineEditing.handleSplitAtPlayhead, timelineEditing.handleTimelineElementResize],
   );
   const handleExport = useCallback(() => {
     void previewPersistence

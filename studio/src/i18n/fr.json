@@ -1849,5 +1849,9 @@
   "Unlock track": "Déverrouiller la piste",
   "Delete track": "Supprimer la piste",
   "Unlock the track before deleting it": "Déverrouillez la piste avant de la supprimer",
-  "Open the composition to delete this track": "Ouvrez la composition pour supprimer cette piste"
+  "Open the composition to delete this track": "Ouvrez la composition pour supprimer cette piste",
+  "Main track magnet": "Aimant de piste principale",
+  "Timeline linkage": "Liaison de la timeline",
+  "Trim left to playhead": "Rogner à gauche jusqu’à la tête",
+  "Trim right to playhead": "Rogner à droite jusqu’à la tête"
 }

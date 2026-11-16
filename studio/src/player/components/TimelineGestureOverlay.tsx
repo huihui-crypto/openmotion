@@ -60,17 +60,6 @@ export const TimelineGestureOverlay = memo(function TimelineGestureOverlay({
       top: rowGeometry.getRowTop(insertRow) + CLIP_Y,
     };
   const clipWidth = Math.max(element.duration * pixelsPerSecond, 4);
-  const viewport = scrollRef.current;
-  let labelLeft = clipWidth + 10;
-  if (
-    position &&
-    viewport &&
-    position.left + labelLeft + 100 > viewport.scrollLeft + viewport.clientWidth
-  ) {
-    labelLeft = -100;
-    if (position.left + labelLeft < viewport.scrollLeft + contentOrigin)
-      labelLeft = Math.max(0, Math.min(clipWidth - 100, drag.pointerOffsetX));
-  }
   return (
     <div data-timeline-gesture-overlay className="absolute inset-0 pointer-events-none">
       {position && (
@@ -89,19 +78,7 @@ export const TimelineGestureOverlay = memo(function TimelineGestureOverlay({
             <span
               data-timeline-new-track-label
               role="status"
-              className="absolute whitespace-nowrap"
-              style={{
-                left: labelLeft,
-                top: (rowHeight - 22) / 2,
-                height: 22,
-                padding: "2px 8px",
-                borderRadius: 999,
-                fontSize: 11,
-                color: "var(--timeline-accent)",
-                background: theme.rowBackground,
-                border: "1px solid var(--timeline-accent)",
-                zIndex: 25,
-              }}
+              className="sr-only"
             >
               {t("+ New track")}<span className="sr-only">{t(", before track")}{" "}{insertRow + 1}</span>
             </span>

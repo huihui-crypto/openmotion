@@ -1,3 +1,4 @@
+import { mainVisualTrack } from "../player/components/timelineLinkage";
 // Asset-drop handlers for the timeline: drop an existing project asset at a
 // placement, or upload dragged-in OS files and place them sequentially.
 // Extracted verbatim from useTimelineEditing.ts to keep it under the studio
@@ -179,6 +180,7 @@ export function useTimelineAssetDropOps({
           );
           if (placement.newTrack) newElementZIndex = topTrackZIndex(originalContent, [...fileElements, ...gesture.placed, ...awaitingPreview]);
           const resolved = resolveDropTrack({
+            magneticMainTrack: usePlayerStore.getState().rippleEditEnabled && placement.track === mainVisualTrack(fileElements),
             source: originalContent,
             // Rows and insertRow count the rows the timeline shows; a track this drop opened has no others.
             elements: gesture.onNewTrack ? [] : fileElements,

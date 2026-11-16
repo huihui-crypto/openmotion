@@ -255,6 +255,11 @@ export function applyTimelineMoveAttributes(
       value: formatTimelineAttributeNumber(track),
     });
   }
+  if (patched !== original && readAttributeByTarget(original, target, "data-duration") == null) {
+    patched = applyPatchByTarget(patched, target, {
+      type: "attribute", property: "duration", value: formatTimelineAttributeNumber(duration),
+    });
+  }
   if (audioGroup === null)
     patched = applyPatchByTarget(patched, target, {
       type: "attribute",

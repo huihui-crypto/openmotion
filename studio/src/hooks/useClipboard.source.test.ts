@@ -394,11 +394,11 @@ describe("a copy in place, as the canvas makes one", () => {
     return [copy.match(/data-start="([^"]*)"/)?.[1], copy.match(/data-track-index="([^"]*)"/)?.[1]];
   };
 
-  it("duplicates at the clip's own time, on the next free track", async () => {
+  it("duplicates at the clip's own time, on a new top text track", async () => {
     selectTitle();
     const { clipboard, writes } = mountClipboard();
     await clipboard().handleDuplicate({ inPlace: true });
-    expect(copyAt(writes[0])).toEqual(["2", "1"]);
+    expect(copyAt(writes[0])).toEqual(["2", "0"]);
   });
 
   it("pastes at the copied clip's time, not the playhead's", async () => {
@@ -406,7 +406,7 @@ describe("a copy in place, as the canvas makes one", () => {
     const { clipboard, writes } = mountClipboard();
     clipboard().handleCopy();
     await clipboard().handlePaste({ inPlace: true });
-    expect(copyAt(writes[0])).toEqual(["2", "1"]);
+    expect(copyAt(writes[0])).toEqual(["2", "0"]);
   });
 
   // Host at 2 s: the clip's local 1-3 s shows as a 3-5 s master row, the clock the film's own timeline has.
@@ -440,12 +440,12 @@ describe("a copy in place, as the canvas makes one", () => {
     expect(pastedSubStarts(writes[0])).toEqual(["3"]);
   });
 
-  it("duplicates a sub-composition's clip at its own local time, on another track", async () => {
+  it("duplicates a sub-composition's clip at its own local time, on a new top text track", async () => {
     const { clipboard, writes } = mountSubClip();
     await clipboard().handleDuplicate({ inPlace: true });
     const copy = /<h2[^>]*data-hf-id[^>]*>/.exec(writes[0] ?? "")?.[0] ?? "";
     expect(copy).toContain('data-start="1"');
-    expect(copy).toContain('data-track-index="1"');
+    expect(copy).toContain('data-track-index="0"');
   });
 
   it("pastes at the playhead once the edited composition is another, whose clock differs", async () => {
@@ -513,7 +513,7 @@ describe("duplicate of a clip inside a sub-composition", () => {
     );
     await clipboard().handleDuplicate();
     const copy = /<h2[^>]*data-start="3"[^>]*>/.exec(writes[0] ?? "")?.[0] ?? "";
-    expect(copy).toContain('data-track-index="1"');
+    expect(copy).toContain('data-track-index="0"');
   });
 });
 

@@ -197,7 +197,7 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     expect(next.previewTrack).toBe(0);
   });
 
-  it("an occupied aim in an expanded row stays on that row at the nearest free time", () => {
+  it("an unchanged expanded-row clip retains its own pointer time", () => {
     const rowHeights = [TRACK_H + 2 * LANE_H, TRACK_H];
     const dragged = clip("dragged", 0, 0, 1, 3);
     const occupied = [dragged, clip("block-0", 0, 0, 1, 2), clip("block-1", 1, 0, 1, 1)];
@@ -226,7 +226,7 @@ describe("computeDragPreview — plain horizontal drag never arms a phantom inse
     });
     expect(next.insertRow).toBeNull();
     expect(next.previewTrack).toBe(0);
-    expect(next.previewStart).toBe(1);
+    expect(next.previewStart).toBe(0);
   });
 });
 
@@ -616,28 +616,21 @@ describe("computeDragPreview — the ghost start is the committed start", () => 
       expect(committedStart(ghost, m, row)).toBeUndefined();
     });
 
-    it("goes back to its own spot from a small nudge, snapped or not", () => {
-      const snapped = [{ time: 3.333, type: "clip-edge" as const }];
-      for (const targets of [[], snapped]) {
-        const { drag, clientX, clientY } = horizontalDrag(m, 0.5, 0.1);
-        const ghost = computeDragPreview(drag, clientX, clientY, {
-          ...ctx(undefined, row),
-          buildSnapTargets: () => targets,
-        });
-        expect(ghost).toMatchObject({ previewTrack: 0, previewStart: 3.333 });
-      }
+    it("follows a small nudge and opens above a collision instead of returning to its origin", () => {
+      const { drag, clientX, clientY } = horizontalDrag(m, 0.5, 0.1);
+      const ghost = computeDragPreview(drag, clientX, clientY, ctx(undefined, row));
+      expect(ghost).toMatchObject({ previewTrack: 0, insertRow: 0, previewStart: 3.43 });
     });
 
-    it("counts its own start only on its own row, where keeping it rewrites nothing", () => {
-      // Row 1 has the same off-grid slot, but a move there writes a rounded start that would overlap.
+    it("opens above a different occupied row without retiming", () => {
       const c = clip("c", 1, 0, 3.333, 1);
       const d = clip("d", 1, 6.666, 4, 1);
       const ghost = preview(m, [...row, c, d], 0, 1.5);
-      expect(ghost).toMatchObject({ previewTrack: 1, insertRow: null, previewStart: 10.67 });
+      expect(ghost).toMatchObject({ previewTrack: 1, insertRow: 1, previewStart: 3.33 });
     });
   });
 
-  it("drops the snap guide when the row moves the clip off the snapped time", () => {
+  it("keeps the snap guide when collision opens another row at the snapped time", () => {
     const a = clip("a", 0, 0, 6, 1);
     const b = clip("b", 1, 2, 2, 1);
     const { drag, clientX } = horizontalDrag(b, 1.5, 1);
@@ -647,9 +640,9 @@ describe("computeDragPreview — the ghost start is the committed start", () => 
     });
     expect(ghost).toMatchObject({
       previewTrack: 0,
-      previewStart: 6,
-      snapTime: null,
-      snapType: null,
+      previewStart: 3,
+      snapTime: 3,
+      snapType: "beat",
     });
   });
 
@@ -688,7 +681,7 @@ describe("computeDragPreview — a group move keeps its shape", () => {
       onMoveElements,
       selectedKeys,
     });
-    return onMoveElements.mock.calls[0][0];
+    return onMoveElements.mock.calls[0]?.[0] ?? [];
   }
 
   it("never bumps the grabbed clip further left than the group's 0 limit", () => {
@@ -703,12 +696,12 @@ describe("computeDragPreview — a group move keeps its shape", () => {
       ...ctx(undefined, elements),
       selectedKeys,
     });
-    expect(ghost).toMatchObject({ previewTrack: 0, insertRow: null, previewStart: 10 });
+    expect(ghost).toMatchObject({ previewTrack: 0, insertRow: 0, previewStart: 6.5 });
     const edits = commitPreview(ghost, elements, selectedKeys);
     const moved = Object.fromEntries(
       edits.map((e) => [e.element.id, e.updates.start - e.element.start]),
     );
-    expect(moved).toEqual({ a: 3, b: 3 });
+    expect(moved).toMatchObject({ a: -0.5, b: -0.5 });
   });
 
   // Drags `grabbed` by `seconds` onto `row` and commits; returns each written clip's start.
@@ -752,8 +745,9 @@ describe("computeDragPreview — a group move keeps its shape", () => {
     const locked: TimelineElement = { ...clip("locked", 0, 4, 2, 1), timelineLocked: true };
     const b = clip("b", 1, 0, 1, 1);
     const written = groupMove(b, [locked, b], new Set(["locked", "b"]), 0, 4.5);
-    // 4.5 s overlaps the locked 4-6 s clip; 3 s and 6 s are equally near, and a tie goes later.
-    expect(written).toEqual({ b: { start: 6, track: 0 } });
+    // Opening above a locked lane would renumber it; the atomic commit
+    // refuses the whole operation instead of moving the protected member.
+    expect(written).toEqual({});
   });
 });
 

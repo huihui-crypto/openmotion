@@ -185,31 +185,27 @@ export function resolveZoneDropPlacement(input: {
       insertRow--;
     return { track: desired, insertRow, start };
   }
-  // A vertical visual move changes paint order, not timing. When the aimed
-  // lane is occupied, open a lane beyond it in the direction of travel instead
-  // of moving the clip to a different scene in time. Horizontal and audio moves
-  // keep the existing nearest-free-time behavior.
-  if (
-    !isAudio && input.origin && input.origin.track !== desired &&
-    Math.abs(start - input.origin.start) < 0.001 &&
-    !isLaneFree(elements, desired, start, start + duration, dragKey)
-  ) {
-    const row = order.indexOf(desired);
-    const insertRow = row + (desired > input.origin.track ? 1 : 0);
-    if (isInsertAllowedForZone(insertRow, audioRow, false, input.allowedInsertRows))
-      return { track: desired, insertRow, start };
+  // Collision changes the lane, never the pointer's horizontal time. Search
+  // upward inside the same kind zone, then open a lane above the aimed row.
+  const safeStart = Math.max(minStart ?? 0, start);
+  if (input.origin?.track === desired && Math.abs(safeStart - input.origin.start) < 0.005)
+    return { track: desired, insertRow: null, start: input.origin.start };
+  if (isLaneFree(elements, desired, safeStart, safeStart + duration, dragKey))
+    return { track: desired, insertRow: null, start: safeStart };
+  const row = order.indexOf(desired);
+  for (let index = row - 1; index >= 0; index--) {
+    const track = order[index];
+    if (!zoneTracks.includes(track)) continue;
+    if (isLaneFree(elements, track, safeStart, safeStart + duration, dragKey))
+      return { track, insertRow: null, start: safeStart };
   }
-  const origin = input.origin?.track === desired ? input.origin.start : null;
-  const freeStart = resolveNearestFreeStart(
-    elements,
-    desired,
-    start,
-    duration,
-    dragKey,
-    minStart,
-    origin,
-  );
-  return { track: desired, insertRow: null, start: freeStart };
+  let insertRow = row;
+  while (insertRow > 0 && input.allowedInsertRows && !input.allowedInsertRows.has(insertRow)) insertRow--;
+  if (isInsertAllowedForZone(insertRow, audioRow, isAudio, input.allowedInsertRows))
+    return { track: desired, insertRow, start: safeStart };
+  // A protected group boundary cannot be split. Keep the origin lane and time
+  // rather than silently moving the clip to a different time.
+  return { track: input.origin?.track ?? desired, insertRow: null, start: safeStart };
 }
 
 /**

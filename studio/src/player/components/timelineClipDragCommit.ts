@@ -274,7 +274,7 @@ export function commitDraggedClipMove(drag: DraggedClipState, deps: DragCommitDe
   // empty space outside the rows (insert). Anything else never touches z.
   const aimTrack = drag.desiredTrack ?? drag.previewTrack;
   if (isPendingTimelineRow(aimTrack, elements)) return;
-  const isVertical = isInsert || aimTrack !== drag.element.track;
+  const isVertical = isInsert || laneChanged || aimTrack !== drag.element.track;
   const multi = resolveMultiSelection(drag, deps);
   let renumbers: ReturnType<typeof planTimelineLanePersistence> = [];
   if (!isInsert) {

@@ -1849,5 +1849,9 @@
   "Unlock track": "Spur entsperren",
   "Delete track": "Spur löschen",
   "Unlock the track before deleting it": "Entsperren Sie die Spur, bevor Sie sie löschen",
-  "Open the composition to delete this track": "Öffnen Sie die Komposition, um diese Spur zu löschen"
+  "Open the composition to delete this track": "Öffnen Sie die Komposition, um diese Spur zu löschen",
+  "Main track magnet": "Hauptspur-Magnet",
+  "Timeline linkage": "Zeitleisten-Verknüpfung",
+  "Trim left to playhead": "Links bis zum Abspielkopf kürzen",
+  "Trim right to playhead": "Rechts bis zum Abspielkopf kürzen"
 }

@@ -159,7 +159,7 @@ describe("isInsertAllowedForZone", () => {
   });
 });
 
-describe("resolveZoneDropPlacement (a drop on a row stays on that row, no overlap)", () => {
+describe("resolveZoneDropPlacement (overlap changes lanes while preserving time)", () => {
   // order [0,1,2] visual + [3] audio. audioRow = 3.
   const order = [0, 1, 2, 3];
   const audioTracks = new Set([3]);
@@ -180,40 +180,40 @@ describe("resolveZoneDropPlacement (a drop on a row stays on that row, no overla
     ).toEqual({ track: 1, insertRow: null, start: 2 });
   });
 
-  it("stays on the aimed row at its nearest free time when the aimed span is occupied", () => {
+  it("uses the nearest free upper lane at the pointer time", () => {
     expect(
       resolveZoneDropPlacement({ ...base, elements: [el("a", 1, 0, 5)], desiredTrack: 1 }),
-    ).toEqual({ track: 1, insertRow: null, start: 5 });
+    ).toEqual({ track: 0, insertRow: null, start: 2 });
   });
 
-  it("never hops to another row or opens a track when every row is occupied", () => {
+  it("opens a lane above the aim when every row is occupied", () => {
     expect(
       resolveZoneDropPlacement({ ...base, elements: allVisualOccupied(), desiredTrack: 1 }),
-    ).toEqual({ track: 1, insertRow: null, start: 10 });
+    ).toEqual({ track: 1, insertRow: 1, start: 2 });
   });
 
-  it("does not fall back to the dragged clip's origin row", () => {
+  it("opens above the aim when upper lanes are occupied", () => {
     expect(
       resolveZoneDropPlacement({
         ...base,
         elements: [el("a", 0, 0, 5), el("b", 1, 0, 5), el("x", 2, 0, 5)],
         desiredTrack: 1,
       }),
-    ).toEqual({ track: 1, insertRow: null, start: 5 });
+    ).toEqual({ track: 1, insertRow: 1, start: 2 });
   });
 
-  it("Tag (2 s, 5 s long) onto the Subtitle row (0-6 s) lands at 6 s on that row", () => {
+  it("Tag keeps 2s and opens above the occupied Subtitle row", () => {
     const elements = [el("title", 0, 0, 10), el("subtitle", 1, 0, 6), el("tag", 2, 2, 5)];
     const drop = { ...base, elements, start: 2, duration: 5, dragKey: "tag" };
     expect(resolveZoneDropPlacement({ ...drop, desiredTrack: 1 })).toEqual({
       track: 1,
-      insertRow: null,
-      start: 6,
+      insertRow: 1,
+      start: 2,
     });
     expect(resolveZoneDropPlacement({ ...drop, desiredTrack: 0 })).toEqual({
       track: 0,
-      insertRow: null,
-      start: 10,
+      insertRow: 0,
+      start: 2,
     });
   });
 
@@ -327,18 +327,18 @@ describe("vertical visual drops preserve scene timing", () => {
     expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 2 } }))
       .toEqual({ track: 1, insertRow: 1, start: 2 });
   });
-  it("opens below an occupied lane when moving downward", () => {
+  it("opens above an occupied lane when moving downward", () => {
     expect(resolveZoneDropPlacement({ ...base, origin: { track: 0, start: 2 } }))
-      .toEqual({ track: 1, insertRow: 2, start: 2 });
+      .toEqual({ track: 1, insertRow: 1, start: 2 });
   });
-  it("preserves audio collision placement and horizontal visual retiming", () => {
-    expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 1 } }).start).toBe(10);
+  it("preserves pointer time for both horizontal visual and audio moves", () => {
+    expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 1 } }).start).toBe(2);
     expect(resolveZoneDropPlacement({ ...base, isAudio: true, desiredTrack: 3,
       elements: [el("audio", 3, 0, 10)], origin: { track: 4, start: 2 } }))
-      .toEqual({ track: 3, insertRow: null, start: 10 });
+      .toEqual({ track: 3, insertRow: 3, start: 2 });
   });
   it("does not insert into a protected group boundary", () => {
     expect(resolveZoneDropPlacement({ ...base, origin: { track: 2, start: 2 },
-      allowedInsertRows: new Set([0, 3, 4]) })).toEqual({ track: 1, insertRow: null, start: 10 });
+      allowedInsertRows: new Set([0, 3, 4]) })).toEqual({ track: 1, insertRow: 0, start: 2 });
   });
 });

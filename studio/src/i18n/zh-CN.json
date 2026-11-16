@@ -1813,5 +1813,9 @@
   "Unlock track": "解锁轨道",
   "Delete track": "删除轨道",
   "Unlock the track before deleting it": "请先解锁轨道再删除",
-  "Open the composition to delete this track": "请进入对应合成后删除此轨道"
+  "Open the composition to delete this track": "请进入对应合成后删除此轨道",
+  "Main track magnet": "主轨磁吸",
+  "Timeline linkage": "联动",
+  "Trim left to playhead": "向左裁剪至播放头",
+  "Trim right to playhead": "向右裁剪至播放头"
 }

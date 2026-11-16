@@ -115,6 +115,8 @@ interface PlayerState extends PlayerStoreSlices {
   timelineSnapEnabled: boolean;
   setTimelineSnapEnabled: (enabled: boolean) => void;
   /** Keeps the main track gapless on delete; distinct from the magnet above. */
+  timelineLinkageEnabled: boolean;
+  setTimelineLinkageEnabled: (enabled: boolean) => void;
   rippleEditEnabled: boolean;
   setRippleEditEnabled: (enabled: boolean) => void;
   /** Transport + ruler readout: timecode ("time") or frame number ("frame"). */
@@ -440,12 +442,17 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   setSelectedElementIds: (ids: Set<string>) => set({ selectedElementIds: new Set(ids) }),
   timelineSnapEnabled: readStudioUiPreferences().timelineSnapEnabled ?? true,
   setTimelineSnapEnabled: (enabled) => {
-    writeStudioUiPreferences({ timelineSnapEnabled: enabled });
+    writeStudioUiPreferences({ timelineSnapEnabled: enabled }, undefined, usePlayerStore.getState().timelineProjectId);
     set({ timelineSnapEnabled: enabled });
+  },
+  timelineLinkageEnabled: true,
+  setTimelineLinkageEnabled: (enabled) => {
+    writeStudioUiPreferences({ timelineLinkageEnabled: enabled }, undefined, usePlayerStore.getState().timelineProjectId);
+    set({ timelineLinkageEnabled: enabled });
   },
   rippleEditEnabled: readStudioUiPreferences().rippleEditEnabled ?? true, // default on
   setRippleEditEnabled: (enabled) => {
-    writeStudioUiPreferences({ rippleEditEnabled: enabled });
+    writeStudioUiPreferences({ rippleEditEnabled: enabled }, undefined, usePlayerStore.getState().timelineProjectId);
     set({ rippleEditEnabled: enabled });
   },
   timeDisplayMode: readStudioUiPreferences().timeDisplayMode ?? "time",
@@ -561,6 +568,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       if (state.timelineProjectId === projectId) return state;
       return {
         ...createTimelineResetState(),
+        timelineSnapEnabled: readStudioUiPreferences(undefined, projectId).timelineSnapEnabled ?? true,
+        rippleEditEnabled: readStudioUiPreferences(undefined, projectId).rippleEditEnabled ?? true,
+        timelineLinkageEnabled: readStudioUiPreferences(undefined, projectId).timelineLinkageEnabled ?? true,
         timelineSessionEpoch: state.timelineSessionEpoch + 1,
         timelineProjectId: projectId,
       };

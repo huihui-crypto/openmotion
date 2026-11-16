@@ -25,7 +25,7 @@ export function TimelineGestureFeedback() {
   const top = Math.max(viewport.scrollTop + RULER_H, Math.min(rowGeometry.getRowTop(Math.max(0, row)) - 26, viewport.scrollTop + viewport.clientHeight - 24));
   return <div data-timeline-gesture-feedback aria-hidden="true" className="motion-placement-label"
     data-snapped={Boolean(snapGuide) || undefined} style={{ left, top, maxWidth: width }}>
-    <span>{moving?.insertRow != null ? t("+ New track") : `${t("Track")} ${row + 1}`}</span>
+    <span>{`${t("Track")} ${row + 1}`}</span>
     <strong>{preciseTime(start)}{width >= 200 ? ` → ${preciseTime(start + duration)}` : ""}</strong>
   </div>;
 }

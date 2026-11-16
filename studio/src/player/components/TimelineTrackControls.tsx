@@ -29,12 +29,15 @@ export function TimelineTrackControls({ elements, track, number, label, hidden, 
     catch (error) { shell?.showToast(error instanceof Error ? error.message : 'Changes could not be saved.', 'error'); }
     finally { running.current = false; setBusy(false); }
   };
-  const name = t('Track {number}', { number: number ?? '' });
+  const kind = audioOnly ? 'music-2-line' :
+    elements.length && elements.every(element => element.text || /^(h[1-6]|p|span|strong)$/.test(element.tag)) ? 'text' :
+    elements.length && elements.every(element => element.tag === 'img') ? 'image-line' : 'film-line';
+  const name = t('Track {number}' , { number: number ?? '' });
   const lockLabel = t(locked ? 'Unlock track' : 'Lock track');
   return <div className="motion-track-controls" aria-label={name} title={label}
     onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
     <span className="motion-track-kind" title={`${name} · ${label}`} aria-label={name}>
-      <RemixIcon name={audioOnly ? 'music-2-line' : 'film-line'} size={16} />
+      <RemixIcon name={kind} size={16} />
     </span>
     <button type="button" aria-label={`${lockLabel} · ${name}`} title={lockLabel}
       aria-pressed={locked} disabled={disabled || !edits.onSetElementsAttributeQuiet}

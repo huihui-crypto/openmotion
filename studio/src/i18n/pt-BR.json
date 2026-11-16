@@ -1849,5 +1849,9 @@
   "Unlock track": "Desbloquear faixa",
   "Delete track": "Excluir faixa",
   "Unlock the track before deleting it": "Desbloqueie a faixa antes de excluí-la",
-  "Open the composition to delete this track": "Abra a composição para excluir esta faixa"
+  "Open the composition to delete this track": "Abra a composição para excluir esta faixa",
+  "Main track magnet": "Ímã da faixa principal",
+  "Timeline linkage": "Vinculação da linha do tempo",
+  "Trim left to playhead": "Aparar à esquerda até o cursor",
+  "Trim right to playhead": "Aparar à direita até o cursor"
 }

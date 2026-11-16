@@ -1813,5 +1813,9 @@
   "Unlock track": "Parçanın kilidini aç",
   "Delete track": "Parçayı sil",
   "Unlock the track before deleting it": "Silmeden önce parçanın kilidini açın",
-  "Open the composition to delete this track": "Bu parçayı silmek için kompozisyonu açın"
+  "Open the composition to delete this track": "Bu parçayı silmek için kompozisyonu açın",
+  "Main track magnet": "Ana parça mıknatısı",
+  "Timeline linkage": "Zaman çizelgesi bağlantısı",
+  "Trim left to playhead": "Oynatma kafasına kadar solu kırp",
+  "Trim right to playhead": "Oynatma kafasına kadar sağı kırp"
 }

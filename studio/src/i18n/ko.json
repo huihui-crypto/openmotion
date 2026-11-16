@@ -1813,5 +1813,9 @@
   "Unlock track": "트랙 잠금 해제",
   "Delete track": "트랙 삭제",
   "Unlock the track before deleting it": "삭제하기 전에 트랙 잠금을 해제하세요",
-  "Open the composition to delete this track": "이 트랙을 삭제하려면 컴포지션을 여세요"
+  "Open the composition to delete this track": "이 트랙을 삭제하려면 컴포지션을 여세요",
+  "Main track magnet": "메인 트랙 자석",
+  "Timeline linkage": "타임라인 연동",
+  "Trim left to playhead": "재생 헤드까지 왼쪽 자르기",
+  "Trim right to playhead": "재생 헤드까지 오른쪽 자르기"
 }

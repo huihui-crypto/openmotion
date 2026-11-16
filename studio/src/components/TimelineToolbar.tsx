@@ -1,3 +1,6 @@
+import { TimelineBehaviorToggles } from "./TimelineBehaviorToggles";
+import { TimelineTrimButtons } from "./TimelineTrimButtons";
+import type { TimelineEditCallbacks } from "../player/components/timelineCallbacks";
 import { RemixIcon } from "../icons/RemixIcons";
 import { useMvpEditor } from "../motion/StudioHost";
 import { useI18n } from "../i18n/I18n";
@@ -6,7 +9,6 @@ import {
   ArrowsOutLineHorizontal,
   ZoomSelection,
   Image,
-  Magnet,
   MagnifyingGlassMinus,
   MagnifyingGlassPlus,
 } from "../icons/RemixIcons";
@@ -31,7 +33,6 @@ import {
 import { usePlayerStore, type TimelineElement } from "../player";
 import { Tooltip } from "./ui";
 import { AudioMetersIcon } from "./icons/AudioMetersIcon";
-import { RippleEditIcon } from "./icons/RippleEditIcon";
 import { flatActive, flatBtn, flatDisabled, flatIdle } from "./timelineToolbarStyles";
 import { TimelineHistoryButtons, type TimelineHistoryButtonsProps } from "./TimelineHistoryButtons";
 import { TimelineToolPicker } from "./TimelineToolPicker";
@@ -54,6 +55,7 @@ interface DomEditSessionSlice extends EnableKeyframesSession {
 
 export interface TimelineToolbarProps {
   domEditSession?: DomEditSessionSlice;
+  onResizeElement?: TimelineEditCallbacks["onResizeElement"];
   onSplitAtPlayhead?: (splitTime: number) => void;
   onSplitElement?: (element: TimelineElement, splitTime: number) => void;
   splitShortcut?: TimelineProps["splitShortcut"];
@@ -157,6 +159,7 @@ function useKeyframeToggle(session?: DomEditSessionSlice) {
 export const TimelineToolbar = memo(function TimelineToolbar({
   domEditSession,
   onSplitElement,
+  onResizeElement,
   onSplitAtPlayhead,
   splitShortcut,
   history,
@@ -174,10 +177,6 @@ export const TimelineToolbar = memo(function TimelineToolbar({
   showKeyframes = showKeyframes && !mvp;
   const keys = useStudioKeys();
   const kf = keyHint("addKeyframe", keys);
-  const timelineSnapEnabled = usePlayerStore((s) => s.timelineSnapEnabled);
-  const setTimelineSnapEnabled = usePlayerStore((s) => s.setTimelineSnapEnabled);
-  const rippleEditEnabled = usePlayerStore((s) => s.rippleEditEnabled);
-  const setRippleEditEnabled = usePlayerStore((s) => s.setRippleEditEnabled);
   const autoKeyframeEnabled = usePlayerStore((s) => s.autoKeyframeEnabled);
   const setAutoKeyframeEnabled = usePlayerStore((s) => s.setAutoKeyframeEnabled);
   const thumbnailMode = usePlayerStore((s) => s.thumbnailMode);
@@ -226,7 +225,6 @@ export const TimelineToolbar = memo(function TimelineToolbar({
     if (!mvp) return;
     const store = usePlayerStore.getState();
     store.setThumbnailMode("adaptive");
-    store.setRippleEditEnabled(false);
     useAudioMetersVisible.getState().setVisible(false);
     useLinkedClipPreferences.getState().setLinkedSelection(false);
   }, [mvp]);
@@ -279,38 +277,8 @@ export const TimelineToolbar = memo(function TimelineToolbar({
                 </Tooltip>
               );
             })()}
+          <TimelineTrimButtons onResize={onResizeElement} />
           {!mvp && <LinkedSelectionToggle />}
-          <Tooltip
-            side="bottom"
-            label={t("Snapping ({value0})", { value0: keyHint("timelineSnap", keys) })}
-          >
-            <button
-              type="button"
-              onClick={() => setTimelineSnapEnabled(!timelineSnapEnabled)}
-              aria-label={t("Snapping")}
-              aria-pressed={timelineSnapEnabled}
-              className={timelineSnapEnabled ? flatActive : flatIdle}
-            >
-              <Magnet size={16} weight="bold" aria-hidden="true" />
-            </button>
-          </Tooltip>
-{!mvp && <>           <Tooltip
-            label={
-              rippleEditEnabled
-                ? t("Ripple on: keeps the main track gapless")
-                : t("Ripple off: deleting a main-track clip leaves a gap")
-            }
-          >
-            <button
-              type="button"
-              onClick={() => setRippleEditEnabled(!rippleEditEnabled)}
-              aria-label={t("Toggle ripple edit")}
-              aria-pressed={rippleEditEnabled}
-              className={rippleEditEnabled ? flatActive : flatIdle}
-            >
-              <RippleEditIcon size={16} />
-            </button>
-          </Tooltip> </>}
           {!mvp && projectHasAudio && (
             <Tooltip label={audioMetersVisible ? t("Hide audio meters") : t("Show audio meters")}>
               <button
@@ -472,6 +440,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
           })()}
         </div>
         <div className="flex items-center gap-0.5">
+          <TimelineBehaviorToggles />
           {rightActions}
 {!mvp && <>           <Tooltip
             label={

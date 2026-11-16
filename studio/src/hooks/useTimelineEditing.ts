@@ -1,3 +1,4 @@
+import { compactMainTrack } from "../player/components/timelineMainMagnet";
 // fallow-ignore-file complexity
 import { useRef } from "react";
 import { useStableHandlers } from "./useStableHandlers";
@@ -271,7 +272,13 @@ export function useTimelineEditing({
   );
   const editing = {
     handleTimelineElementMove: track(guard((element) => [element], handleTimelineElementMove)),
-    handleTimelineElementResize: track(guard((element) => [element], handleTimelineElementResize)),
+    handleTimelineElementResize: track(guard((element: TimelineElement) => [element], (element: TimelineElement, updates: Pick<TimelineElement, "start" | "duration" | "playbackStart">) => {
+      const state = usePlayerStore.getState();
+      const changes = compactMainTrack(timelineElements, [{ element, ...updates }], state.rippleEditEnabled, state.timelineLinkageEnabled);
+      if (changes.length > 1 || changes[0]?.start !== updates.start)
+        return groupEditing.handleTimelineGroupResize(changes);
+      return handleTimelineElementResize(element, updates);
+    })),
     handleToggleTrackHidden: track(
       guard(
         (trackIndex) => timelineElements.filter((el) => el.track === trackIndex),

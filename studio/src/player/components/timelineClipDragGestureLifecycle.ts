@@ -197,7 +197,7 @@ export function mountTimelineClipDragGestureLifecycle({
       setShowPopover(false);
       setRangeSelectionRef.current?.(null);
     }
-    applyResizePointerRef.current(resize, event.clientX);
+    applyResizePointerRef.current({ ...resize, snapDisabled: event.metaKey || event.ctrlKey }, event.clientX);
     syncClipDragAutoScrollRef.current(event.clientX, event.clientY);
   };
 
@@ -230,7 +230,7 @@ export function mountTimelineClipDragGestureLifecycle({
       setShowPopover(false);
       setRangeSelectionRef.current?.(null);
     }
-    publishDraggedClip(updateDraggedClipPreviewRef.current(drag, event.clientX, event.clientY));
+    publishDraggedClip(updateDraggedClipPreviewRef.current({ ...drag, snapDisabled: event.metaKey || event.ctrlKey }, event.clientX, event.clientY));
     syncClipDragAutoScrollRef.current(event.clientX, event.clientY);
   };
 
