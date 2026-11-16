@@ -50,6 +50,9 @@ test('every distribution preserves public workflow dependencies and licenses whi
     assert(files.has('shared/asset-limits.ts'), 'The shared asset import limit must ship');
     assert(files.has('shared/webmcp-tools.ts'), 'The shared WebMCP adapter must ship with its public tool definitions');
     assert(files.has('tracking/device.ts'), 'The device identity runtime dependency must ship');
+    for (const script of ['register_motion.py', 'measure_motion.py']) {
+      assert(files.has('skills/openmotion-recreate/scripts/' + script), 'Missing recreation helper: ' + script);
+    }
     for (const file of ['shared/provider-presets.json', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'docs/provider-settings.md', 'gateway/account.ts', 'gateway/connections.ts', 'gateway/compatible.ts']) assert(files.has(file), 'Missing provider settings runtime or license: ' + file);
     assert(![...files].some(file => file.includes('@powerformer/vela-cli')), 'The optional account connector must not be redistributed');
     for (const file of ['studio/build/index.html', 'studio/LICENSE', 'template-library/LICENSE', 'template-library/NOTICE.md', 'packages/design-system/fonts/Albert-Sans-OFL.txt', 'scripts/distribution.ts', 'scripts/diagnostics.mjs', 'scripts/zip.mjs', 'scripts/diagnostic-redaction.mjs', 'shared/build-info.json', 'shared/editor-launch.pl', 'shared/workspace-studio.ts', 'shared/owned-studio.mjs', 'shared/workflow-entry.js', 'skills/openmotion-recreate/scripts/measure_frame.mjs']) assert(files.has(file), 'Missing runtime or license: ' + file);

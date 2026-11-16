@@ -97,7 +97,7 @@
     "Can ChatGPT cloud connect to this workspace?": "ChatGPT 云端可以直接连接吗？",
     "This installation exposes local stdio, not a public HTTPS MCP endpoint. Use a local Agent or compatible desktop MCP client. The editor URL is not an MCP server URL.": "当前安装提供本机 stdio，尚无公开 HTTPS MCP 端点。请使用本地 Agent 或兼容的桌面 MCP 客户端。编辑器地址不是 MCP 服务器地址。",
     "Can I recreate a reference video?": "可以复刻参考视频吗？",
-    "Yes. Give your Agent the reference and your brand. The recreation Skill analyses and rebuilds the film as editable source. Access to the reference, media understanding and fidelity depend on the host and supplied material.": "可以。把参考和品牌信息交给 Agent，由复刻 Skill 分析并重建为可编辑源码。参考获取、媒体理解与还原效果取决于宿主能力和提供的材料。",
+    "Yes. Give your Agent the reference and your brand. The recreation Skill analyses and rebuilds the film as editable source, with comparisons of timing, object motion and changes within each scene. Access to the reference, media understanding and fidelity depend on the host and supplied material.": "可以。把参考和品牌信息交给 Agent，由复刻 Skill 分析并重建为可编辑源码，逐项对照时序、物体运动和场景内部变化。参考获取、媒体理解与还原效果取决于宿主能力和提供的材料。",
     "Where do I find my finished work?": "完成的作品在哪里？",
     "Keep imported footage and generated images, clips, music and voice in the project, ready for the next edit.": "把已有素材与生成的图片、视频、音乐和配音留在工程里，下次改稿继续使用。",
     "Can I see templates and videos inside my Agent?": "可以在 Agent 里面看模板和成片吗？",

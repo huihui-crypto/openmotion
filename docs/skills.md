@@ -20,11 +20,13 @@ Renaming does not change schemas, defaults, engine versions, permissions or proj
 
 Director and its existing quality references now cover concrete visual events, joint material/motion design, recognizable action windows, representative prototypes and reuse of accepted implementations. Shared intake/runtime guidance covers scoped material acquisition; edit and verification own timing-evidence invalidation and evidence classification. No Skill, Resource section, public Tool or media service is added.
 
-The current five-route, eleven-Tool contract, editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
+The current five-route, thirteen-Tool contract, editor-first handoff, requested-export behavior and distribution layout remain unchanged. This guidance does not establish cross-task creative reliability or native audiovisual model-review capability. See [the director guide](openmotion-director.md). Version-specific statements below describe their historical snapshots.
 
 ## Reference reconstruction guidance
 
 The recreate route carries a shot/action-unit process with concrete worker briefs, source ownership, time/coordinate mapping and inspected-source handoffs. Reference observations become timed controls consumed by the renderer, with conditional methods for camera transforms, relative part motion, changing shapes, mark-based materials, text and exposure. Local iteration compares observed and intermediate states, repairs the responsible mechanism, and rechecks shared assets, overlap and the complete layer stack after integration. One Agent can execute the same units sequentially. Observation density and implementation remain scene-dependent. The guidance is based on segment-production retrospectives that include reused implementations and directed corrections. Reliability across fresh sessions and different references still requires evaluation. See [the reconstruction reference](../skills/openmotion-recreate/references/rebuild.md#establish-a-difficult-visual-system).
+
+Before material grouping, the recreation guidance distinguishes object motion, internal content changes and exposure. Timed comparisons cover the defining changes and stationary anchors, including the handoff from intact content into fragments during breakup or assembly. An optional host-Python registration helper measures planar camera observations with explicit coordinate and fit evidence. The visible-motion helper records source travel before authoring and compares local movement in the actual export. Material review includes the reassembled background and occlusion. The maker chooses the representation from observed behavior and checks its source controls in the actual output.
 
 ## 职责与入口
 
