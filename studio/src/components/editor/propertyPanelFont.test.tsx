@@ -26,7 +26,13 @@ beforeEach(() => {
   vi.stubGlobal("FontFace", class {
     load = vi.fn(async () => this);
   });
-  Object.defineProperty(document, "fonts", { configurable: true, value: { add: vi.fn(), [Symbol.iterator]: function* () { yield { family: "Outer UI Font" }; } } });
+  Object.defineProperty(document, "fonts", {
+    configurable: true,
+    value: Object.assign(new EventTarget(), {
+      add: vi.fn(),
+      [Symbol.iterator]: function* () { yield { family: "Outer UI Font" }; },
+    }),
+  });
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => ({

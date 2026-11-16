@@ -21,6 +21,7 @@ import { thumbnailRevisionOf } from "../../player/store/thumbnailSlice";
 import { encodePreviewPath } from "../../player/components/thumbnailUtils";
 import { TIMELINE_COMPOSITION_MIME } from "../../utils/timelineCompositionDrop";
 import { Tooltip } from "../ui/Tooltip";
+import { OverflowText } from "../ui/OverflowText";
 
 interface CompositionsTabProps {
   projectId: string;
@@ -383,18 +384,18 @@ function CompCard({
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          <span className="motion-composition-name text-[11px] font-medium text-neutral-300 truncate">{name}</span>
+        <div className="flex flex-wrap items-center gap-1">
+          <OverflowText text={name} className="motion-composition-name text-[11px] font-medium text-neutral-300 truncate" />
           {isRoot && (
             <span
               aria-label={t("Root composition: opens automatically on load")}
               title={t("Root composition: opens automatically on load")}
-              className="flex-shrink-0 rounded-full bg-neutral-700/60 px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-neutral-300"
+              className="max-w-full truncate flex-shrink-0 rounded-full bg-neutral-700/60 px-1.5 py-px text-[8px] font-bold uppercase tracking-wide text-neutral-300"
             >
               {t("Root")}</span>
           )}
         </div>
-        <span className="text-[9px] text-neutral-600 truncate block">{comp}</span>
+        <OverflowText text={comp} className="text-[9px] text-neutral-600 truncate block" />
       </div>
       {onAddToTimeline && (
         <button

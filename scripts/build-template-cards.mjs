@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, readFile, writeFile, lstat } from 'node:fs/promises';
+import { readFile, writeFile, lstat } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,9 @@ const sourceInputs = [
   'mcp-ui/template-recommendations/types.ts',
   'mcp-ui/tsconfig.json',
   'scripts/build-template-cards.mjs',
+  'packages/design-system/inline-feedback.ts',
+  'packages/design-system/tokens.css',
+  'packages/design-system/studio/feedback.css',
 ].sort();
 const buildOutputs = ['mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/app.css'].sort();
 const identityPath = 'mcp-ui/template-recommendations/build/identity.json';
@@ -81,7 +84,9 @@ export async function buildTemplateCards() {
       rollupOptions: { output: { inlineDynamicImports: true } },
     },
   });
-  await cp(path.join(directory, 'app.css'), path.join(directory, 'build/app.css'));
+  const styles = await Promise.all(['packages/design-system/tokens.css', 'packages/design-system/studio/feedback.css',
+    'mcp-ui/template-recommendations/app.css'].map(file => readFile(path.join(applicationRoot, file), 'utf8')));
+  await writeFile(path.join(directory, 'build/app.css'), styles.join('\n'));
   await writeFile(path.join(applicationRoot, identityPath), JSON.stringify(await buildIdentity(applicationRoot), null, 2) + '\n');
   await checkTemplateCardsBuild();
 

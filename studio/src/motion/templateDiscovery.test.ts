@@ -10,6 +10,14 @@ it('normalizes localized uses into stable, meaningful video purposes', () => {
   expect(facetValues({ ...template, uses: ['A new published use'] }, 'uses')).toEqual(['A new published use']);
 });
 
+it('merges the published plural launch label with localized and canonical purposes', () => {
+  for (const value of ['Product launches', 'Product launch', '产品发布', 'Product launch films', '产品发布宣传片']) {
+    expect(facetValues({ ...template, uses: [value] }, 'uses')).toEqual(['Product launch films']);
+  }
+  expect(facetValues({ ...template, uses: ['Product launches', '产品发布', 'Product launch films', 'A new published use'] }, 'uses'))
+    .toEqual(['Product launch films', 'A new published use']);
+});
+
 it('identifies reviewed fundraising entries without classifying every milestone as fundraising', () => {
   const item = { ...template, uses: ['Milestones and results'] };
   expect(facetValues(item, 'uses')).toEqual(['Milestones & results']);

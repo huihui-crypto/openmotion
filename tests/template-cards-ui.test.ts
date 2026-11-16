@@ -35,8 +35,11 @@ test('the real component waits for a result and renders the frozen ordered selec
 });
 
 const flush = () => new Promise<void>(resolve => setImmediate(resolve));
-function fixture(options: { reduced?: boolean; message?: boolean; draft?: boolean; send?: TemplateCardsHost['sendMessage'] } = {}) {
+function fixture(options: { reduced?: boolean; message?: boolean; draft?: boolean; send?: TemplateCardsHost['sendMessage']; copy?: (text: string) => Promise<void> } = {}) {
   const window = new Window(), doc = window.document;
+  const copied: string[] = [];
+  Object.defineProperty(window.navigator, 'clipboard', { configurable: true,
+    value: { writeText: async (text: string) => { await options.copy?.(text); copied.push(text); } } });
   let visibility = 'visible', reduced = options.reduced ?? false, allocated = 0;
   Object.defineProperty(doc, 'visibilityState', { configurable: true, get: () => visibility });
   const changes = new Set<() => void>();
@@ -101,7 +104,7 @@ function fixture(options: { reduced?: boolean; message?: boolean; draft?: boolea
   const root = doc.createElement('main'); doc.body.append(root);
   const ui = mountTemplateCards(root as unknown as HTMLElement, bootstrap, host); ui.setConnected(true);
   const show = () => { ui.update(result()); observers.at(-1)?.emit(true); };
-  return { window, doc, root, ui, observers, revoked, messages, state, show,
+  return { window, doc, root, ui, observers, revoked, messages, copied, state, show,
     get allocated() { return allocated; },
     cards: () => [...root.querySelectorAll('article video')],
     visible(value: boolean) { observers.at(-1)?.emit(value); },
@@ -186,8 +189,9 @@ test('all seven user-request languages override host locale across welcome, card
       manual.ui.update(data);
       manual.root.querySelector<HTMLButtonElement>('article .omtc-clone')!.click(); await flush();
       assert.equal(manual.messages.length, 0);
-      assert.equal(manual.root.querySelector<HTMLTextAreaElement>('textarea')!.value, recreationPrompt(data.cards[0], language));
-      assert.equal(manual.root.querySelector('.omtc-feedback')!.textContent, translations[language].ui.manual);
+      assert.equal(manual.copied.at(-1), recreationPrompt(data.cards[0], language));
+      assert.equal(manual.root.querySelector('textarea'), null);
+      assert.equal(manual.root.querySelector('.motion-inline-toast')!.textContent, translations[language].ui.copied);
     } finally { await manual.close(); }
   }
   assert.deepEqual(['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'es-ES', 'pt-BR', 'pt-PT'].map(resolveLanguage), ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt', 'pt']);
@@ -307,9 +311,9 @@ test('selection feedback follows the same card when returning from detail during
     f.show(); await flush(); f.root.querySelector<HTMLButtonElement>('article .omtc-cover')!.click(); await flush();
     f.root.querySelector<HTMLButtonElement>('.omtc-detail .omtc-clone')!.click();
     f.root.querySelector<HTMLButtonElement>('.omtc-back')!.click();
-    assert.equal(f.root.querySelector('article .omtc-feedback')!.textContent, 'Adding to composer…');
+    assert.equal(f.root.querySelector('.motion-inline-toast')!.textContent, 'Adding to composer…');
     finish({ isError: true }); await flush();
-    assert.ok(f.root.querySelector('article .omtc-feedback')!.textContent!.includes('Not added.'));
+    assert.match(f.root.querySelector('.motion-inline-toast')!.textContent!, /Copied/);
   } finally { await f.close(); }
 });
 
@@ -319,7 +323,7 @@ test('host rejection, cancellation and transport errors retain the same retry id
     try {
       f.show(); const button = f.root.querySelector<HTMLButtonElement>('article .omtc-clone')!;
       button.click(); await flush();
-      assert.ok(f.root.textContent!.includes('Not added.'));
+      assert.match(f.root.querySelector('.motion-inline-toast')!.textContent!, /Copied|Not added/);
       button.click(); await flush();
       assert.equal(f.messages.length, 2);
       assert.equal(f.messages[0].content[0].text, f.messages[1].content[0].text);
@@ -327,16 +331,57 @@ test('host rejection, cancellation and transport errors retain the same retry id
   }
 });
 
-test('a host without draft support never receives a message that could auto-submit', async () => {
+test('clipboard failure reports failure without claiming success or inserting another composer', async () => {
+  const f = fixture({draft:false, copy: async () => { throw new Error('Permission denied'); }});
+  try {
+    f.show(); f.root.querySelector<HTMLButtonElement>('article .omtc-clone')!.click(); await flush();
+    assert.equal(f.copied.length, 0); assert.equal(f.messages.length, 0);
+    assert.equal(f.root.querySelector('textarea'), null);
+    assert.match(f.root.querySelector('.motion-inline-toast')!.textContent!, /Copy failed/);
+  } finally { await f.close(); }
+});
+
+test('legacy clipboard fallback is temporary and restores the original focus', async () => {
+  const f = fixture({draft:false, copy: async () => { throw new Error('Clipboard API denied'); }});
+  try {
+    let copied = '';
+    Object.defineProperty(f.doc, 'execCommand', {value: (command: string) => {
+      assert.equal(command, 'copy'); copied = f.doc.querySelector('textarea')!.value; return true;
+    }});
+    f.show(); const button = f.root.querySelector<HTMLButtonElement>('article .omtc-clone')!;
+    button.focus(); button.click(); await flush();
+    assert.equal(copied, recreationPrompt(result().cards[0], 'en'));
+    assert.equal(f.root.querySelector('textarea'), null);
+    assert.equal(f.doc.activeElement, button);
+    assert.match(f.root.querySelector('.motion-inline-toast')!.textContent!, /Copied/);
+  } finally { await f.close(); }
+});
+
+test('pending clipboard copies suppress repeated clicks and cannot show feedback in a replacement view', async () => {
+  let finish!: () => void;
+  const f = fixture({draft:false, copy: () => new Promise<void>(resolve => {finish = resolve;})});
+  try {
+    f.show(); const button = f.root.querySelector<HTMLButtonElement>('article .omtc-clone')!;
+    button.click(); button.click();
+    f.ui.update(result([0,1,2], '33333333-3333-4333-8333-333333333333'));
+    finish(); await flush();
+    assert.equal(f.copied.length, 1);
+    assert.equal(f.root.querySelector('.motion-inline-toast'), null);
+    assert.equal(f.root.querySelector('textarea'), null);
+  } finally { await f.close(); }
+});
+
+test('a host without draft support copies the exact brief without a message or an extra input field', async () => {
   for (const options of [{ message: false }, { draft: false }]) {
     const f = fixture(options);
     try {
+      const copied: string[] = [];
+      Object.defineProperty(f.window.navigator, 'clipboard', { value: { writeText: async (value: string) => { copied.push(value); } } });
       f.show(); f.root.querySelector<HTMLButtonElement>('article .omtc-clone')!.click(); await flush();
       assert.equal(f.messages.length, 0);
-      const draft = f.root.querySelector<HTMLTextAreaElement>('.omtc-draft')!;
-      assert.equal(draft.readOnly, true);
-      assert.ok(draft.value.includes('Selected template: Decision Tree\nTemplate ID: decision-tree'));
-      assert.ok(draft.value.endsWith('My requirements:\n'));
+      assert.deepEqual(copied, [recreationPrompt(result().cards[0], 'en')]);
+      assert.equal(f.root.querySelector('textarea'), null);
+      assert.match(f.root.querySelector('[role="status"].motion-inline-toast')!.textContent!, /Copied.*paste/i);
     } finally { await f.close(); }
   }
 });

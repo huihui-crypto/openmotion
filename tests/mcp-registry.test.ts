@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createToolRegistry } from '../shared/mcp-registry.ts';
 import { tools, publicTools, rpc, mcpRegistry } from '../mcp.ts';
 import { fixture } from './fixtures.ts';
-import { workflowEntryGuide, phase1Skills } from '../shared/workflow.ts';
+import { workflowEntryGuide, packagedSkills } from '../shared/workflow.ts';
 import { templateDiscoveryGuide } from '../shared/workflow-entry.js';
 
 const phase1 = JSON.parse(readFileSync(new URL('../shared/mcp-profiles.json', import.meta.url), 'utf8')).phase1;
@@ -59,8 +59,8 @@ test('a missing implementation cannot produce a partial public registry', () => 
   assert.deepEqual(mcpRegistry('phase1').tools.map(tool => tool.name), target);
 });
 
-test('phase1 Skills reference only publicly callable Tool names', () => {
-  for (const skill of phase1Skills) {
+test('packaged Skills reference only publicly callable Tool names', () => {
+  for (const skill of packagedSkills) {
     const root = new URL('../skills/' + skill + '/', import.meta.url);
     for (const filename of readdirSync(root, { recursive: true }) as string[]) {
       if (!filename.endsWith('.md')) continue;

@@ -3,6 +3,7 @@ import React, { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider, useI18n, type Locale } from '../i18n/I18n';
+import { translate } from '../i18n/messages';
 import { TemplateLibraryDialog } from './TemplateLibraryDialog';
 import { MAX_TEMPLATE_PLAYERS } from './useTemplatePlayback';
 import { validProperties } from '../../../tracking/core.ts';
@@ -28,8 +29,8 @@ class Observer {
   emit(ratio = 1, subset = this.elements) { this.callback(subset.map(target => ({ target, isIntersecting: ratio > 0, intersectionRatio: ratio }) as IntersectionObserverEntry), this as unknown as IntersectionObserver); }
 }
 let motionPreference: EventTarget & { matches: boolean };
-function fetchItems(data = items) {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateEnvironment: 'dev', transport: { env: {} } } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
+function fetchItems(data = items, templateSource?: 'repository' | 'cms') {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.endsWith('/integration') ? { templateSource, templateEnvironment: 'dev', transport: { env: {} } } : { items: data, catalogVersion: 'v1', next: null, total: data.length })));
 }
 beforeEach(() => {
   window.happyDOM.settings.enableIframePageLoading = false;
@@ -87,6 +88,31 @@ it('uses one ordered gallery without a duplicate featured section and combines c
   expect(events('template_filter_result').at(-1)).toMatchObject({ action: 'filter_apply', result_count: 1 });
   await act(async () => button('Remove filter Figma').click());
   expect(cards()).toHaveLength(3);
+});
+it.each(['en', 'zh-CN'] as const)('merges launch aliases in quick and grouped filters without losing templates in %s', async locale => {
+  fetchItems([
+    ...items,
+    { ...items[0], id: 'plural', uses: ['Product launches'], sortOrder: 4 },
+    { ...items[0], id: 'localized', uses: ['产品发布', 'Product launch films'], sortOrder: 5 },
+  ]);
+  await mount(locale);
+  const t = (message: string) => translate(locale, message);
+  const categories = host.querySelector(`[role=group][aria-label="${t('Video purpose')}"]`)!;
+  expect([...categories.querySelectorAll('button')].map(node => node.textContent).filter(label => label === t('Product launch films'))).toHaveLength(1);
+  expect(categories.textContent).not.toContain('Product launches');
+  await act(async () => button(t('Product launch films'), categories).click());
+  expect(cards()).toEqual(['two', 'one', 'plural', 'localized']);
+
+  await act(async () => button(t('Clear filters')).click());
+  expect(cards()).toHaveLength(5);
+  await act(async () => button(t('Filters')).click());
+  const filters = host.querySelector(`[role=dialog][aria-label="${t('Filters')}"]`)!;
+  expect(filters.querySelectorAll(`[role=checkbox][aria-label="${t('Product launch films')}"]`)).toHaveLength(1);
+  expect(filters.textContent).not.toContain('Product launches');
+  await act(async () => button(t('Product launch films'), filters).click());
+  expect(filters.querySelector('[role=status]')?.textContent).toBe(translate(locale, '{count} templates', { count: 4 }));
+  await act(async () => button(t('Apply filters'), filters).click());
+  expect(cards()).toEqual(['two', 'one', 'plural', 'localized']);
 });
 it('shows author avatars and falls back to initials for unavailable images', async () => {
   await mount();
@@ -156,7 +182,7 @@ it('tries the bundled brand logo after a published logo fails, then falls back t
   expect(label.querySelector('img')).toBeNull();
   expect(label.textContent).toBe('NNotion');
 });
-it('copies the exact DEV prompt, retains guides and gates editable-project opening', async () => {
+it('copies the shared brief, retains guides and gates editable-project opening', async () => {
   const onOpen = await mount('zh-CN');
   await act(async () => button('预览模板 First', host.querySelector('main')!).click());
   expect(host.querySelector('iframe[title=动效说明]')).toBeNull();
@@ -165,11 +191,28 @@ it('copies the exact DEV prompt, retains guides and gates editable-project openi
   await act(async () => button('复刻模板').click());
   expect(host.querySelector('dialog[aria-label=复刻模板]')).toBeNull();
   expect(document.querySelector('[data-feedback-layer]')?.textContent).toContain('已复制，发给 Agent 即可。');
-  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('使用说明：请使用 OpenMotion 插件。如未安装，请按 https://releases.open-design.ai/open-motion/dev/install.md 安装并接入后继续。\n指定模板：First（one）\n创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。\n我的要求：\n');
+  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('使用说明：请使用 OpenMotion 插件。如未安装，请按 `https://github.com/nexu-io/openmotion` 安装并接入后继续。\n指定模板：First（one）\n创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。\n我的要求：\n');
   await act(async () => button('打开并编辑').click());
   expect(onOpen).toHaveBeenCalledWith('one');
   await act(async () => button('预览模板 Second', host.querySelector('main')!).click());
   expect(button('打开并编辑')).toBeUndefined();
+});
+it.each(['repository', 'cms'] as const)('updates the displayed and copied title and ID when navigating %s templates', async templateSource => {
+  fetchItems(items.slice(0, 2), templateSource);
+  await mount('zh-CN');
+  await act(async () => button('预览模板 First', host.querySelector('main')!).click());
+  for (const [title, id] of [['First', 'one'], ['Second', 'two']]) {
+    const expected = [
+      '使用说明：请使用 OpenMotion 插件。如未安装，请按 `https://github.com/nexu-io/openmotion` 安装并接入后继续。',
+      `指定模板：${title}（${id}）`,
+      '创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。',
+      '我的要求：\n',
+    ].join('\n');
+    expect(host.querySelector('section[aria-label="模板复刻指令"] p')?.textContent).toBe(expected);
+    await act(async () => button('复刻模板').click());
+    expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(expected);
+    if (id === 'one') await act(async () => button('下一个模板').click());
+  }
 });
 it('random discovery honors filters, avoids consecutive repeats and handles a singleton', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(0);
@@ -207,6 +250,44 @@ it('returns an actionable empty state and disables random discovery for no match
   expect(host.textContent).toContain('No matching templates');
   await act(async () => button('Clear filters').click());
   expect(cards()).toHaveLength(3);
+});
+it('reveals metadata labels only while truncated and hides the tooltip when space becomes available', async () => {
+  const observers: ResizeObserverStub[] = [];
+  class ResizeObserverStub {
+    targets = new Set<Element>();
+    constructor(public callback: ResizeObserverCallback) { observers.push(this); }
+    observe(target: Element) { this.targets.add(target); }
+    unobserve(target: Element) { this.targets.delete(target); }
+    disconnect() { this.targets.clear(); }
+  }
+  vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+  await mount();
+  await act(async () => preview('First'));
+  const detail = host.querySelector('dialog[aria-label="Template preview"]')!;
+  const tag = button('Figma', detail);
+  let availableWidth = 100;
+  Object.defineProperties(tag, {
+    clientWidth: { get: () => availableWidth },
+    scrollWidth: { get: () => 80 },
+  });
+  const observer = observers.find(item => item.targets.has(tag))!;
+  const resize = () => observer.callback([], observer as unknown as ResizeObserver);
+  const settleTooltip = async () => { await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)); }); };
+  act(resize);
+  act(() => tag.focus());
+  await settleTooltip();
+  expect(detail.querySelector('[role="tooltip"]')).toBeNull();
+
+  act(() => tag.blur());
+  act(() => { availableWidth = 40; resize(); });
+  act(() => tag.focus());
+  await settleTooltip();
+  expect(detail.querySelector('[role="tooltip"]')?.textContent).toBe('Figma');
+
+  act(() => { availableWidth = 100; resize(); });
+  await settleTooltip();
+  expect(detail.querySelector('[role="tooltip"]')).toBeNull();
+  expect(tag.getAttribute('aria-describedby')).toBeNull();
 });
 it('reloads localized catalog content and clears language-specific filters', async () => {
   function App() {
@@ -423,14 +504,13 @@ it('reports the library funnel with registered fields: library, card open, detai
   expect(events('ui_click', { element: 'start_use' })).toEqual([expect.objectContaining({ template_action: 'recreate', template_id: 'one', detail_view_id: shown.detail_view_id })]);
   expect(events('ui_click', { element: 'select_template' })).toHaveLength(0);
   expect(events('ui_click', { element: 'copy_template' })).toHaveLength(0);
-  expect(events('ui_click', { element: 'copy_instruction' })).toHaveLength(0);
   expect(events('template_instruction_copy_result')).toEqual([expect.objectContaining({ copy_status: 'clipboard_written', host_product: 'codex', instruction_kind: 'template_use', template_id: 'one' })]);
   await act(async () => button('Recreate and submit', detail).click());
   expect(events('ui_click', { element: 'start_use', template_action: 'recreate_submit' })).toHaveLength(1);
   expect(events('template_instruction_copy_result', { instruction_kind: 'recreate_submit' })).toHaveLength(1);
   vi.mocked(navigator.clipboard.writeText).mockRejectedValueOnce(new Error('denied'));
-  await act(async () => [...detail.querySelectorAll('button')].find(node => node.textContent === 'Copied' || node.textContent === 'Copy')!.click());
-  const [click] = events('ui_click', { element: 'copy_instruction' });
+  await act(async () => button('Recreate template', detail).click());
+  const click = events('ui_click', { element: 'start_use', template_action: 'recreate' }).at(-1)!;
   expect(events('template_instruction_copy_result', { copy_status: 'manual_fallback_shown' })).toEqual([expect.objectContaining({ copy_attempt_id: click.copy_attempt_id })]);
   vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
   await act(async () => button('Download motion.md', detail).click());

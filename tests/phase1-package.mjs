@@ -6,7 +6,7 @@ import {tmpdir} from 'node:os';
 import {createInterface} from 'node:readline';
 import {createServer} from 'node:net';
 import {createHash} from 'node:crypto';
-import {pathToFileURL} from 'node:url';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 import {catalogUrl, publication, contents} from './prism-fixture.ts';
 const archive=process.argv[2];assert.ok(path.isAbsolute(archive));
 const work=await realpath(await mkdtemp(path.join(tmpdir(),'om-phase1-package-')));
@@ -31,7 +31,7 @@ assert.equal(remix.status,0,remix.stderr);
 assert.equal(JSON.parse(await readFile(path.join(root,'shared/mcp-release.json'))).profile,'phase1');
 await assert.rejects(stat(path.join(root,'node_modules')),{code:'ENOENT'});
 const version=JSON.parse(await readFile(path.join(root,'package.json'))).version;
-const sock=createServer();await new Promise(resolve=>sock.listen(0,'127.0.0.1',resolve));const port=sock.address().port;await new Promise(resolve=>sock.close(resolve));
+const sock=createServer();await new Promise(resolve=>sock.listen(Number(process.env.PLAYWRIGHT_WEB_PORT||0),'127.0.0.1',resolve));const port=sock.address().port;await new Promise(resolve=>sock.close(resolve));
 // A deterministic published catalog, injected only into this isolated package test.
 const catalogFixture=path.join(work,'prism-fixture.mjs');
 await writeFile(catalogFixture, `const original=globalThis.fetch; const publication=${JSON.stringify(publication())}; const contents=${JSON.stringify(contents)};
@@ -58,15 +58,29 @@ try{
  const guide=await rpc('resources/read',{uri:'openmotion://engine/SKILL.md'});assert.ok(guide.contents[0].text.length>100);
  const runtimeKey=createHash('sha256').update(await readFile(path.join(root,'package-lock.json'))).digest('hex').slice(0,16);
  assert.equal(await readFile(path.join(data,'runtime',runtimeKey,'ready'),'utf8'),runtimeKey);
+ const fontSource=fileURLToPath(new URL('./fixtures/fonts/orbitron.ttf',import.meta.url));
+ const fontLicense=fileURLToPath(new URL('./fixtures/fonts/OFL.txt',import.meta.url));
+ const fontImport=await tool('openmotion_import_assets',{projectId:p.projectId,requestId:'font-import',items:[{itemId:'orbitron',sourcePath:fontSource,licensePath:fontLicense}]});
+ assert.equal(fontImport.status,'completed');assert.equal(fontImport.items[0].font.family,'Orbitron');assert.equal(fontImport.items[0].font.weight,'400 900');
+ assert.match(fontImport.items[0].fontFaceCss,/font-weight: 400 900/);
+ assert.deepEqual(await readFile(path.join(p.project.directory,fontImport.items[0].path)),await readFile(fontSource));
+ assert.deepEqual(await readFile(path.join(p.project.directory,fontImport.items[0].license.path)),await readFile(fontLicense));
  const catalog=await tool('openmotion_list_templates',{});assert.ok(path.isAbsolute(catalog.indexPath));assert.equal('items' in catalog,false);assert.match(await readFile(catalog.indexPath,'utf8'),/test-motion-1/);
  const template=await tool('openmotion_get_template',{templateId:'test-motion-1'});assert.equal(template.catalogVersion,catalog.catalogVersion);assert.equal(template.instructions,contents['TEMPLATE.md']);
  const wav=path.join(work,'tone.wav');assert.equal(spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','sine=duration=1',wav]).status,0);
  const wavSha256=createHash('sha256').update(await readFile(wav)).digest('hex');
  const assetInput={action:'import',requestId:'asset-import',sourcePath:wav,name:'Packaged tone'};
- const libraryAsset=(await tool('openmotion_assets',assetInput)).asset;
+ const libraryAsset=(await tool('openmotion_assets_use',assetInput)).asset;
  assert.equal((await tool('openmotion_assets',assetInput)).asset.id,libraryAsset.id);
  assert.equal(libraryAsset.modality,'audio');assert.equal(libraryAsset.versions.length,1);assert.equal(libraryAsset.versions[0].sha256,wavSha256);
  assert.ok(libraryAsset.currentVersionId===libraryAsset.versions[0].id);
+ const read=await rpc('tools/call',{name:'openmotion_assets_use',arguments:{action:'read',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId,duration:0.25}});
+ assert.ok(!read.isError,JSON.stringify(read));assert.equal(read.structuredContent.versionId,libraryAsset.currentVersionId);assert.ok(read.content.some(item=>item.type==='audio'&&item.mimeType==='audio/wav'&&Buffer.from(item.data,'base64').subarray(0,4).toString()==='RIFF'));assert.ok(!('content' in read.structuredContent));
+ calls.push({name:'openmotion_assets_use',arguments:{action:'read',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId},result:read.structuredContent,contentTypes:read.content.map(item=>item.type)});
+ const png=path.join(work,'read.png');assert.equal(spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','color=c=red:s=32x24','-frames:v','1',png]).status,0);
+ const picture=(await tool('openmotion_assets_use',{action:'import',requestId:'picture',sourcePath:png})).asset;
+ const pictureRead=await rpc('tools/call',{name:'openmotion_assets_use',arguments:{action:'read',assetId:picture.id,versionId:picture.currentVersionId}});assert.ok(!pictureRead.isError,JSON.stringify(pictureRead));assert.ok(pictureRead.content.some(item=>item.type==='image'&&item.mimeType==='image/png'&&Buffer.from(item.data,'base64').subarray(1,4).toString()==='PNG'));assert.equal(pictureRead.structuredContent.previews[0].width,32);
+ calls.push({name:'openmotion_assets_use',arguments:{action:'read',assetId:picture.id,versionId:picture.currentVersionId},result:pictureRead.structuredContent,contentTypes:pictureRead.content.map(item=>item.type)});
  assert.equal((await tool('openmotion_assets',{action:'get',assetId:libraryAsset.id,versionId:libraryAsset.currentVersionId})).version.sha256,wavSha256);
  assert.ok((await tool('openmotion_assets',{action:'list',modality:'audio'})).assets.some(asset=>asset.id===libraryAsset.id));
  const imported=await tool('openmotion_import_assets',{projectId:p.projectId,requestId:'import',items:[{itemId:'audio',sourcePath:wav}]});assert.equal(imported.status,'completed');
@@ -92,7 +106,7 @@ try{
  assert.equal((await tool('openmotion_get_project',{projectId:p.projectId,exportJobId:completed.id})).exportJob.state,'completed');
  assert.deepEqual([...calledTools].sort(),[...expected].sort(),'E2E must successfully call every public Tool');
  await copyFile(completed.path,path.join(evidence,'export.mp4'));
- report={status:'passed',executionEnvironment:process.env.CI?'ci':'local',version:init.serverInfo.version,archive,archiveSHA256:createHash('sha256').update(await readFile(archive)).digest('hex'),work,root,data,tools:names,skills:(await readdir(path.join(root,'skills'))).sort(),checks:{inlineUiPackaged:true,inlineMediaVersionAndHash:true,mediaOmittedFromModelText:true,isolatedExtraction:true,noWorktreeNodeModules:true,freshLockedRuntimeInstall:true,allPublicToolsCalled:true,hiddenCallsRejected:true,pinnedGuideResource:true,creationReplay:true,libraryImportReplay:true,pinnedLibraryProjectImport:true,realAttachment:true,restoreRetainsLaterVersions:true,studioPreview:true,verifiedAudioMP4:true,actualMotionFrames:true,cancelledExport:true,historicalCompletedResult:true},export:{id:completed.id,path:completed.path,downloadUrl:completed.downloadUrl,verification:completed.verification},notRun:['independent_player_audio_review','four_hosts_model_turn','other_platforms','publish']};
+ report={status:'passed',executionEnvironment:process.env.CI?'ci':'local',version:init.serverInfo.version,archive,archiveSHA256:createHash('sha256').update(await readFile(archive)).digest('hex'),work,root,data,tools:names,skills:(await readdir(path.join(root,'skills'))).sort(),checks:{inlineUiPackaged:true,inlineMediaVersionAndHash:true,mediaOmittedFromModelText:true,isolatedExtraction:true,noWorktreeNodeModules:true,freshLockedRuntimeInstall:true,fontImportWithLicense:true,allPublicToolsCalled:true,hiddenCallsRejected:true,pinnedGuideResource:true,creationReplay:true,libraryImportReplay:true,pinnedLibraryProjectImport:true,realAttachment:true,restoreRetainsLaterVersions:true,studioPreview:true,verifiedAudioMP4:true,actualMotionFrames:true,cancelledExport:true,historicalCompletedResult:true},export:{id:completed.id,path:completed.path,downloadUrl:completed.downloadUrl,verification:completed.verification},notRun:['independent_player_audio_review','four_hosts_model_turn','other_platforms','publish']};
  await writeFile(path.join(evidence,'packaged-smoke-result.json'),JSON.stringify(report,null,2));console.log(JSON.stringify({status:report.status,version:report.version,tools:names.length,skills:report.skills.length,archiveSHA256:report.archiveSHA256,work}));
 }catch(error){await writeFile(path.join(evidence,'packaged-smoke-failure.log'),String(error.stack)+'\n'+stderr);throw error;}
 finally{

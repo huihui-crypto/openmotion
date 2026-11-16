@@ -1813,5 +1813,6 @@
   "Unlock track": "Parçanın kilidini aç",
   "Delete track": "Parçayı sil",
   "Unlock the track before deleting it": "Silmeden önce parçanın kilidini açın",
-  "Open the composition to delete this track": "Bu parçayı silmek için kompozisyonu açın"
+  "Open the composition to delete this track": "Bu parçayı silmek için kompozisyonu açın",
+  "Screen too small to expand this panel": "Ekran bu paneli açmak için çok küçük"
 }

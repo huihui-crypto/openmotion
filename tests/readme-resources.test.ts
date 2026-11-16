@@ -32,6 +32,10 @@ test('each README language opens the full guide and ships its localized cover', 
     for (const section of ['agent-wall', 'showcase', 'features', 'technical-guide', 'community']) {
       assert(text.includes(`id="${section}"`), `${file}: missing ${section}`);
     }
+    const cover = `docs/readme/capcut-claude-motion-cover${suffix}.webp`;
+    const relativeCover = path.relative(path.dirname(file), cover).split(path.sep).join('/');
+    assert(text.includes(`<source type="image/webp" srcset="${relativeCover}">`), file);
+    assert(shipped.has(cover), `Missing from distribution: ${cover}`);
     for (const asset of [`brand-hero${suffix}.jpg`, `brand-hero.mobile${suffix}.jpg`]) {
       const transferred = media.files.find((entry: { path: string }) => entry.path === `docs/readme/${asset}`);
       assert(text.includes(transferred ? transferred.url + '"' : `readme/${asset}"`), `${file}: missing ${asset}`);

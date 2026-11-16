@@ -33,7 +33,7 @@ beforeEach(() => {
     if (args.action === 'jobs') return { jobs: [] };
     if (args.action === 'list') {
       if (pendingList) { const current = pendingList; pendingList = undefined; return current.promise; }
-      const assets = [...records.values()].filter(asset => Boolean(asset.trashedAt) === Boolean(args.trash));
+      const assets = [...records.values()].filter(asset => Boolean(asset.trashedAt) === Boolean(args.trash) && (!args.modality || asset.modality === args.modality));
       return { assets: structuredClone(assets), total: assets.length, nextOffset: null };
     }
     if (args.action === 'get') {
@@ -136,6 +136,69 @@ it('reuses the loaded collection when entering and leaving preview, preserving f
   expect(container.querySelector<HTMLInputElement>('input[type=search]')?.value).toBe('Picture');
   expect(container.querySelector<HTMLElement>('.om-assets-main')?.scrollTop).toBe(240);
   expect(lists()).toHaveLength(before);
+});
+
+it('keeps the settled gallery visible while switching asset tabs', async () => {
+  await render();
+  expect(container.querySelector('.om-asset-loading-card')).toBeNull();
+  const list = deferred<{ assets: LibraryAsset[]; total: number; nextOffset: null }>(); pendingList = list;
+  await click('Images');
+  expect(container.querySelector('.om-asset-loading-card')).toBeNull();
+  expect(container.querySelector('[aria-label="Picture A"]')).not.toBeNull();
+  expect(container.querySelector('.om-asset-results')?.getAttribute('aria-busy')).toBe('true');
+  expect(container.querySelector('.om-asset-results')?.hasAttribute('inert')).toBe(true);
+  await act(async () => list.resolve({ assets: [fixture('A')], total: 1, nextOffset: null })); await flush();
+  expect(container.querySelector('.om-asset-loading-card')).toBeNull();
+  expect(container.querySelector('[aria-label="Picture A"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Picture B"]')).toBeNull();
+  expect(container.querySelector('.om-asset-results')?.getAttribute('aria-busy')).toBe('false');
+  expect(container.querySelector('.om-asset-results')?.hasAttribute('inert')).toBe(false);
+});
+
+it('shows skeletons on the first load but retains the empty state on later tab loads', async () => {
+  const initial = deferred<{ assets: LibraryAsset[]; total: number; nextOffset: null }>(); pendingList = initial;
+  await render();
+  expect(container.querySelectorAll('.om-asset-loading-card')).toHaveLength(6);
+  expect(container.querySelector('.om-asset-welcome')).toBeNull();
+  await act(async () => initial.resolve({ assets: [], total: 0, nextOffset: null })); await flush();
+  const next = deferred<{ assets: LibraryAsset[]; total: number; nextOffset: null }>(); pendingList = next;
+  await click('Videos');
+  expect(container.querySelector('.om-asset-loading-card')).toBeNull();
+  expect(container.querySelector('.om-asset-welcome')).not.toBeNull();
+  await act(async () => next.resolve({ assets: [], total: 0, nextOffset: null })); await flush();
+  expect(container.querySelector('.om-asset-results')?.getAttribute('aria-busy')).toBe('false');
+});
+
+it('ignores an older tab response after a newer tab finishes loading', async () => {
+  await render();
+  const older = deferred<{ assets: LibraryAsset[]; total: number; nextOffset: null }>(); pendingList = older;
+  await click('Images');
+  const newer = deferred<{ assets: LibraryAsset[]; total: number; nextOffset: null }>(); pendingList = newer;
+  await click('Videos');
+  expect(container.querySelector('.om-asset-loading-card')).toBeNull();
+  await act(async () => newer.resolve({ assets: [], total: 0, nextOffset: null })); await flush();
+  await act(async () => older.resolve({ assets: [fixture('A')], total: 1, nextOffset: null })); await flush();
+  expect(container.querySelector('[aria-label="Picture A"]')).toBeNull();
+  expect(container.querySelector('.om-asset-welcome')).not.toBeNull();
+  expect(container.querySelector('.om-asset-results')?.getAttribute('aria-busy')).toBe('false');
+});
+
+it('replaces retained results with a usable retry on failure and recovers', async () => {
+  await render();
+  const failure = deferred<{ assets: LibraryAsset[]; total: number; nextOffset: null }>(); pendingList = failure;
+  await click('Videos');
+  await act(async () => failure.reject(new Error('offline'))); await flush();
+  expect(container.textContent).toContain('Could not load assets');
+  expect(container.querySelector('.om-asset-results')?.hasAttribute('inert')).toBe(false);
+  expect(container.querySelector('.om-asset-results')?.getAttribute('aria-busy')).toBe('false');
+  const retry = deferred<{ assets: LibraryAsset[]; total: number; nextOffset: null }>(); pendingList = retry;
+  await click('Retry');
+  expect(container.querySelector('.om-asset-loading-card')).toBeNull();
+  expect(container.querySelector('.om-asset-results')?.getAttribute('aria-busy')).toBe('true');
+  await act(async () => retry.resolve({ assets: [], total: 0, nextOffset: null })); await flush();
+  expect(container.textContent).not.toContain('Could not load assets');
+  expect(container.querySelector('.om-asset-welcome')).not.toBeNull();
+  expect(container.querySelector('.om-asset-results')?.hasAttribute('inert')).toBe(false);
 });
 
 it('restores from Trash without switching the filmstrip into the active library', async () => {

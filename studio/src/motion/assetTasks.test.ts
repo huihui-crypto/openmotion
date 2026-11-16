@@ -31,3 +31,8 @@ it('retains orphaned conversation jobs and does not let an old failure mask a su
   expect(assetTasks([old], [])[0]).toMatchObject({ key: 'agent:chat', state: 'failed', jobs: [old] });
   expect(assetTasks([old, next], [chat])[0]).toMatchObject({ state: 'idle', jobs: [next, old] });
 });
+
+it('includes new project generation in workspace history while leaving historical project jobs untouched', () => {
+  const task = job('project', 40, { library: undefined, projectId: 'project', saveToLibrary: true, savePending: true, state: 'failed' });
+  expect(assetTasks([task, job('legacy', 30, { library: undefined })], []).map(task => task.key)).toEqual(['direct:project']);
+});

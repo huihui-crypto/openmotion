@@ -44,6 +44,24 @@ test('only the approved public community invitation is permitted in product READ
   }
 });
 
+test('the shared Studio community link may carry the same approved invitation in source and its bundled asset', async () => {
+  const text = await readFile(new URL('../README.md', import.meta.url), 'utf8');
+  const invite = text.match(/href="([^"\n]+add_by_link[^"\n]+)"/)[1];
+  const internal = 'https://' + 'workspace.' + 'feishu.cn/wiki/private';
+  for (const kind of ['source', 'package']) {
+    const prefix = kind === 'package' ? 'package/' : '';
+    for (const name of ['studio/src/motion/CommunityLink.tsx', 'studio/build/editor-assets/index-9f1c2d3e.js']) {
+      assert.deepEqual(privacyFindings(prefix + name, `const communityUrl = '${invite}';`, kind), []);
+      for (const value of [invite + 'x', invite + '&extra=1', invite + ' ' + internal]) {
+        assert(privacyFindings(prefix + name, value, kind).some(hit => hit.rule === 'internal-link'));
+      }
+    }
+    for (const name of ['studio/src/motion/Other.tsx', 'studio/build/index.js', 'studio/build/editor-assets/index-9f1c2d3e.css', 'nested/studio/src/motion/CommunityLink.tsx', 'nested/package/studio/build/editor-assets/index-9f1c2d3e.js']) {
+      assert(privacyFindings(prefix + name, invite, kind).some(hit => hit.rule === 'internal-link'));
+    }
+  }
+});
+
 async function scanner(t, findings = []) {
   const work = await mkdtemp(path.join(os.tmpdir(), 'motion-scanner-test-')); t.after(() => rm(work, { recursive: true, force: true }));
   const binary = path.join(work, 'scanner');

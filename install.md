@@ -1,12 +1,12 @@
 # Install OpenMotion from source
 
-For an Agent asked to install OpenMotion from this repository, use the source installation below. This is the default repository installation route. Do not use a published application package, npx package setup, or a prebuilt application candidate. npm remains required to install this checkout's locked dependencies and build Studio.
+For an Agent asked to install OpenMotion from this repository, use the source installation below. This is the default repository installation route. Only use npm installation when the user explicitly selects it; follow the [published application guide](docs/install.md) instead of mixing source and package setup. npm remains required to install this checkout's locked dependencies and build Studio.
 
 ## Codex: automatic source installation
 
 Collect OS/CPU, Git, Node.js/npm and the current host once. Source validation uses Node.js 26.11.1. Codex must support `codex plugin add`. Preserve projects, credentials, unrelated plugins and MCP configuration. Configure only the current host.
 
-Before running the installer, including setup from an existing checkout, export `OPENMOTION_ONBOARDING_LANGUAGE` in the same shell. Derive it from the latest user request's language, not the OS or host UI language. Supported codes are `zh`, `en`, `ja`, `ko`, `fr`, `es` and `pt`; normalize locale tags to their lowercase primary code and use `en` for unsupported languages. For a Chinese request, run `export OPENMOTION_ONBOARDING_LANGUAGE=zh` before the commands below so the welcome/cards and queued presentation are prepared in Chinese.
+Before running the installer, including setup from an existing checkout, export `OPENMOTION_ONBOARDING_LANGUAGE` in the same shell. Derive it from the latest user request's language, not the OS or host UI language. Supported codes are `zh`, `en`, `ja`, `ko`, `fr`, `es` and `pt`; normalize locale tags to their lowercase primary code and use `en` for unsupported languages. For a Chinese request, run `export OPENMOTION_ONBOARDING_LANGUAGE=zh` before the commands below so the welcome/cards are prepared in Chinese.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/nexu-io/openmotion/main/install.sh -o /tmp/openmotion-source-install.sh
@@ -19,7 +19,7 @@ If the intended checkout already exists, inspect its remote, version and local c
 
 Command-local Git LFS overrides keep optional media as pointers even when global LFS configuration is stale. No global Git configuration is changed. A read-only source check runs before dependency work; unknown inventory or installed-source conflicts stop with a concrete recovery instruction. See [clone size and optional media](docs/repository-storage.md).
 
-The installer saves phase timings and full onboarding details under `.artifacts/install/`. Read the concise result once and follow its actual host handoff. Download time depends on the network; no fixed installation duration is guaranteed.
+The installer saves phase timings and full onboarding details under `.artifacts/install/`. Read the concise result once and complete onboarding in this same installation turn. Prepare and publish the welcome/cards before opening the right-hand library; after one visibility check, immediately stream the returned welcomeMarkdown as normal reply text, followed by the ready cards reference. Never enqueue internal instructions as another user message or end early to await a callback. Download time depends on the network; no fixed installation duration is guaranteed.
 
 ## Other local hosts: source and MCP
 
@@ -39,4 +39,4 @@ Open the actual studioUrl or previewUrl printed at startup. Follow [manual MCP c
 
 Discover the installed tools and call openmotion_get_project to verify the expected workspace. Registration or an independent probe alone does not prove this chat loaded the tools. Keep installed files, MCP access and host presentation results distinct.
 
-Follow the [shared onboarding contract](docs/install-onboarding.md#installation-success-reply): open the real template library without creating a project, then deliver the prepared welcome and three cards through a supported native or inline host route. Reuse this installation; do not reinstall to recover presentation. A CLI without a renderer reports that limitation and the real library link. Prepared files, callback acknowledgments and printed URLs do not prove visible delivery. Do not create a video, export or call paid models as part of installation.
+Follow the [shared onboarding contract](docs/install-onboarding.md#installation-success-reply) in this turn: finish preparing the welcome and three cards, open the real template library without creating a project, confirm visibility once and immediately stream the welcome as normal reply text followed by the cards-only content reference (or use the supported native fallback). Reuse this installation; do not reinstall to recover presentation. A CLI without a renderer reports that limitation and the real library link. Prepared files, queued host actions and printed URLs do not prove visible delivery. Do not create a video, export or call paid models as part of installation.

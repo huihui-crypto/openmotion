@@ -3,7 +3,7 @@ import type { GenerationOptions } from './generation-options.ts';
 /** Public contract shared by the model gateway, MCP and Studio. Never contains credentials. */
 export const modalities = ['image', 'video', 'audio'] as const;
 export type Modality = typeof modalities[number];
-export const mediaProviders = ['fal', 'opendesign', 'atlascloud', 'wavespeed'] as const;
+export { mediaProviders } from './provider-registry.ts';
 /** Built-in media IDs and service-registered compatible connections share one route identity. */
 export type ProviderId = string;
 export type Model = {
@@ -33,6 +33,10 @@ export type GenerateInput = { modality: Modality; prompt: string; model?: string
   usage?: { compositionId?: string; elementId?: string; property?: string } };
 export type GeneratedAsset = { path: string; mimeType: string; bytes: number; available?: boolean };
 export type GenerationJob = { id: string; projectId?: string; library?: LibraryGeneration & { assetId: string; createNew?: boolean }; libraryAssets?: { assetId: string; versionId: string }[]; state: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  /** New generation results also belong to the local workspace library. */
+  saveToLibrary?: boolean;
+  /** Durable local outputs remain; retry_save never invokes a model. */
+  savePending?: boolean;
   providerOrigin?: string;
   providerRevision?: string;
   modality: Modality; prompt: string; model: Model; parameters: Record<string, unknown>;

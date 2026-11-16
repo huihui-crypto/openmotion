@@ -27,3 +27,21 @@
 .hf-toast-action:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 .hf-toast-action:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .hf-toast-action:disabled { opacity: .5; cursor: default; }
+
+[data-motion-ui] .motion-inline-toast {
+  position: fixed;
+  inset: auto var(--motion-space-16) var(--motion-space-16);
+  z-index: 1000;
+  box-sizing: border-box;
+  width: fit-content;
+  max-width: calc(100% - 2 * var(--motion-space-16));
+  margin: 0 auto;
+  padding: var(--motion-space-10) var(--motion-space-16);
+  border: 1px solid var(--motion-border);
+  border-radius: var(--motion-radius-lg);
+  background: var(--motion-panel);
+  color: var(--motion-text);
+  font: var(--motion-text-sm)/var(--motion-leading-body) var(--motion-font-sans);
+  pointer-events: none;
+}
+[data-motion-ui] .motion-inline-toast[hidden] { display: none; }

@@ -130,6 +130,12 @@ export function AssetsPage({ active }: { active: boolean }) {
     } catch (error) { onError((error as Error).message); }
   };
   const cancelJob = (job: GenerationJob) => { void assetRequest({ action: 'cancel', jobId: job.id }).then(() => setHistoryRetry(value => value + 1)).catch(error => onError(error.message)); };
+  const retrySave = async (job: GenerationJob) => {
+    try {
+      const { job: next } = await assetRequest<{ job: GenerationJob }>({ action: 'retry_save', jobId: job.id, requestId: `save-${job.id}` });
+      knownJobs.current = mergeAssetJobs(knownJobs.current, [next]); setJobs(knownJobs.current);
+    } catch (error) { onError((error as Error).message.startsWith('SAVE_NOT_AVAILABLE:') ? t('The retained files are missing, changed or unreadable. Saving cannot be retried. No new generation was requested.') : (error as Error).message); }
+  };
   const openReference = async (reference: { assetId: string; versionId: string }) => {
     const request = ++selectionRequest.current;
     try {
@@ -180,7 +186,7 @@ export function AssetsPage({ active }: { active: boolean }) {
   const composer = <AssetComposer key={taskEpoch} active={active} draft={draft} setDraft={setDraft} agentReferences={agentReferences} setAgentReferences={setAgentReferences} jobs={jobs} mode={mode} onMode={setMode} taskIds={taskIds} history={history} selectingTask={selectingTask}
     onNew={() => startDraft(mode === 'agent' ? draft : { modality: draft.modality, prompt: '', references: [] }, mode)} onChatChanged={chatChanged}
     onChatStarted={id => setTaskIds(current => ({ ...current, agent: id }))}
-    onCancel={cancelJob} onView={viewJob} onReference={() => setPicking(true)} onCreated={job => {
+    onCancel={cancelJob} onRetrySave={retrySave} onView={viewJob} onReference={() => setPicking(true)} onCreated={job => {
       knownJobs.current = mergeAssetJobs(knownJobs.current, [job]); setJobs(knownJobs.current); setTaskIds(current => ({ ...current, direct: job.id }));
       refresh(); toast.showToast(t('Generation started. Track it in Tasks.'), 'info');
     }} onError={onError} onClose={() => { selectionRequest.current++; setSelectingTask(false); setCreating(false); }} />;

@@ -19,17 +19,25 @@ type Change = (action: () => Promise<unknown>, message: string) => Promise<boole
 export function ModelSettings({ onClose, openAccount, initialCategory = 'all', providerId, onProviderChange }: { onClose?: () => void; openAccount?: () => void; initialCategory?: string; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
   const { t } = useI18n(), directory = useProviderDirectory(), toast = useToast();
   const [localSelected, setSelected] = useState(initialCategory === 'local' ? 'codex' : 'account'), [query, setQuery] = useState(''), [category, setCategory] = useState(initialCategory);
-  const selected = providerId === undefined ? localSelected : providerId ?? 'account';
+  const requestedProvider = providerId === undefined ? localSelected : providerId ?? 'account';
   const [status, setStatus] = useState('all'), [protocol, setProtocol] = useState('all');
   const [adding, setAdding] = useState(false), [localDetailOpen, setDetailOpen] = useState(false);
   const detailOpen = providerId === undefined ? localDetailOpen : Boolean(providerId);
-  const providers = directory.data?.providers.filter(provider => {
+  const data = directory.data;
+  const visibleProviders = data?.providers.filter(provider => {
+    const models = data.models.filter(model => model.provider === provider.id);
+    const textOnly = provider.kinds.length > 0 && provider.kinds.every(kind => kind === 'text') && models.every(model => model.kind === 'text');
+    // New custom connections need to remain configurable before their first model sync.
+    return !textOnly || provider.custom && !models.length;
+  }) ?? [];
+  const selected = visibleProviders.some(provider => provider.id === requestedProvider) ? requestedProvider : 'account';
+  const providers = visibleProviders.filter(provider => {
     const matches = category === 'all' || category === 'configured' && provider.configured || category === 'multimodal' && provider.kinds.length > 1
       || category === 'language' && provider.kinds.includes('text') || category === 'media' && provider.kinds.some(kind => ['image', 'video', 'audio'].includes(kind))
       || category === 'local' && provider.category === 'local' || category === 'custom' && provider.custom;
     return matches && (status === 'all' || status === 'enabled' && provider.enabled || status === 'disabled' && !provider.enabled || status === 'configured' && provider.configured || status === 'unconfigured' && !provider.configured) && (protocol === 'all' || provider.protocol === protocol) && `${provider.label} ${provider.id}`.toLowerCase().includes(query.toLowerCase());
   }) ?? [];
-  const provider = directory.data?.providers.find(provider => provider.id === selected);
+  const provider = visibleProviders.find(provider => provider.id === selected);
   const select = (id: string) => { setSelected(id); setDetailOpen(true); onProviderChange?.(id); };
   const closeDetail = () => { setDetailOpen(false); onProviderChange?.(null); };
   return <section className="om-provider-settings" data-detail={detailOpen} aria-label={t('Model providers')}>
@@ -65,7 +73,7 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
   const [editing, setEditing] = useState<DirectoryModel | null>(null);
   const models = data.models.filter(model => model.provider === provider.id);
 
-  const fixedOrigin = provider.protocol === 'media' && provider.id !== 'opendesign';
+  const fixedOrigin = provider.baseUrlEditable === false;
   useEffect(() => { setBaseUrl(provider.baseUrl); setLabel(provider.label); }, [provider.baseUrl, provider.label]);
   const change: Change = async (action, message) => {
     setBusy(true);

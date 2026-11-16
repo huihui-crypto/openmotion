@@ -6,7 +6,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { releaseProfile } from '../shared/mcp-registry.ts';
 import { checkDesign } from './design-check.ts';
-import { getWorkflow, workflowRegistry, phase1WorkflowNames } from '../shared/workflow.ts';
+import { getWorkflow, markdownAnchors, workflowLinkAnchors, workflowRegistry, phase1WorkflowNames } from '../shared/workflow.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -71,6 +71,10 @@ export async function check() {
       for (const reference of document.references) {
         const linked = await getWorkflow(reference.section, reference.workflow);
         assert.equal(linked.documentId, reference.documentId, `Unreachable workflow link from ${document.documentId}`);
+      }
+      for (const link of workflowLinkAnchors(document.content, document.documentId)) {
+        const linked = link.documentId === document.documentId ? document : await getWorkflow(link.section, link.workflow);
+        assert.ok(markdownAnchors(linked.content).has(link.anchor), `Missing heading anchor in ${document.documentId}: ${link.href}`);
       }
     }
   }

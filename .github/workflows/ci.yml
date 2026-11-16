@@ -126,7 +126,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node .github/scripts/ci-scope.mjs
       - name: Test release controls without publication credentials
-        run: node --test tests/release-workflows.test.mjs tests/release-scan.test.mjs tests/registry-download.test.mjs tests/stable-release.test.mjs
+        run: node --test tests/release-workflows.test.mjs tests/release-scan.test.mjs tests/registry-download.test.mjs tests/stable-release.test.mjs tests/release-notes.test.mjs
       - name: Install locked Motion dependencies
         if: steps.scope.outputs.full == 'true'
         run: npm ci --no-audit --no-fund
@@ -137,6 +137,9 @@ jobs:
           npm run design:test
           npm run typecheck:studio
           npm run typecheck:backend
+      - name: Check capture failure classification and bounded recovery
+        if: steps.scope.outputs.full == 'true'
+        run: node --test tests/capture-retry.test.ts
 
   platform-reliability:
     name: Workspace reliability (${{ matrix.os }})
@@ -167,7 +170,7 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Check ownership recovery, read verification and immutable snapshots
         if: steps.scope.outputs.full == 'true'
-        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts
+        run: node --experimental-strip-types --test tests/process-lock.test.ts tests/version-reads.test.ts tests/capture-retry.test.ts tests/hyperframes-startup.test.ts tests/command-lifecycle.test.ts tests/windows-install-recovery.test.ts
 
   studio:
     name: Studio regression (${{ matrix.shard }}/2)
@@ -303,12 +306,15 @@ jobs:
           node --test tests/design-system.test.ts
           npm run build:tracking
           node --experimental-strip-types --test tests/tracking.test.ts tests/tracking-device.test.ts tests/studio-tracking.test.ts tests/mcp-tracking-host.test.ts
+      - name: Related template preview browser regression
+        if: steps.scope.outputs.full == 'true'
+        run: node --experimental-strip-types tests/related-template-preview-browser.mjs "$RUNNER_TEMP/related-template-preview"
       - name: Validate standalone installation and packaging
         if: steps.scope.outputs.full == 'true'
-        run: node --experimental-strip-types --test tests/mcp-template-recommendations.test.ts tests/template-cards-ui.test.ts tests/diagnostics.test.ts tests/install.test.ts tests/npm-installer.test.ts tests/native-runtime.test.ts tests/npm-package.test.ts tests/test-package.test.ts tests/source-install.test.ts tests/bootstrap.test.ts tests/bundled-npm-runtime.test.ts tests/inline-onboarding.test.ts tests/npm-distribution-selection.test.ts tests/onboarding-callback.test.ts tests/onboarding-workspace.test.ts tests/prebuilt-bootstrap.test.ts tests/source-marketplace.test.ts tests/byok.test.ts tests/generation-options.test.ts tests/asset-library.test.ts tests/gateway.test.ts tests/mcp-onboarding.test.ts tests/provider-settings.test.ts tests/local-agents.test.ts tests/mcp-registry.test.ts tests/public-names.test.ts tests/mcp-runtime.test.ts tests/mcp-upgrade.test.ts tests/preview.test.ts tests/editor-urls.test.ts tests/workspace-studio.test.ts tests/sync.test.ts tests/phase1.test.ts tests/webmcp.test.ts tests/preview-handoff.test.ts tests/adapters.test.ts tests/package.test.ts tests/library-install.test.mjs tests/recreate-measure.test.ts tests/workflow.test.ts tests/catalog.test.ts tests/prism-templates.test.ts tests/inline-video.test.ts tests/extension-boundary.test.ts tests/connections.test.ts tests/install-guide.test.ts tests/readme-resources.test.ts tests/motion-design-remix.test.ts tests/motion-package.test.ts
+        run: node --experimental-strip-types --test tests/mcp-template-recommendations.test.ts tests/template-cards-ui.test.ts tests/diagnostics.test.ts tests/install.test.ts tests/npm-installer.test.ts tests/native-runtime.test.ts tests/npm-package.test.ts tests/test-package.test.ts tests/source-install.test.ts tests/bootstrap.test.ts tests/bundled-npm-runtime.test.ts tests/inline-onboarding.test.ts tests/npm-distribution-selection.test.ts tests/onboarding-workspace.test.ts tests/prebuilt-bootstrap.test.ts tests/source-marketplace.test.ts tests/byok.test.ts tests/generation-options.test.ts tests/asset-library.test.ts tests/gateway.test.ts tests/mcp-onboarding.test.ts tests/provider-settings.test.ts tests/local-agents.test.ts tests/mcp-registry.test.ts tests/public-names.test.ts tests/mcp-runtime.test.ts tests/mcp-upgrade.test.ts tests/preview.test.ts tests/editor-urls.test.ts tests/workspace-studio.test.ts tests/sync.test.ts tests/phase1.test.ts tests/font-catalog.test.ts tests/font-import.test.ts tests/font-specimen.test.ts tests/studio-fonts.test.ts tests/webmcp.test.ts tests/preview-handoff.test.ts tests/adapters.test.ts tests/template-delivery.test.ts tests/package.test.ts tests/library-install.test.mjs tests/recreate-measure.test.ts tests/workflow.test.ts tests/catalog.test.ts tests/prism-templates.test.ts tests/inline-video.test.ts tests/extension-boundary.test.ts tests/connections.test.ts tests/install-guide.test.ts tests/readme-resources.test.ts tests/motion-design-remix.test.ts tests/motion-package.test.ts
       - name: Repository template runtime regression
         if: steps.scope.outputs.full == 'true'
-        run: node --test tests/repository-template-runtime.test.ts
+        run: node --test tests/repository-template-runtime.test.ts tests/template-prompts.test.ts tests/integration-setup.test.ts
       - name: Built-in template playback and export regression
         if: steps.scope.outputs.full == 'true'
         run: node --experimental-strip-types --test tests/decision-tree.test.ts
