@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { resolveZoneDropPlacement } from "./timelineCollision";
 import { snapMoveToTargets, stickyTimelineTime } from "./timelineSnapping";
 import { linkedOverlayKeys } from "./timelineLinkage";
@@ -104,4 +104,10 @@ it("persists all three drag preferences independently for each project", async (
   expect(usePlayerStore.getState()).toMatchObject({timelineSnapEnabled:false,rippleEditEnabled:false,timelineLinkageEnabled:false});
   store.beginTimelineSession('capcut-b');
   expect(usePlayerStore.getState()).toMatchObject({timelineSnapEnabled:true,rippleEditEnabled:true,timelineLinkageEnabled:true});
+});
+
+it("does not compact an unrelated root lane when trimming an expanded composition child", () => {
+  const main=clip('root',2,3,4), child=clip('child',2,0,2);
+  const changes=[{element:child,start:0,duration:1}];
+  expect(compactMainTrack([main],changes,true,true)).toEqual(changes);
 });

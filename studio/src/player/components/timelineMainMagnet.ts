@@ -18,7 +18,8 @@ export function compactMainTrack(
   linkage: boolean,
 ): MainMagnetChange[] {
   const main = mainVisualTrack(elements);
-  if (!enabled || !changes.some(change => change.element.track === main)) return [...changes];
+  const rootKeys = new Set(elements.map(element => element.key ?? element.id));
+  if (!enabled || !changes.some(change => change.element.track === main && rootKeys.has(change.element.key ?? change.element.id))) return [...changes];
   const byKey = new Map(changes.map(change => [change.element.key ?? change.element.id, change]));
   const lane = elements.filter(el => el.track === main);
   const proposed = (el: TimelineElement) => byKey.get(el.key ?? el.id) ?? { element: el, start: el.start, duration: el.duration };
