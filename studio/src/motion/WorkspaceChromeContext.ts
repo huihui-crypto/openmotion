@@ -8,6 +8,7 @@ export type WorkspaceChrome = {
   openLibrary: (trigger?: HTMLElement, templateId?: string) => void;
   openConnections: () => void;
   openModelSettings: () => void;
+  openAccount: () => void;
   openHome: () => void;
   openAssets: () => void;
   assetsOpen: boolean;

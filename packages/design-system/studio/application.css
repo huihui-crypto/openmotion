@@ -293,6 +293,7 @@
 [data-motion-studio] .om-creation-setup { display: flex; align-items: center; flex-wrap: wrap; gap: var(--motion-space-10); padding: var(--motion-space-16); border: 1px dashed var(--motion-border); border-radius: var(--motion-radius-lg); }
 [data-motion-studio] .om-creation-setup > svg { color: var(--motion-creative-agent); }
 [data-motion-studio] .om-creation-setup > p { flex: 1; min-width: 120px; }
+[data-motion-studio] .om-creation-setup-actions { display: flex; flex-wrap: wrap; gap: var(--motion-space-8); }
 @keyframes om-creation-orbit { from { transform: rotate(0) scaleY(.65); } to { transform: rotate(360deg) scaleY(.65); } }
 @keyframes om-creation-breathe { 50% { transform: translateY(-4px) rotate(4deg); } }
 @keyframes om-creation-wave { from { transform: scaleY(.35); } to { transform: scaleY(1); } }

@@ -281,6 +281,7 @@
     "View tasks": "查看任务",
     "{count} in progress": "{count} 个进行中",
     "{count} awaiting approval": "{count} 个待确认",
-    "Task status unavailable": "状态更新失败"
+    "Task status unavailable": "状态更新失败",
+    "Sign in to use OpenDesign models": "登录 OpenDesign 使用账号模型"
   }
 }

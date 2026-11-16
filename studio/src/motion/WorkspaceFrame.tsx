@@ -139,6 +139,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     openLibrary: (trigger, templateId) => { libraryTrigger.current = trigger ?? null; workspace.clearError(); navigatePage({ templates: true, template: templateId ?? null }); },
     openConnections: () => openSettings('mcp'),
     openModelSettings: () => openSettings('providers'),
+    openAccount: () => openSettings('account'),
     openHome, openAssets, assetsOpen: assetsOpen && !settings, toggleSidebar, sidebarOpen, navigationCollapsed,
     toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) || assetsOpen };
   return <WorkspaceChromeContext.Provider value={value}>

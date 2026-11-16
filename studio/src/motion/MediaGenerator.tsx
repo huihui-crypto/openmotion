@@ -6,6 +6,8 @@ import type { MediaRequest } from './MediaGatewayContext';
 import { useMediaPopoverPosition } from './useMediaPopoverPosition';
 import { useArtifactViewActive } from './ArtifactViewState';
 import { requestedProject } from './workspaceRouting';
+import { useOptionalWorkspaceChrome } from './WorkspaceChromeContext';
+import { AccountSignInButton } from './AccountSignIn';
 
 export function generationParameters(model: Model, ratio: string, duration: number, extra: Record<string, unknown>) {
   const [w, h] = ratio.split(':').map(Number);
@@ -23,7 +25,7 @@ export function generationParameters(model: Model, ratio: string, duration: numb
 }
 type Kind = 'image' | 'video' | 'music' | 'voice';
 export function MediaGenerator({ request, onClose, onSettings }: { request: MediaRequest; onClose: () => void; onSettings: () => void }) {
-  const { t } = useI18n();
+  const { t } = useI18n(), chrome = useOptionalWorkspaceChrome();
   const editing = request.intent === 'edit' && request.selection?.modality === 'image';
   const [data, setData] = useState<{ status: GatewayStatus; models: Model[] } | null>(null);
   const [projectId, setProjectId] = useState('');
@@ -135,7 +137,7 @@ export function MediaGenerator({ request, onClose, onSettings }: { request: Medi
     <details><summary>{t('Advanced parameters (JSON)')}</summary><textarea aria-label={t('Advanced parameters (JSON)')} value={params} rows={2} spellCheck={false} onChange={event => setParams(event.target.value)} /></details>
     {error && <p role="alert" className="motion-media-error">{t(error)}</p>}
     <footer><span className="motion-media-muted">{model?.provider === 'codex' ? t('Uses your local Codex account') : t('Uses your provider account')}{request.target && ` · ${start.toFixed(1)}–${(start + duration).toFixed(1)}s`}</span><button className="motion-media-primary" disabled={busy || !prompt.trim() || !projectId || !model || !available(model)} onClick={() => void submit()}>{busy ? t('Working…') : t('Generate')}</button></footer>
-    {data && (!model || !available(model)) && <button className="motion-media-connect" onClick={onSettings}>{t('Connect a provider to generate this media')}</button>}
+    {data && (!model || !available(model)) && <><button className="motion-media-connect" onClick={onSettings}>{t('Connect a provider to generate this media')}</button>{chrome && <AccountSignInButton area="media_generator" className="motion-media-connect" openAccount={() => { onClose(); chrome.openAccount(); }} />}</>}
     {visibleJobs.length > 0 && <div className="motion-generation-results" aria-live="polite">{visibleJobs.slice(0, 8).map(job => <article key={job.id}>
       <div className="motion-media-row"><span title={job.prompt}>{job.model.label} <small>{t(job.state)}</small></span>{['queued', 'running'].includes(job.state) && <button onClick={() => void gatewayRequest(`generations/${job.id}/cancel`, 'POST', {}).then(() => setJobs(prev => prev.map(j => j.id === job.id ? { ...j, state: 'cancelled' } : j))).catch(e => setError(e.message))}>{t('Cancel')}</button>}</div>
       {job.error && <p className="motion-media-error">{t(job.error)}</p>}
