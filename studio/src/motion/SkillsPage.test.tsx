@@ -43,7 +43,7 @@ it('fills the brief and copies an MCP instruction for the Agent', async () => {
   const write = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: write } });
   act(() => root.render(<Host />));
-  act(() => button('Anime.js').click());
+  act(() => button('Staggered entrance').click());
   act(() => button('9:16').click());
   act(() => button('30s').click());
   await act(async () => button('Copy for Agent').click());
