@@ -35,7 +35,7 @@ it('filters by category and search', () => {
   act(() => button('All').click());
   const input = container.querySelector<HTMLInputElement>('input[type="search"]')!;
   act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'particle'); input.dispatchEvent(new Event('input', { bubbles: true })); });
-  expect([...container.querySelectorAll('.om-skill-gallery-card strong')].map(node => node.textContent)).toEqual(['Proton']);
+  expect([...container.querySelectorAll('.om-skill-gallery-card strong')].map(node => node.textContent)).toEqual(['Particle effects']);
 });
 
 it('fills the brief and copies an MCP instruction for the Agent', async () => {
