@@ -241,7 +241,8 @@ export function useTimelineGroupEditing({
     (changes: TimelineGroupMoveChange[], options?: TimelineGroupCommitOptions) => {
       if (changes.length === 0) return Promise.resolve();
       for (const change of changes) {
-        const attrs: Array<[string, string]> = [
+        // Lane-only changes keep the live start too (see applyTimelineMoveAttributes).
+        const attrs: Array<[string, string]> = change.start === change.element.start ? [] : [
           [
             "data-start",
             formatTimelineAttributeNumber(toAuthoredStart(change.element, change.start)),

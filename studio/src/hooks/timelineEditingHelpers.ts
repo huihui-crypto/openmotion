@@ -229,6 +229,9 @@ function resolveResizePlaybackStart(
   };
 }
 
+/** Below any centisecond step, above float noise from authored-start round trips. */
+const AUTHORED_START_EPSILON = 1e-6;
+
 export function applyTimelineMoveAttributes(
   original: string,
   target: PatchTarget,
@@ -243,7 +246,14 @@ export function applyTimelineMoveAttributes(
     );
     return original;
   }
-  let patched = applyPatchByTarget(original, target, {
+  // A clip that only changes lane keeps its authored start text: re-rounding an
+  // unchanged start to centiseconds while data-duration keeps full precision
+  // shifts its end past the next clip's start and makes the pair overlap.
+  const authoredStart = readAttributeByTarget(original, target, "data-start");
+  const startUnchanged = authoredStart != null
+    && authoredStart.trim() !== ""
+    && Math.abs(Number(authoredStart) - start) < AUTHORED_START_EPSILON;
+  let patched = startUnchanged ? original : applyPatchByTarget(original, target, {
     type: "attribute",
     property: "start",
     value: formatTimelineAttributeNumber(start),
