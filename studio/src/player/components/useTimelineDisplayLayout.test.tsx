@@ -8,7 +8,7 @@ import type { DraggedClipState } from "./timelineClipDragTypes";
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
-it("keeps pointer insertion geometry stable and opens a preview lane only for keyboard pickup", () => {
+it("keeps interior pointer seams stable, appends a bottom preview, and expands keyboard pickup", () => {
   const order = [7, 3, 9];
   const geometry = createTimelineRowGeometry(order, [48, 104, 48], { top: 0 });
   const host = document.createElement("div");
@@ -49,6 +49,15 @@ it("keeps pointer insertion geometry stable and opens a preview lane only for ke
   expect(pointer.order).toEqual(order);
   expect(pointer.heights).toEqual([48, 104, 48]);
   expect(pointer.below).toBe(176);
+  act(() => root.render(<Probe active={{ ...drag, insertRow: order.length }} />));
+  const bottom = JSON.parse(host.textContent!);
+  expect(bottom.order.slice(0, order.length)).toEqual(order);
+  expect(bottom.order).toHaveLength(4);
+  expect(bottom.pinned).toBe(-1);
+  expect(bottom.heights).toEqual([48, 104, 48, 48]);
+  expect(bottom.below).toBe(pointer.below);
+  act(() => root.render(<Probe active={drag} />));
+  expect(JSON.parse(host.textContent!).order).toEqual(order);
   // Moving through the seam must not move either existing lane underneath the pointer.
   act(() => root.render(<Probe active={{ ...drag, insertRow: null }} />));
   expect(JSON.parse(host.textContent!).heights).toEqual(pointer.heights);
