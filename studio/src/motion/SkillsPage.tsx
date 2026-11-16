@@ -51,6 +51,8 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   const prompt = selected ? skillPrompt({ ...selected, output: t(selected.output), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';
   const shortcut = selected ? skillShortcut({ ...selected, title: displayName(selected), example: t(selected.example) }, parameters, locale, installUrl) : '';
   const open = (skill: MotionSkill) => onSkillChange(skill.id);
+  // A failed copy keeps its exact text for manual copying only until the brief changes; then show the live text again.
+  useEffect(() => { setManualCopy(null); }, [prompt, shortcut]);
   // The brief belongs to one skill; any route change (card, history, link) starts a fresh brief.
   useEffect(() => { setParameters(defaults); setManualCopy(null); setCommandOpen(false); }, [skillId]);
   async function copy(surface: 'instruction' | 'command' = 'instruction') {
@@ -81,7 +83,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
     </div>
     {selected && <aside className="om-skill-detail om-surface-divider" aria-label={displayName(selected)}>
       <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => onSkillChange(null)}><RemixIcon name="close-line" size={18} /></button></header>
-      <SkillMedia skill={selected} large />
+      <SkillMedia key={selected.id} skill={selected} large />
       <p className="om-skill-output"><span>{t('When to use')}</span>{t(selected.useWhen)}</p>
       <p className="om-skill-output"><span>{t('You get')}</span>{t(selected.output)}</p>
       {selected.repository ? <a className="om-skill-source" href={selected.repository} target="_blank" rel="noopener noreferrer"><GitHubMark width={14} height={14} /><span>{selected.repository.replace('https://', '')}</span><span className="om-badge">{selected.license}</span><RemixIcon name="external-link-line" size={14} /></a>

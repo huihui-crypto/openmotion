@@ -158,3 +158,14 @@ it('localizes every Skills string and instruction in all supported languages', a
   }
   expect(skillPrompt(motionSkills[0], { subject: 'x', duration: 10, aspect: '16:9', style: '' }, 'ja', 'https://example.test/install.md')).toContain('openmotion_create_project');
 });
+
+it('drops a stale failed-copy text once the brief changes', async () => {
+  vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('Clipboard unavailable'));
+  act(() => root.render(<Host />));
+  act(() => button('Staggered entrance').click());
+  await act(async () => button('Copy for Agent').click());
+  act(() => button('30s').click());
+  const instruction = container.querySelector<HTMLPreElement>('.om-skill-prompt pre')!;
+  expect(instruction.textContent).toContain('Duration: 30s');
+  expect(instruction.dataset.manual).toBe('false');
+});
