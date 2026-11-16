@@ -348,3 +348,19 @@ it("does not raise the text over a later lower sibling outside its time window",
   expect(patches["later-lower"]).toBeUndefined();
   expect(patches.blue).toBe(12);
 });
+
+it("raises upper clips overlapping a shifted same-lane sibling outside the edited window", () => {
+  const elements = [el("title", 0, 0, 2, 3), el("sceneA", 1, 0, 10, 2),
+    el("sceneB", 1, 4, 4, 0), el("caption", 2, 4, 4, 5)];
+  expect(patchMap(elements, ["sceneB"], "down")).toEqual({ title: 9, sceneA: 8, sceneB: 6 });
+});
+
+it("propagates raised siblings bottom-to-top only through overlapping upper clips in the same scope", () => {
+  const elements = [el("heading", -1, 0, 1, 4), el("title", 0, 0, 2, 3),
+    el("sceneA", 1, 1, 9, 2), el("sceneB", 1, 4, 4, 0), el("caption", 2, 4, 4, 5),
+    el("later", -1, 10, 2, 0), el("audio", -1, 0, 2, 0, true),
+    el("unresolved", -1, 0, 2, Number.NaN),
+    { ...el("foreign-file", -1, 0, 2, 0), sourceFile: "other.html" },
+    { ...el("foreign-context", -1, 0, 2, 0), stackingContextId: "other" }];
+  expect(patchMap(elements, ["sceneB"], "down")).toEqual({ heading: 10, title: 9, sceneA: 8, sceneB: 6 });
+});

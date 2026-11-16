@@ -221,13 +221,30 @@ export function computeStackingPatches(
         }
       }
       const lanes = [...new Set(scope.map(other => other.track))].sort((a, b) => b - a);
+      const raised = new Set<string>();
       for (const lane of lanes) {
         const members = scope.filter(other => other.track === lane);
         const below = affected.filter(other => other.track > lane);
         const shift = Math.max(0, ...affected.filter(member => member.track === lane).flatMap(member => below
           .filter(other => overlapsInTime(member, other))
           .map(other => other.zIndex + 1 - member.zIndex)));
-        for (const member of members) member.zIndex += shift;
+        for (const member of members) {
+          member.zIndex += shift;
+          if (shift > 0) raised.add(member.key);
+        }
+      }
+      // A shifted sibling can overlap upper clips outside the edited window.
+      // Propagate only actual raises, bottom-to-top, so those clips keep their
+      // lane order without letting unrelated lower siblings drive the repair.
+      for (const member of [...live].sort((a, b) => b.track - a.track)) {
+        if (!raised.has(member.key)) continue;
+        for (const other of live) {
+          if (laneIsAbove(other, member) && samePaintScope(member, other) &&
+              overlapsInTime(member, other) && other.zIndex < member.zIndex + 1) {
+            other.zIndex = member.zIndex + 1;
+            raised.add(other.key);
+          }
+        }
       }
     }
   }
