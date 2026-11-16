@@ -7,11 +7,17 @@ import { aspectRatios, durations, motionSkills, skillCategories, skillPrompt, ty
 import { GitHubMark } from '../../../packages/design-system/react/GitHubMark';
 import './skills.css';
 
+/** Short source shown on cards: owner/repo (plus skill folder) or OpenMotion. */
+const sourceLabel = (skill: MotionSkill) => skill.repository?.replace('https://github.com/', '').replace('/tree/main/', ' / ') ?? 'OpenMotion';
+
+/** Upstream project names stay verbatim; only OpenMotion-authored skill names are translated. */
+const displayNameOf = (t: (text: string) => string) => (skill: MotionSkill) => skill.repository ? skill.name : t(skill.name);
+
 const defaults: SkillParameters = { subject: '', duration: 10, aspect: '16:9', style: '' };
 
 /** Open-source motion techniques the user can hand to an Agent through OpenMotion MCP. */
 export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null; onSkillChange: (id: string | null) => void }) {
-  const { t, locale } = useI18n(), toast = useToast();
+  const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState('');
   const instruction = useRef<HTMLPreElement>(null);
@@ -21,10 +27,10 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   const visible = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
     return motionSkills.filter(skill => (!category || skill.category === category)
-      && (!needle || [skill.name, skill.tagline, t(skill.tagline), skill.repository].some(value => value.toLocaleLowerCase().includes(needle))));
+      && (!needle || [skill.name, displayName(skill), skill.tagline, t(skill.tagline), skill.repository ?? 'OpenMotion'].some(value => value.toLocaleLowerCase().includes(needle))));
   }, [query, category, t]);
   // The instruction follows the interface language, including the example brief and borrowed technique.
-  const prompt = selected ? skillPrompt({ ...selected, example: t(selected.example), technique: t(selected.technique) }, parameters, locale) : '';
+  const prompt = selected ? skillPrompt({ ...selected, name: displayName(selected), example: t(selected.example), technique: t(selected.technique) }, parameters, locale) : '';
   const open = (skill: MotionSkill) => { setManualCopy(''); setParameters(defaults); onSkillChange(skill.id); };
   async function copy() {
     if (!selected) return;
@@ -45,16 +51,17 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
       {visible.length ? <ul className="om-skills-grid" aria-label={t('Skills')}>
         {visible.map(skill => <li key={skill.id}><button className="om-card om-skill-card" aria-pressed={skill.id === skillId} onClick={() => open(skill)}>
           <SkillCover motif={skill.motif} name={skill.name} />
-          <span className="om-skill-card-caption"><strong>{skill.name}</strong><span className="om-muted">{t(skill.tagline)}</span><span className="om-skill-meta"><span className="om-badge">{t(skill.category)}</span><span>{skill.repository.replace('https://github.com/', '')}</span></span></span>
+          <span className="om-skill-card-caption"><strong>{displayName(skill)}</strong><span className="om-muted">{t(skill.tagline)}</span><span className="om-skill-meta"><span className="om-badge">{t(skill.category)}</span><span>{sourceLabel(skill)}</span></span></span>
         </button></li>)}
       </ul> : <p className="om-empty">{t('No matching skills.')}</p>}
-      <p className="om-muted om-skills-note">{t('Each skill links to its upstream repository and license. OpenMotion borrows the technique; it does not bundle upstream code.')}</p>
+      <p className="om-muted om-skills-note">{t('Open-source skills link to their upstream repository and license. OpenMotion borrows the workflow or technique; it does not bundle upstream code.')}</p>
     </main>
-    {selected && <aside className="om-skill-detail om-surface-divider" aria-label={selected.name}>
-      <header className="om-skill-detail-header"><h2 className="om-subtitle">{selected.name}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => onSkillChange(null)}><RemixIcon name="close-line" size={18} /></button></header>
+    {selected && <aside className="om-skill-detail om-surface-divider" aria-label={displayName(selected)}>
+      <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => onSkillChange(null)}><RemixIcon name="close-line" size={18} /></button></header>
       <SkillCover motif={selected.motif} name={selected.name} large />
       <p className="om-muted">{t(selected.tagline)}</p>
-      <a className="om-skill-source" href={selected.repository} target="_blank" rel="noopener noreferrer"><GitHubMark width={14} height={14} /><span>{selected.repository.replace('https://', '')}</span><span className="om-badge">{selected.license}</span><RemixIcon name="external-link-line" size={14} /></a>
+      {selected.repository ? <a className="om-skill-source" href={selected.repository} target="_blank" rel="noopener noreferrer"><GitHubMark width={14} height={14} /><span>{selected.repository.replace('https://', '')}</span><span className="om-badge">{selected.license}</span><RemixIcon name="external-link-line" size={14} /></a>
+        : <p className="om-skill-source"><RemixIcon name="flashlight-line" size={16} /><span>{t('OpenMotion skill')}</span></p>}
       <section className="om-skill-form" aria-label={t('Brief')}>
         <label><span>{t('What to make')}</span><span className="om-field"><textarea rows={2} maxLength={500} value={parameters.subject} placeholder={t(selected.example)} onChange={event => setParameters({ ...parameters, subject: event.target.value })} /></span></label>
         <fieldset><legend>{t('Duration')}</legend><div className="om-skill-options">{durations.map(value => <button key={value} className="om-nav-item" aria-pressed={parameters.duration === value} onClick={() => setParameters({ ...parameters, duration: value })}>{t('{count}s', { count: value })}</button>)}</div></fieldset>
@@ -98,5 +105,13 @@ const motifShapes: Record<SkillMotif, ReactElement> = {
   levelup: <><rect className="om-skill-line" x="24" y="56" width="112" height="12" rx="6" /><rect className="om-skill-fill om-skill-grow" x="24" y="56" width="112" height="12" rx="6" /><path className="om-skill-fill om-skill-pulse" d="M80 14l6 12 13 2-9 9 2 13-12-6-12 6 2-13-9-9 13-2z" /></>,
   orbit: <><ellipse className="om-skill-line" cx="80" cy="45" rx="54" ry="18" /><circle className="om-skill-fill" cx="80" cy="45" r="14" /><circle className="om-skill-fill om-skill-orbit" cx="134" cy="45" r="5" /></>,
   promo: <><rect className="om-skill-line" x="22" y="18" width="116" height="54" rx="6" /><rect className="om-skill-fill om-skill-dot" style={{ animationDelay: '0s' }} x="32" y="28" width="28" height="34" rx="3" /><rect className="om-skill-fill om-skill-dot" style={{ animationDelay: '.25s' }} x="66" y="28" width="28" height="34" rx="3" /><rect className="om-skill-fill om-skill-dot" style={{ animationDelay: '.5s' }} x="100" y="28" width="28" height="34" rx="3" /><path className="om-skill-stroke" d="M22 82h116" /><circle className="om-skill-fill om-skill-scrub" cx="22" cy="82" r="3" /></>,
+  sale: <><rect className="om-skill-fill om-skill-pulse" x="50" y="14" width="60" height="34" rx="6" /><path className="om-skill-line" d="M40 62h80" /><rect className="om-skill-line" x="44" y="56" width="20" height="20" rx="3" /><rect className="om-skill-line" x="70" y="56" width="20" height="20" rx="3" /><rect className="om-skill-line" x="96" y="56" width="20" height="20" rx="3" /></>,
+  photo: <><ellipse className="om-skill-line" cx="80" cy="72" rx="34" ry="7" /><rect className="om-skill-fill om-skill-float" x="64" y="24" width="32" height="42" rx="8" /><path className="om-skill-stroke" d="M22 20l14 10M138 20l-14 10" /></>,
+  listing: <><rect className="om-skill-fill" x="18" y="16" width="56" height="58" rx="5" /><rect className="om-skill-line om-skill-dot" style={{ animationDelay: '0s' }} x="82" y="16" width="26" height="26" rx="4" /><rect className="om-skill-line om-skill-dot" style={{ animationDelay: '.2s' }} x="114" y="16" width="26" height="26" rx="4" /><rect className="om-skill-line om-skill-dot" style={{ animationDelay: '.4s' }} x="82" y="48" width="58" height="26" rx="4" /></>,
+  narration: <><rect className="om-skill-line" x="20" y="16" width="120" height="44" rx="6" /><path className="om-skill-stroke om-skill-draw" d="M36 46l18-14 16 10 20-16 18 12" />{[0, 1, 2, 3, 4, 5, 6, 7, 8].map(index => <rect key={index} className="om-skill-fill om-skill-dot" style={{ animationDelay: `${index * 0.1}s` }} x={44 + index * 8} y={70 - (index % 3) * 3} width="4" height={8 + (index % 3) * 6} rx="2" />)}</>,
+  brand: <><circle className="om-skill-fill om-skill-spin" cx="48" cy="45" r="18" /><rect className="om-skill-fill" x="84" y="26" width="16" height="38" rx="3" /><rect className="om-skill-line" x="104" y="26" width="16" height="38" rx="3" /><rect className="om-skill-line" x="124" y="26" width="16" height="38" rx="3" /></>,
+  thumbnail: <><rect className="om-skill-line" x="18" y="14" width="124" height="62" rx="6" /><circle className="om-skill-fill" cx="112" cy="46" r="20" /><path className="om-skill-stroke om-skill-pulse" d="M30 34h44M30 50h30" /></>,
+  generate: <><rect className="om-skill-line" x="20" y="18" width="36" height="54" rx="4" /><rect className="om-skill-fill om-skill-frame" x="20" y="18" width="36" height="54" rx="4" /><rect className="om-skill-line" x="62" y="18" width="36" height="54" rx="4" /><rect className="om-skill-line" x="104" y="18" width="36" height="54" rx="4" /><path className="om-skill-fill om-skill-pulse" d="M80 36l3 6 6 3-6 3-3 6-3-6-6-3 6-3z" /></>,
+  identity: <><circle className="om-skill-line" cx="40" cy="45" r="18" /><circle className="om-skill-fill om-skill-pulse" cx="80" cy="45" r="18" /><circle className="om-skill-line" cx="120" cy="45" r="18" /></>,
   particles: <>{Array.from({ length: 14 }, (_, index) => <circle key={index} className="om-skill-dot om-skill-burst" style={{ animationDelay: `${(index % 7) * 0.15}s`, transformOrigin: '80px 45px', ['--angle' as string]: `${index * 26}deg` }} cx="80" cy="45" r={index % 3 + 2} />)}</>,
 };
