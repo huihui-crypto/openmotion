@@ -36,7 +36,7 @@ it('presents the growth teardown as an OpenMotion skill', async () => {
   const write = vi.fn().mockResolvedValue(undefined);
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: write } });
   act(() => root.render(<Host />));
-  act(() => button('Growth teardown').click());
+  act(() => button('Company growth teardown').click());
   expect(container.querySelector('.om-skill-source')!.textContent).toContain('OpenMotion skill');
   expect(container.querySelector('.om-skill-source a, a.om-skill-source')).toBeNull();
   await act(async () => button('Copy for Agent').click());
