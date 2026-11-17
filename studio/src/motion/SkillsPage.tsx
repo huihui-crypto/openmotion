@@ -51,6 +51,16 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
       && (!needle || [skill.name, skill.title, displayName(skill), t(skill.useWhen), skill.tagline, t(skill.tagline), t(skill.output), skill.repository ?? 'OpenMotion'].some(value => value.toLocaleLowerCase().includes(needle))));
   };
   const visible = useMemo(() => matching(category, query), [query, category, t]);
+  // Row-first masonry: card N sits in column N % columns, so the first row reads in catalog order.
+  const main = useRef<HTMLDivElement>(null), [columnCount, setColumnCount] = useState(3);
+  useEffect(() => {
+    const node = main.current;
+    if (!node || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(([entry]) => { const width = entry.contentRect.width; if (width > 0) setColumnCount(skillColumns(width)); });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const columns = useMemo(() => Array.from({ length: columnCount }, (_, column) => visible.map((skill, index) => ({ skill, index })).filter(({ index }) => index % columnCount === column)), [visible, columnCount]);
   // One page view per visit; one detail view per opened Skill; one search result per settled query (500 ms after typing stops).
   useEffect(() => { tracking.reportSkillsPageView(hasProject); }, []);
   const detailView = useRef<string | undefined>(undefined), searchId = useRef<string | undefined>(undefined);
@@ -97,7 +107,7 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
   }
   return <div className="om-gallery-surface om-skills-page om-skills-library" data-detail={Boolean(selected)}>
     <StudioToastViewport {...toast} />
-    <div className="om-skills-main">
+    <div className="om-skills-main" ref={main}>
       <div className="om-gallery-sticky-header">
         <div className="om-gallery-toolbar om-skills-toolbar">
           <div className="om-gallery-categories" role="group" aria-label={t('Skill category')}>
@@ -111,8 +121,10 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
         <section className="om-gallery-intro om-skills-intro"><span className="om-gallery-eyebrow">{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
           <div className="om-gallery-intro-actions"><a className="om-gallery-submit" href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSkillSubmitClicked()}>{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a></div>
         </section>
-        <div className="om-gallery-masonry om-skills-grid">
-          {visible.map((skill, index) => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill, index + 1)} />)}
+        <div className="om-skills-grid" data-columns={columnCount}>
+          {columns.map((items, column) => <div key={column} className="om-skills-column">
+            {items.map(({ skill, index }) => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill, index + 1)} />)}
+          </div>)}
         </div>
         {!visible.length && <div className="om-empty"><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button className="om-button" onClick={() => { setQuery(''); setCategory(null); tracking.reportSkillFiltersCleared(); }}>{t('Clear filters')}</button></div>}
       </main>
@@ -152,6 +164,9 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
     </aside>}
   </div>;
 }
+
+/** Column count for the list width; the same breakpoints the Skills page used for its CSS columns. */
+export const skillColumns = (width: number) => width <= 560 ? 1 : width <= 1000 ? 2 : width <= 1400 ? 3 : 4;
 
 /** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
 function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; category: string; selected: boolean; onSelect: () => void }) {
