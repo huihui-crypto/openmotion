@@ -85,13 +85,14 @@ test('installation preserves customized canonical content before attempting lega
   await assert.rejects(installLibrarySkill('../foreign', root), /Unknown Library Skill/);
 });
 
-test('standalone openmotion-style-recipes installs without a retired entry', async t => {
-  const root = await isolated(t), destination = path.join(root, 'skills');
-  const result = await installLibrarySkill('openmotion-style-recipes', destination);
-  assert.deepEqual(await readdir(destination), ['openmotion-style-recipes']);
-  assert.deepEqual(result.removedLegacy, []);
-  assert.deepEqual(result.preservedLegacy, []);
-  assert.equal(await readFile(result.entry, 'utf8'), await readFile('library/skills/openmotion-style-recipes/SKILL.md', 'utf8'));
-  assert((await readFile(path.join(destination, 'openmotion-style-recipes/references/shortlist-shorts/MOTION_DESIGN.md'), 'utf8')).length > 100);
-  assert.deepEqual((await installLibrarySkill('openmotion-style-recipes', destination)).installed, ['openmotion-style-recipes']);
-});
+for (const canonical of ['openmotion-bold-type-poster', 'openmotion-glitch-logo-sting', 'openmotion-highlighter-notes', 'openmotion-paper-collage-explainer', 'openmotion-paper-map-journey', 'openmotion-red-pen-archive', 'openmotion-shortlist-shorts', 'openmotion-spec-sheet', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker']) {
+  test(`standalone ${canonical} installs without a retired entry`, async t => {
+    const root = await isolated(t), destination = path.join(root, 'skills');
+    const result = await installLibrarySkill(canonical, destination);
+    assert.deepEqual(await readdir(destination), [canonical]);
+    assert.deepEqual(result.removedLegacy, []);
+    assert.deepEqual(result.preservedLegacy, []);
+    assert.equal(await readFile(result.entry, 'utf8'), await readFile(`library/skills/${canonical}/SKILL.md`, 'utf8'));
+    assert.deepEqual((await installLibrarySkill(canonical, destination)).installed, [canonical]);
+  });
+}

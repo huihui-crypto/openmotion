@@ -48,9 +48,9 @@ export async function check() {
     }
   }
   for (const file of ['server.ts', 'browser.ts', 'workspace.ts', 'mcp.ts', 'mcp-tools.ts', 'editor-runtime.ts', 'phase1.ts', 'phase1-versions.ts', 'project-archive.ts', 'project-management.ts', 'inline-video.ts', 'preview.ts', 'hyperframes.ts', 'template-library.ts', 'template-catalog.ts', 'prism-templates.ts', 'editor-server.ts']) stripTypeScriptTypes(await readFile(path.join(root, file), 'utf8'), { mode: 'strip' });
-  for (const entry of await readdir(path.join(root, 'skills'), { withFileTypes: true })) {
+  for (const folder of ['skills', 'library/skills']) for (const entry of await readdir(path.join(root, folder), { withFileTypes: true })) {
     if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
-    const document = await readFile(path.join(root, 'skills', entry.name, 'SKILL.md'), 'utf8');
+    const document = await readFile(path.join(root, folder, entry.name, 'SKILL.md'), 'utf8');
     const frontmatter = document.match(/^---\n([\s\S]*?)\n---(?:\n|$)/)?.[1];
     assert.ok(frontmatter, `Missing skill frontmatter: ${entry.name}`);
     assert.match(frontmatter, /^name: [a-z0-9-]+$/m);

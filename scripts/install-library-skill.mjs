@@ -24,7 +24,7 @@ const retired = {
   } },
 };
 // Library Skills without a retired forwarding folder install the same way.
-const canonicalSkills = new Set([...Object.keys(retired), 'openmotion-style-recipes']);
+const canonicalSkills = new Set([...Object.keys(retired), 'openmotion-bold-type-poster', 'openmotion-glitch-logo-sting', 'openmotion-highlighter-notes', 'openmotion-paper-collage-explainer', 'openmotion-paper-map-journey', 'openmotion-red-pen-archive', 'openmotion-shortlist-shorts', 'openmotion-spec-sheet', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker']);
 async function snapshot(directory, relative = '') {
   const files = {};
   for (const item of await readdir(path.join(directory, relative), { withFileTypes: true })) {

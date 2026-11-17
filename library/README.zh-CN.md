@@ -6,7 +6,7 @@
 
 | 分类 | 从这里开始 | 收录内容 |
 | --- | --- | --- |
-| **🧠 Skills** | [Presenter Story](skills/openmotion-presenter-story/SKILL.md) · [Motion Design Remix](skills/openmotion-design-remix/SKILL.md) · [风格配方](skills/openmotion-style-recipes/SKILL.md) · [Brandkit 整理](skills/openmotion-brandkit/SKILL.md) | 用 `SKILL.md` 描述可重复使用的方法，按需附示例与参考。 |
+| **🧠 Skills** | [Presenter Story](skills/openmotion-presenter-story/SKILL.md) · [Motion Design Remix](skills/openmotion-design-remix/SKILL.md) · [风格配方](#style-recipes) · [Brandkit 整理](skills/openmotion-brandkit/SKILL.md) | 用 `SKILL.md` 描述可重复使用的方法，按需附示例与参考。 |
 | **🎞️ 模板** | [Studio 可编辑起点](templates/README.md) · [Presenter Tech](templates/presenter-tech/README.md) | 完整工程、预览、替换与改编说明。 |
 | **🧩 Motion 组件** | [标题揭示配方](components/title-reveal/README.md) | 标题、转场、图表或场景，说明时序、可修改项与接入方式。 |
 | **🎨 动效设计体系** | [Ink & Water](design-systems/ink-water/MOTION_DESIGN.md) | 用 `MOTION_DESIGN.md` 记录字体、构图、节奏、运动和声音规则。 |
@@ -17,7 +17,7 @@
 library/
 ├── skills/openmotion-presenter-story/          → three presenter / motion recipes
 ├── skills/openmotion-design-remix/             → six source / remix profiles
-├── skills/openmotion-style-recipes/            → eleven style recipes
+├── skills/openmotion-highlighter-notes/ …       → 11 个单风格配方（见下文）
 ├── skills/openmotion-brandkit/SKILL.md
 ├── templates/presenter-tech/                   → local presenter / motion package
 ├── templates/README.md                         → 现有可编辑工程源码
@@ -33,6 +33,19 @@ library/
 
 [六组动态对比](../docs/motion-design-examples.zh-CN.md)展示同一套动效实现怎样换成不同内容。每种 profile 都有 `MOTION_DESIGN.md`、保持/替换约定、固定版本源码、preset 与真实渲染证据。把可复用方法连同工程一起贡献，让下一位创作者可以继续改编。
 
+<a id="style-recipes"></a>
+
+### 风格配方
+
+每个配方都是独立的 Library Skill：一种画面风格，写清动效规则、所需输入、不能做什么和交付前检查。全部是配方/草稿，尚无成片对比。
+
+| 用途 | Skills |
+| --- | --- |
+| 口播叠加 | [Highlighter notes](skills/openmotion-highlighter-notes/SKILL.md) · [Whiteboard marker](skills/openmotion-whiteboard-marker/SKILL.md) · [Spec sheet](skills/openmotion-spec-sheet/SKILL.md) · [Red-pen archive](skills/openmotion-red-pen-archive/SKILL.md) |
+| 无人出镜讲解 | [Paper collage explainer](skills/openmotion-paper-collage-explainer/SKILL.md) · [Whiteboard doodle explainer](skills/openmotion-whiteboard-doodle/SKILL.md) · [Paper map journey](skills/openmotion-paper-map-journey/SKILL.md) |
+| 产品与品牌 | [Website launch film](skills/openmotion-website-launch/SKILL.md) · [Glitch logo sting](skills/openmotion-glitch-logo-sting/SKILL.md) · [Bold type poster](skills/openmotion-bold-type-poster/SKILL.md) |
+| 剪辑方法 | [Shortlist-first shorts](skills/openmotion-shortlist-shorts/SKILL.md) |
+
 <a id="使用资源"></a>
 
 ## 🚀 使用资源
@@ -47,7 +60,7 @@ library/
 npx skills add ./library/skills --skill openmotion-brandkit
 npx skills add ./library/skills --skill openmotion-design-remix
 npx skills add ./library/skills --skill openmotion-presenter-story
-npx skills add ./library/skills --skill openmotion-style-recipes
+npx skills add ./library/skills --skill openmotion-spec-sheet
 ```
 
 从源码或完整插件 ZIP 安装、升级到明确的宿主 Skill 目录：
@@ -56,9 +69,9 @@ npx skills add ./library/skills --skill openmotion-style-recipes
 node scripts/install-library-skill.mjs openmotion-design-remix /absolute/path/to/host/skills
 ```
 
-安装器只接受四个 `openmotion-*` 正式名称。相同内容可复用，自定义内容不会被覆盖。升级时仅清除完整文件哈希与官方原版一致的旧跳转目录；自定义、含额外文件或符号链接的旧目录会保留，并在 `preservedLegacy` 中列出，供人工检查。分别为已安装的 Library Skill 重跑此命令，再刷新宿主 Skill 列表。旧名调用已移除，请更新已有提示词和路径。
+安装器只接受本页列出的 14 个 `openmotion-*` 正式名称。相同内容可复用，自定义内容不会被覆盖。升级时仅清除完整文件哈希与官方原版一致的旧跳转目录；自定义、含额外文件或符号链接的旧目录会保留，并在 `preservedLegacy` 中列出，供人工检查。分别为已安装的 Library Skill 重跑此命令，再刷新宿主 Skill 列表。旧名调用已移除，请更新已有提示词和路径。
 
-资源库当前是可浏览的源码目录，不会自动导入 Studio 或注册为 MCP 资源。五个核心制作入口仍在 [`skills/`](../skills/)；可选 Library Skills 提供品牌上下文、真人叙事设计配方、11 份风格配方或特定源码改编方法，不增加核心制作路线。[Studio 目录](../docs/template-catalog.md)与[可观看参考](../docs/collections/README.zh-CN.md)继续使用原有来源和行为。
+资源库当前是可浏览的源码目录，不会自动导入 Studio 或注册为 MCP 资源。五个核心制作入口仍在 [`skills/`](../skills/)；可选 Library Skills 提供品牌上下文、真人叙事设计配方、11 个单风格配方或特定源码改编方法，不增加核心制作路线。[Studio 目录](../docs/template-catalog.md)与[可观看参考](../docs/collections/README.zh-CN.md)继续使用原有来源和行为。
 
 <a id="贡献一个有用的起点"></a>
 
