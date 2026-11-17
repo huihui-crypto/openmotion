@@ -58,7 +58,7 @@ node scripts/install-library-skill.mjs openmotion-design-remix /absolute/path/to
 
 安装器只接受四个 `openmotion-*` 正式名称。相同内容可复用，自定义内容不会被覆盖。升级时仅清除完整文件哈希与官方原版一致的旧跳转目录；自定义、含额外文件或符号链接的旧目录会保留，并在 `preservedLegacy` 中列出，供人工检查。分别为已安装的 Library Skill 重跑此命令，再刷新宿主 Skill 列表。旧名调用已移除，请更新已有提示词和路径。
 
-资源库当前是可浏览的源码目录，不会自动导入 Studio 或注册为 MCP 资源。五个核心制作入口仍在 [`skills/`](../skills/)；可选 Library Skills 提供品牌上下文、真人叙事设计配方或特定源码改编方法，不增加核心制作路线。[Studio 目录](../docs/template-catalog.md)与[可观看参考](../docs/collections/README.zh-CN.md)继续使用原有来源和行为。
+资源库当前是可浏览的源码目录，不会自动导入 Studio 或注册为 MCP 资源。五个核心制作入口仍在 [`skills/`](../skills/)；可选 Library Skills 提供品牌上下文、真人叙事设计配方、11 份风格配方或特定源码改编方法，不增加核心制作路线。[Studio 目录](../docs/template-catalog.md)与[可观看参考](../docs/collections/README.zh-CN.md)继续使用原有来源和行为。
 
 <a id="贡献一个有用的起点"></a>
 
