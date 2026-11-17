@@ -45,8 +45,9 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
     }
     const prepared = await prepareInlineOnboarding({ appRoot: installedRoot,
       output: path.join(directory, profile + '.html'), language: 'zh', templateIds: onboardingTemplateIds.slice(-3) });
-    assert.equal(prepared.status, 'native_required');
-    assert.equal(prepared.path, undefined);
+    assert.equal(prepared.status, 'prepared');
+    assert.equal(prepared.previewSource, 'project');
+    assert.equal(typeof prepared.path, 'string');
     assert.deepEqual(prepared.templateIds, onboardingTemplateIds.slice(-3));
     const catalog = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types',
       path.join(installedRoot, 'scripts/onboarding-catalog.ts'), '--template-ids', JSON.stringify(prepared.templateIds)], { cwd: directory }));
@@ -54,6 +55,11 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
     assert.equal(catalog.recommendedTemplateId, prepared.templateIds[0]);
     assert(catalog.templates.every((item: any) => item.kind === 'reference'));
     assert.match(catalog.selectionGuide, /yes.*named recommendation/i);
+    const projectPublished = await publishInlineOnboarding({ source: prepared.path,
+      expectedSHA256: prepared.sha256, hostDirectory: path.join(directory, 'host') });
+    const projectFragment = await readFile(projectPublished.path, 'utf8');
+    assert.doesNotMatch(projectFragment, /https:\/\/r\.open-design\.ai/);
+    assert(projectPublished.bytes < 1_000_000);
     const bundled = await prepareInlineOnboarding({ appRoot: installedRoot, output: path.join(directory, profile + '-bundled.html'),
       language: 'zh', templateIds: [...builtinRecommendationIds] });
     const published = await publishInlineOnboarding({ source: bundled.path,

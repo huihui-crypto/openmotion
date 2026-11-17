@@ -1802,6 +1802,21 @@ describe("useDomEditCommits attribute batch commit", () => {
     }
   });
 
+  it("lets a batch caller own the error feedback while preserving rollback", async () => {
+    stubPatchFetch(new Error("network down"), original);
+    const { iframe, element } = createPreviewElement(original);
+    const rendered = renderDomEditCommits(createSelection(element), iframe);
+    const onError = vi.fn();
+    try {
+      await act(async () => {
+        expect(await rendered.hook.handleDomAttributeBatchCommit(createSelection(element), mute, { label: "Replace image", onError })).toBe(false);
+      });
+      expect(onError).toHaveBeenCalledOnce();
+      expect(rendered.showToast).not.toHaveBeenCalled();
+      expect(element.hasAttribute("muted")).toBe(false);
+    } finally { rendered.cleanup(); }
+  });
+
   it("reverts every op in the batch and reports failure when the patch rejects", async () => {
     stubPatchFetch(new Error("network down"), original);
     const { iframe, element } = createPreviewElement(original);

@@ -125,3 +125,9 @@ export function welcomeMarkdown(language: Language, cardsPosition: 'before' | 'a
   const draft = cardsPosition === 'before' ? text.clipboardDraft.replace('下方', '上方') : text.clipboardDraft;
   return [`**${text.heading}**`, text.introduction, text.discovery, `**${recommendations}**`, draft].join("\n\n");
 }
+
+/** A plain reply remains available even when the host cannot mount native cards. */
+export function installationFallbackWelcome(language: Language): string {
+  const text = translations[language].welcome;
+  return [text.heading, text.introduction, text.discovery].join('\n\n');
+}

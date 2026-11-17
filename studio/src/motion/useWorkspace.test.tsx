@@ -116,6 +116,26 @@ it('does not erase a failed operation when a later connection check succeeds', a
   expect(writes()).toHaveLength(0);
 });
 
+it('keeps connection state independent of operation errors and clearing them', async () => {
+  vi.useFakeTimers();
+  try {
+    const original = fetcher.getMockImplementation()!;
+    fetcher.mockRejectedValue(new TypeError('Failed to fetch'));
+    await mount(async () => { throw new Error('Unsaved edit'); }, first);
+    await act(async () => workspace.create());
+    expect(workspace.errorSource).toBe('operation');
+    expect(workspace.connectionError).toBe('Failed to fetch');
+    act(() => workspace.clearError());
+    expect(workspace.connectionError).toBe('Failed to fetch');
+    await act(async () => workspace.create());
+    fetcher.mockImplementation(original);
+    await act(async () => vi.advanceTimersByTimeAsync(1800));
+    expect(workspace.connectionError).toBe('');
+    expect(workspace.error).toBe('Unsaved edit');
+    expect(writes()).toHaveLength(0);
+  } finally { vi.useRealTimers(); }
+});
+
 it('waits for saves, deduplicates rapid actions and opens the new project in a new document', async () => {
   let saved!: () => void;
   const pending = new Promise<void>(resolve => { saved = resolve; });

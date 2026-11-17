@@ -364,3 +364,22 @@ describe("useTimelineAssetDropOps handleTimelineAssetDrop", () => {
     expect(writeProjectFile).not.toHaveBeenCalled();
   });
 });
+
+it('propagates a failed generated-asset write without also emitting its own Toast', async () => {
+  const failure = new TypeError('Lost write response');
+  const getDrop = renderDropHook('<main data-composition-id="scene" data-duration="10"></main>', vi.fn().mockRejectedValue(failure));
+  await act(async () => {
+    await expect(getDrop()('asset.png', { start: 0, track: 0 }, 3, true)).rejects.toBe(failure);
+  });
+  expect(getDrop.toasts()).toEqual([]);
+  expect(usePlayerStore.getState().pendingAssetDrops).toEqual([]);
+});
+
+it('reports an unsupported generated asset as a known refusal without a duplicate Toast', async () => {
+  const write = vi.fn();
+  const getDrop = renderDropHook('<main></main>', write);
+  await act(async () => {
+    await expect(getDrop()('asset.txt', { start: 0, track: 0 }, 3, true)).rejects.toMatchObject({ outcome: 'failed' });
+  });
+  expect(write).not.toHaveBeenCalled(); expect(getDrop.toasts()).toEqual([]);
+});

@@ -280,7 +280,7 @@ describe("useEditHistoryActions", () => {
     expect(deps.showToast).toHaveBeenCalledWith("Redid: Split clip", "info");
   });
 
-  it("names the files that changed since the edit when an undo is refused", async () => {
+  it("briefly explains a late undo conflict without exposing file paths", async () => {
     const { deps, actions } = mount({
       ok: false,
       reason: "content-mismatch",
@@ -288,8 +288,9 @@ describe("useEditHistoryActions", () => {
     });
     await act(() => actions.undo());
     expect(deps.showToast).toHaveBeenCalledWith(
-      "Can't undo: index.html changed since that edit.",
-      "info",
+      "Content has changed. This step cannot be undone.",
+      "error",
+      "feedback",
     );
     expect(deps.syncHistoryPreviewAfterApply).not.toHaveBeenCalled();
   });

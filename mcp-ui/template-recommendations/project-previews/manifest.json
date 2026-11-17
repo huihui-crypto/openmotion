@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "previewSource": "project",
+  "silent": true,
+  "fps": 12,
+  "runtime": {
+    "hyperframes": "0.9.7"
+  },
+  "templates": [
+    {
+      "id": "motion-664184d9-593e-4984-b473-701248b69cfe",
+      "sourceFilesSha256": "7d1263c8140f0a6ac1524c92a0849c20f5e73bbc0c0ce6b999dc07dc2b996efe",
+      "durationSeconds": 43,
+      "width": 512,
+      "height": 288,
+      "video": {
+        "path": "project-previews/motion-664184d9-593e-4984-b473-701248b69cfe.webm",
+        "bytes": 111886,
+        "sha256": "ac988eccea2e69550a7ea5b418909a6e7407c3c8345d721cd09319fd2f79e0d4",
+        "mimeType": "video/webm"
+      },
+      "poster": {
+        "path": "project-previews/motion-664184d9-593e-4984-b473-701248b69cfe.jpg",
+        "bytes": 1852,
+        "sha256": "a669aa7433e5caf705b08b3e7197ca81c949366763ae42bb318b73c2e0825cda",
+        "mimeType": "image/jpeg"
+      }
+    },
+    {
+      "id": "motion-f6f244d1-c549-4081-8a5d-f0e1e3660044",
+      "sourceFilesSha256": "26447a6d53e08ea612c65643948858b042ddb1f4ed8b19ada2479929e918abc5",
+      "durationSeconds": 61,
+      "width": 512,
+      "height": 288,
+      "video": {
+        "path": "project-previews/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044.webm",
+        "bytes": 158839,
+        "sha256": "6f7c326c33022dc301d489c65b819900985c0902c8f6fde367069b5259f83bc6",
+        "mimeType": "video/webm"
+      },
+      "poster": {
+        "path": "project-previews/motion-f6f244d1-c549-4081-8a5d-f0e1e3660044.jpg",
+        "bytes": 6605,
+        "sha256": "f9047ab8d8a8d7b36f77e7f3d6c51f183ba11b4171b5b77f09d2129d993d8980",
+        "mimeType": "image/jpeg"
+      }
+    },
+    {
+      "id": "motion-dac924da-010f-4445-baf3-a39cb033e48f",
+      "sourceFilesSha256": "fe39e46fdd0a6f2c20a1cccd279a0025814807926ee83bb59a5ba3c84d76f6ce",
+      "durationSeconds": 11.666,
+      "width": 512,
+      "height": 288,
+      "video": {
+        "path": "project-previews/motion-dac924da-010f-4445-baf3-a39cb033e48f.webm",
+        "bytes": 18363,
+        "sha256": "061e55b3c1c0f927ac02974b7d3b77ad8d6a860a2f95cde9aec8d3a72b505f93",
+        "mimeType": "video/webm"
+      },
+      "poster": {
+        "path": "project-previews/motion-dac924da-010f-4445-baf3-a39cb033e48f.jpg",
+        "bytes": 3594,
+        "sha256": "2472a66cedd8765147da741c3f28a4715e27ddcc4f7744a3806174f11b10645b",
+        "mimeType": "image/jpeg"
+      }
+    },
+    {
+      "id": "motion-0ad92fd0-b2fb-4885-957c-b71152df15fd",
+      "sourceFilesSha256": "77583e3c014a7858787cd42e3d4f2d9871f6e85e0eab6f14be523743390dc065",
+      "durationSeconds": 24.083,
+      "width": 512,
+      "height": 318,
+      "video": {
+        "path": "project-previews/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd.webm",
+        "bytes": 58400,
+        "sha256": "fd02bc8d959eafbe2a4a12324beea84b20ff3889b092544ac60d577513686bbb",
+        "mimeType": "video/webm"
+      },
+      "poster": {
+        "path": "project-previews/motion-0ad92fd0-b2fb-4885-957c-b71152df15fd.jpg",
+        "bytes": 7737,
+        "sha256": "b019024d06d3576b5278258a5bd44e3af5759501d6fac5eb0a7e958feb712e24",
+        "mimeType": "image/jpeg"
+      }
+    },
+    {
+      "id": "motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b",
+      "sourceFilesSha256": "d4d8bed9b38a5088bf7adc85debe71f983afc36fd0730ba6ce1e050ceda22753",
+      "durationSeconds": 21.083,
+      "width": 512,
+      "height": 288,
+      "video": {
+        "path": "project-previews/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b.webm",
+        "bytes": 49087,
+        "sha256": "f6f04268a030a3a839ba5875f4e470fd5b18ffb359a790d42d852320ff027901",
+        "mimeType": "video/webm"
+      },
+      "poster": {
+        "path": "project-previews/motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b.jpg",
+        "bytes": 3392,
+        "sha256": "04161f0eced9d1f559a4d647cab91eceba2de617491857df13911958dfaac742",
+        "mimeType": "image/jpeg"
+      }
+    }
+  ]
+}

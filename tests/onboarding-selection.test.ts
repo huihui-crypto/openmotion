@@ -18,22 +18,22 @@ const appRoot = fileURLToPath(new URL('../', import.meta.url));
 // Acceptance values deliberately do not import the implementation's selection.
 const selected = [
   'motion-664184d9-593e-4984-b473-701248b69cfe',
-  'motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93',
-  'motion-1e48dea5-903d-48f6-b10e-99a70f1c183d',
+  'motion-f6f244d1-c549-4081-8a5d-f0e1e3660044',
+  'motion-dac924da-010f-4445-baf3-a39cb033e48f',
 ];
-const titles = ['Bolt Skills｜团队能力展示', 'A New Era of No-Code', 'Magic Share'];
+const titles = ['Bolt Skills｜团队能力展示', 'Glean Agents 发布', '功能更新｜Voice mode'];
 
-test('curated random selection covers all nine approved references without replacement or pool mutation', () => {
-  const expectedTitles = ['Bolt Skills｜团队能力展示', 'A New Era of No-Code', 'Magic Share', 'Glean Agents 发布', 'HyperOS 官网界面动效 1', 'Salsa｜音乐主题 Doodle', '功能更新｜Voice mode', 'Dia 开放给 Arc 会员', '免费语音输入'];
+test('curated random selection covers all five approved references without replacement or pool mutation', () => {
+  const expectedTitles = ['Bolt Skills｜团队能力展示', 'Glean Agents 发布', '功能更新｜Voice mode', 'Dia 开放给 Arc 会员', '免费语音输入'];
   assert.deepEqual(onboardingTemplateIds.map(id => JSON.parse(requireRecord(id)).entry.original.templateName), expectedTitles);
   const original = [...onboardingTemplateIds], seen = new Set<string>();
-  for (let index = 0; index < 9; index++) {
-    const cards = selectOnboardingTemplateIds(() => (index + 0.5) / 9);
+  for (let index = 0; index < 5; index++) {
+    const cards = selectOnboardingTemplateIds(() => (index + 0.5) / 5);
     assert.equal(cards.length, 3); assert.equal(new Set(cards).size, 3);
     assert(cards.every(id => (onboardingTemplateIds as readonly string[]).includes(id)));
     seen.add(cards[0]);
   }
-  assert.equal(seen.size, 9); assert.deepEqual([...onboardingTemplateIds], original);
+  assert.equal(seen.size, 5); assert.deepEqual([...onboardingTemplateIds], original);
   assert.notDeepEqual(selectOnboardingTemplateIds(() => 0), selectOnboardingTemplateIds(() => 0.99));
 });
 
@@ -46,20 +46,22 @@ test('one preparation freezes a random selection across inline cards and fallbac
   assert(ids.every((id: string) => (onboardingTemplateIds as readonly string[]).includes(id)));
   assert.deepEqual(result.catalog.templates.map((item: any) => item.templateId), ids);
   assert.equal(result.catalog.recommendedTemplateId, ids[0]);
-  assert.equal(result.inlinePresentation.status, 'native_required');
-  assert.equal(result.inlinePresentation.path, undefined);
-  assert.equal(result.inlinePresentation.presentation.arguments.onboarding, false);
+  assert.equal(result.inlinePresentation.status, 'prepared');
+  assert.equal(typeof result.inlinePresentation.path, 'string');
+  assert.equal(result.inlinePresentation.previewSource, 'project');
   assert.match(result.inlinePresentation.welcomeMarkdown, /我是你的开源视频创作搭档/);
-  assert.match(result.inlinePresentation.welcomeMarkdown, /上方卡片/);
-  assert.doesNotMatch(result.inlinePresentation.welcomeMarkdown, /下方|👇/);
+  assert.match(result.inlinePresentation.welcomeMarkdown, /下方|👇/);
   const presentation = loadTemplatePresentation();
   const bootstrap = JSON.parse(presentation.content.text.match(/window\.__OPENMOTION_TEMPLATE_CARDS__=(.*?);<\/script>/s)![1]);
   const window = new Window(); t.after(() => window.happyDOM.abort());
   window.URL.createObjectURL = () => 'blob:verified'; window.URL.revokeObjectURL = () => {};
   const root = window.document.createElement('main'); window.document.body.append(root);
   const ui = mountTemplateCards(root as unknown as HTMLElement, bootstrap, { sendMessage: async () => ({}), getHostCapabilities: () => ({}) });
-  ui.update(showTemplateRecommendations(presentation, result.inlinePresentation.presentation.arguments));
-  assert.equal(window.document.querySelector('.omtc-welcome'), null, 'Welcome must stream as final reply text, outside the native App');
+  ui.update(showTemplateRecommendations(presentation, { templateIds: ids, language: 'zh', onboarding: true }));
+  const welcome = root.querySelector('.omtc-welcome');
+  assert(welcome, 'Installation must include the welcome in the persistent conversation component');
+  assert.equal(root.firstElementChild, welcome, 'The welcome must precede the three template cards');
+  assert.match(welcome.textContent!, /我是你的开源视频创作搭档/);
   t.after(() => ui.destroy());
   const displayed = () => [...window.document.querySelectorAll('.omtc-card')].map(card => card.getAttribute('data-template-id'));
   assert.deepEqual(displayed(), ids);
@@ -68,17 +70,17 @@ test('one preparation freezes a random selection across inline cards and fallbac
   assert.deepEqual(displayed(), ids, 'Detail navigation must not redraw the selection');
 });
 
-test('random selection has all 504 ordered outcomes with equal candidate exposure', () => {
+test('random selection has all 60 ordered outcomes with equal candidate exposure', () => {
   const outcomes = new Set<string>(), counts = new Map(onboardingTemplateIds.map(id => [id, [0, 0, 0]]));
-  for (let first = 0; first < 9; first++) for (let second = 0; second < 8; second++) for (let third = 0; third < 7; third++) {
-    const draws = [(first + 0.5) / 9, (second + 0.5) / 8, (third + 0.5) / 7];
+  for (let first = 0; first < 5; first++) for (let second = 0; second < 4; second++) for (let third = 0; third < 3; third++) {
+    const draws = [(first + 0.5) / 5, (second + 0.5) / 4, (third + 0.5) / 3];
     const result = selectOnboardingTemplateIds(() => draws.shift()!);
     assert.equal(new Set(result).size, 3);
     outcomes.add(result.join(','));
     result.forEach((id, position) => counts.get(id as typeof onboardingTemplateIds[number])![position]++);
   }
-  assert.equal(outcomes.size, 9 * 8 * 7);
-  for (const positions of counts.values()) assert.deepEqual(positions, [56, 56, 56]);
+  assert.equal(outcomes.size, 5 * 4 * 3);
+  for (const positions of counts.values()) assert.deepEqual(positions, [12, 12, 12]);
 });
 
 test('native onboarding rejects builtin shortcuts while ordinary explicit recommendations retain them', () => {

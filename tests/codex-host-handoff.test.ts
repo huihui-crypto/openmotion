@@ -27,29 +27,52 @@ function host({ tools = true, directory = dataDirectory, loaded = true, denied =
   return { calls, request };
 }
 
-test('CLI handoff refreshes the existing host and verifies this chat before native presentation', async () => {
+test('a healthy calling chat is verified without an unnecessary reload', async () => {
   const { request, calls } = host();
   const result = await prepareCodexHostHandoff({ threadId, dataDirectory, expectedVersion: '0.0.1', request, language: 'zh', templateIds: onboardingTemplateIds.slice(-3) });
   assert.equal(result.status, 'ready_for_presentation');
   assert.equal(result.hostSessionVerified, true);
   assert.equal(result.presentationVerified, false);
-  assert.deepEqual(calls.map(call => call.method), ['thread/loaded/list', 'config/mcpServer/reload',
+  assert.deepEqual(calls.map(call => call.method), ['thread/loaded/list',
     'mcpServerStatus/list', 'mcpServer/tool/call']);
+  assert.equal(calls[1].params.threadId, threadId);
   assert.equal(calls[2].params.threadId, threadId);
-  assert.equal(calls[3].params.threadId, threadId);
-  assert.equal(calls[3].params.tool, 'openmotion_get_project');
+  assert.equal(calls[2].params.tool, 'openmotion_get_project');
   assert.deepEqual(result.presentation.arguments, { templateIds: onboardingTemplateIds.slice(-3),
-    onboarding: false, language: 'zh' });
+    onboarding: true, language: 'zh' });
   assert.match(result.welcomeMarkdown, /我是你的开源视频创作搭档/);
 });
 
 test('builtin-only stale native discovery cannot accept curated reference cards', async () => {
   const { request, calls } = host({ acceptedIds: ['product-promo', 'nyt-graph', 'decision-tree'] });
   const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request, templateIds: onboardingTemplateIds.slice(0, 3) });
-  assert.equal(result.status, 'host_action_required');
+  assert.equal(result.status, 'refresh_requested');
   assert.equal(result.reason, 'NATIVE_PRESENTATION_SELECTION_UNSUPPORTED');
   assert.deepEqual(result.presentation.arguments.templateIds, onboardingTemplateIds.slice(0, 3));
   assert.equal(calls.some(call => call.method === 'mcpServer/tool/call'), false);
+});
+
+test('the same package version with an outdated card resource queues activation', async () => {
+  const { request, calls } = host();
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, request,
+    expectedResourceUri: 'ui://openmotion/template-recommendations/current/index.html' });
+  assert.equal(result.status, 'refresh_requested');
+  assert.equal(result.reason, 'NATIVE_PRESENTATION_RESOURCE_MISMATCH');
+  assert.equal(result.hostSessionVerified, false);
+  assert.deepEqual(calls.map(call => call.method), ['thread/loaded/list', 'mcpServerStatus/list', 'config/mcpServer/reload']);
+});
+
+test('an explicit builtin document can verify domain MCP without requiring the native card extension', async () => {
+  const fixture = host();
+  const request = async (method: string, params: any) => {
+    const result = await fixture.request(method, params);
+    if (method === 'mcpServerStatus/list') delete result.data[0].tools.openmotion_show_template_recommendations;
+    return result;
+  };
+  const result = await prepareCodexHostHandoff({ threadId, dataDirectory, requirePresentation: false, request });
+  assert.equal(result.hostSessionVerified, true);
+  assert.equal(result.automaticActivation, 'verified');
+  assert.equal(fixture.calls.some(call => call.method === 'config/mcpServer/reload'), false);
 });
 
 test('queued refresh is incomplete; a later verification never reloads or presents again', async () => {
@@ -136,7 +159,7 @@ for await (const line of readline.createInterface({input:process.stdin})) {
       const calls = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
       assert.deepEqual(calls[0].argv, ['app-server', 'proxy', '--sock', socketPath]);
       assert.deepEqual(calls.slice(1).map(call => call.method), ['initialize', 'initialized', 'thread/loaded/list',
-        'config/mcpServer/reload', 'mcpServerStatus/list', 'mcpServer/tool/call']);
+        'mcpServerStatus/list', 'mcpServer/tool/call']);
       assert.equal(calls.some(call => call.method === 'openmotion_show_template_recommendations'), false);
     }
   } finally {

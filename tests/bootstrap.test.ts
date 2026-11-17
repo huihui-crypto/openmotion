@@ -55,13 +55,13 @@ test('remote entry point builds a fresh checkout before registering and checking
     assert.ok(commands.indexOf('npm ci --include=dev') < commands.indexOf('npm run build:studio'));
     assert.ok(commands.indexOf('npm run build:studio') < commands.indexOf('codex plugin marketplace add'));
     assert.match(commands, /codex plugin add openmotion@openmotion-local\ncodex plugin list --marketplace openmotion-local\nMCP check/);
-    assert.match(result.stderr, /ONBOARDING_PENDING.*HOST_CONTROL_UNAVAILABLE/);
+    assert.match(result.stderr, /MCP_ACTIVATION: blocked.*HOST_CONTROL_UNAVAILABLE/);
     const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
     assert.equal(onboarding.hostSessionVerified, false);
     assert.equal(onboarding.hostHandoff.status, 'host_action_required');
     assert.equal(onboarding.hostHandoff.presentationVerified, false);
     assert.equal(onboarding.installationStatus, 'installed');
-    assert.equal(onboarding.onboardingStatus, 'host_action_required');
+    assert.equal(onboarding.onboardingStatus, 'awaiting_host_delivery');
     assert.equal(onboarding.instructions, undefined);
     assert.match(await readFile(onboarding.detailsFile, 'utf8'), /Installation-success reply/);
     assert.equal(JSON.parse(await readFile(onboarding.detailsFile, 'utf8')).catalog.source, 'unavailable');
@@ -81,7 +81,7 @@ test('source setup without a calling chat reports that boundary without invoking
       env: { ...env, CODEX_THREAD_ID: '', CODEX_SESSION_ID: '' }, encoding: 'utf8',
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stderr, /ONBOARDING_PENDING.*CURRENT_CHAT_UNKNOWN/);
+    assert.match(result.stderr, /MCP_ACTIVATION: blocked.*CURRENT_CHAT_UNKNOWN/);
     const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
     assert.equal(onboarding.installationStatus, 'installed');
     assert.equal(onboarding.hostHandoff.reason, 'CURRENT_CHAT_UNKNOWN');
@@ -107,7 +107,8 @@ export async function prepareInlineOnboarding({output, language}) { await fs.mkd
     const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
     assert.equal(onboarding.inlinePresentation.status, 'prepared');
     assert.equal(onboarding.onboardingComplete, false);
-    assert.equal(onboarding.onboardingStatus, 'awaiting_host_delivery');
+    assert.equal(onboarding.onboardingStatus, 'awaiting_host_delivery', 'Presentation acceptance must remain separate from current-chat activation');
+    assert.equal(onboarding.hostHandoff.automaticActivation, 'blocked');
     assert.equal(onboarding.callback, undefined);
     assert.equal(onboarding.preview.status, 'ready');
   });

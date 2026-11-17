@@ -54,6 +54,8 @@
 [data-motion-studio] .om-field { display: flex; align-items: center; gap: var(--motion-space-8); min-height: var(--motion-control); padding: var(--motion-space-6) var(--motion-space-10); background: var(--motion-panel); border: 1px solid var(--motion-border); border-radius: var(--motion-radius-md); color: var(--motion-muted); }
 [data-motion-studio] .om-field:focus-within { outline: 2px solid var(--motion-selected); outline-offset: 2px; }
 [data-motion-studio] .om-field :is(input, textarea) { width: 100%; min-width: 0; color: var(--motion-text); background: transparent; border: 0; outline: none; font-size: var(--motion-text-md); }
+[data-motion-studio] .om-field:has([aria-invalid="true"]) { border-color: var(--motion-danger); }
+[data-motion-studio] .om-field-error { min-height: 1lh; color: var(--motion-danger); font-size: var(--motion-text-sm); }
 [data-motion-studio] .om-field input::placeholder { color: var(--motion-dim); }
 [data-motion-studio] .om-field :is(input, textarea, button):focus-visible { outline: none; box-shadow: none; }
 [data-motion-studio] .om-label { display: grid; gap: var(--motion-space-8); font-size: var(--motion-text-md); color: var(--motion-strong); }

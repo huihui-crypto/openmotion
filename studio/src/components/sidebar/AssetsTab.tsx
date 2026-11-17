@@ -1,4 +1,6 @@
 import { AssetImportMenu } from '../../motion/AssetLibraryImport';
+import { useFileManagerContextOptional } from '../../contexts/FileManagerContext';
+import { ManualImportResults } from './ManualImportResults';
 import { RemixIcon } from "../../icons/RemixIcons";
 import { clickOption, searchStarted, trackStudioClick } from "../../motion/editorTracking";
 import { useMvpEditor } from "../../motion/StudioHost";
@@ -155,6 +157,8 @@ export const AssetsTab = memo(function AssetsTab({
 }: AssetsTabProps) {
   const { t } = useI18n();
   const mediaGateway = useMediaGateway();
+  const fileManager = useFileManagerContextOptional();
+  const importBatch = fileManager?.importBatch?.projectId === projectId ? fileManager.importBatch : null;
   const mvp = useMvpEditor();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -286,7 +290,7 @@ export const AssetsTab = memo(function AssetsTab({
             aria-label={t("Search assets")}
             className="min-w-0 flex-1"
           />
-          {onImport && <AssetImportMenu projectId={projectId} importing={importing} onUpload={() => fileInputRef.current?.click()} onImported={onLibraryImport ? handleLibraryImport : undefined} />}
+          {onImport && <AssetImportMenu projectId={projectId} importing={importing || Boolean(importBatch?.busy)} onUpload={() => fileInputRef.current?.click()} onImported={onLibraryImport ? handleLibraryImport : undefined} />}
         </div>
         {!mvp && onImport && mediaGateway && <button className="motion-asset-generate" onClick={event => mediaGateway.openGenerator({ anchor: mediaPopoverAnchor(event.currentTarget) })}>{t("Generate media")}</button>}
         {onImport && (
@@ -339,6 +343,20 @@ export const AssetsTab = memo(function AssetsTab({
         data-assets-list
         ref={listRef}
       >
+        {importBatch && fileManager && <ManualImportResults
+          key={importBatch.id}
+          batch={importBatch}
+          onReplace={fileManager.importFailedReplacements}
+          onReload={fileManager.reloadImportAssets}
+          onRetryPending={fileManager.pendingImport?.attempt?.batchId === importBatch.id ? fileManager.retryPendingImport : undefined}
+          onReveal={importBatch.paths.some(path => MEDIA_EXT.test(path) || FONT_EXT.test(path)) ? paths => {
+            setSearchQuery('');
+            const path = paths.find(candidate => MEDIA_EXT.test(candidate) || FONT_EXT.test(candidate))!;
+            setActiveFilter(getCategory(path) ?? 'all');
+            setCollapsedCategories(new Set());
+            setLatestImport({ projectId, path });
+          } : undefined}
+        />}
         {mediaAssets.length === 0 ? (
           <EmptyState searchQuery={searchQuery} onClearSearch={() => setSearchQuery("")} />
         ) : (

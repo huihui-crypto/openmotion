@@ -488,13 +488,13 @@ describe("handleGroupSelection with audio in the selection", () => {
   it("refuses a selection of audio clips, and says where grouping audio lives", async () => {
     const { showToast } = await group([sel("audio"), sel("audio")]);
     expect(groupSelectionSpy).not.toHaveBeenCalled();
-    expect(String(showToast.mock.calls[0]?.[0])).toContain("bus");
+    expect(showToast).toHaveBeenCalledWith("Use track FX to group audio clips.", "info");
   });
 
   it("refuses a mixed selection, since the wrapper would take the audio in too", async () => {
     const { showToast } = await group([sel("div"), sel("audio")]);
     expect(groupSelectionSpy).not.toHaveBeenCalled();
-    expect(String(showToast.mock.calls[0]?.[0])).toContain("layout");
+    expect(showToast).toHaveBeenCalledWith("Audio clips cannot be grouped with visual elements.", "info");
   });
 
   it("still groups a selection of layout elements", async () => {

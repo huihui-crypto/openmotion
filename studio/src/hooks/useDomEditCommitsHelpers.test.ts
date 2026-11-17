@@ -2,13 +2,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DomEditSelection } from "../components/editor/domEditingTypes";
 import { jsonResponse, requestUrl } from "./fetchStubTestUtils";
-import { assignGsapTargetAutoIdIfNeeded } from "./useDomEditCommitsHelpers";
+import { assignGsapTargetAutoIdIfNeeded, writePreparedContent } from "./useDomEditCommitsHelpers";
 
 const selection = {
   hfId: "hf-card",
   selector: '[data-hf-id="hf-card"]',
   selectorIndex: 0,
 } as DomEditSelection;
+
+it("preserves the saved content and reports partial completion when the follow-up write fails", async () => {
+  const showToast = vi.fn();
+  const write = vi.fn().mockRejectedValue(new Error("EACCES: /private/project/index.html"));
+  await expect(writePreparedContent("index.html", "saved", () => "prepared", write, showToast))
+    .resolves.toEqual({ content: "saved", failed: true });
+  expect(showToast).toHaveBeenCalledWith("Some changes were saved, but other changes remain incomplete.", "error");
+  expect(write).toHaveBeenCalledTimes(1);
+});
 
 function stubPatch(response: Response) {
   const fetchMock = vi.fn(async (input: Parameters<typeof fetch>[0], _init?: RequestInit) => {

@@ -16,10 +16,11 @@ export async function prepareInlineOnboarding({ appRoot, output, language = 'en'
     '--output', output, '--language', language, '--template-ids', JSON.stringify(templateIds)], { cwd: appRoot }));
 }
 
-export async function renderInlineOnboarding({ appRoot, output, language = 'en', templateIds = selectOnboardingTemplateIds() }) {
+export async function renderInlineOnboarding({ appRoot, output, language = 'en', templateIds = selectOnboardingTemplateIds(), previewSource = 'project' }) {
+  assert(['project', 'reference'].includes(previewSource), 'Unknown preview source');
   language = typeof language === 'string' ? language.trim().toLowerCase().split(/[-_]/)[0] : 'en';
   if (!['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'].includes(language)) language = 'en';
-  const { loadTemplatePresentation, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
+  const { loadTemplatePresentation, loadInlineProjectPreviews, showTemplateRecommendations } = await import('../shared/mcp-template-recommendations.ts');
   const { welcomeMarkdown } = await import('../mcp-ui/template-recommendations/i18n.ts');
   const directory = path.join(appRoot, 'mcp-ui/template-recommendations');
   const presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory });
@@ -29,22 +30,42 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   const recommendation = showTemplateRecommendations(presentation, {
     templateIds, language, ...(templateIds.some(id => id.startsWith('motion-')) ? { onboarding: true } : {}),
   });
+  // Only the selected three enter the document budget. Native recommendations
+  // retain the original reference films; this adapter embeds local project renders.
+  bootstrap.templates = bootstrap.templates.filter(template => templateIds.includes(template.id));
+  const references = bootstrap.templates.filter(template => template.kind === 'reference');
+  if (references.length && previewSource === 'project') {
+    const previews = loadInlineProjectPreviews(references.map(item => item.id), { applicationRoot: appRoot, directory });
+    const labels = { zh: '简介：', en: 'Project preview (silent) · ', ja: 'プロジェクトプレビュー（無音） · ',
+      ko: '프로젝트 미리보기 (무음) · ', fr: 'Aperçu du projet (muet) · ', es: 'Vista previa del proyecto (sin sonido) · ', pt: 'Prévia do projeto (sem som) · ' };
+    for (const template of references) {
+      const preview = previews.find(item => item.id === template.id);
+      delete template.videoUrl; delete template.posterUrl;
+      Object.assign(template, preview);
+      template.description = labels[language] + template.description;
+      for (const locale of Object.keys(template.descriptions)) template.descriptions[locale] = labels[locale] + template.descriptions[locale];
+      const card = recommendation.cards.find(item => item.templateId === template.id);
+      card.durationSeconds = preview.durationSeconds;
+      card.description = template.description;
+    }
+  }
   // Native MCP Apps carry ui.csp.resourceDomains; a visualization fragment
   // cannot inherit it. Never mark remote-reference fragments as displayable.
   if (bootstrap.templates.some(template => templateIds.includes(template.id) && (template.posterUrl || template.videoUrl))) {
     return { status: 'native_required', mode: 'native-mcp-app', reason: 'INLINE_EXTERNAL_MEDIA_BLOCKED',
-      resourceVersion: presentation.resourceVersion, templateIds: recommendation.cards.map(card => card.templateId), language,
-      welcomeMarkdown: welcomeMarkdown(language, 'before'),
+      resourceVersion: presentation.resourceVersion, resourceUri: presentation.uri,
+      templateIds: recommendation.cards.map(card => card.templateId), language,
+      welcomeMarkdown: welcomeMarkdown(language),
       publicationRequired: false, nativeMcpSessionVerified: false,
-      presentation: { tool: 'openmotion_show_template_recommendations', arguments: { templateIds, language, onboarding: false } },
-      instructions: 'Show these exact three prepared references in the calling conversation through the natively discovered presentation Tool with onboarding:false. Its resource declares the approved image/video origin. Finish verification before the final presentation; after the cards-only Tool result, stream welcomeMarkdown once as ordinary final reply text. Do not put the welcome inside the App, use collapsed commentary or simulate streaming with animation. Native cards precede the final text; its pointers refer to the cards above. Verify the current Tool schema accepts all selected IDs, then check actual image decoding and full video playback in the mounted native cards. Preserve the IDs and order on retries; never resample or substitute builtins. If discovery is stale, refresh this existing MCP connection through the supported host action. Without a compatible native connection, report the concrete blocker and keep the task incomplete. A right-hand browser page, shell RPC, downloaded-media embedding or a host security change is not inline card delivery.' };
+      presentation: { tool: 'openmotion_show_template_recommendations', arguments: { templateIds, language, onboarding: true } },
+      instructions: 'Open the real template library once, then show these exact three prepared references through the natively discovered presentation Tool with onboarding:true. The persistent conversation component puts the maintained welcome above all three cards. Preserve the IDs/order and immutable resource URI; never resample or substitute builtins. Detailed library inspection and video playback acceptance are not installation gates. Do not repeat the welcome in the final reply. If native discovery is stale, use the supported automatic host action and the saved recovery command in this same turn. Without a compatible host connection, report the concrete dependency and keep activation incomplete; a library webpage, shell presentation call or host security change does not satisfy native delivery.' };
   }
   let fragment = await readFile(path.join(directory, 'inline.fragment.html'), 'utf8');
   const json = value => JSON.stringify(value).replaceAll('<', '\\u003c');
   const parts = {
     '__OPENMOTION_INLINE_ROOT__': 'openmotion-onboarding-' + randomUUID(),
     '/*__OPENMOTION_INLINE_STYLE__*/': (await readFile(path.join(directory, 'build/app.css'), 'utf8')).replace(/<\/style/gi, '<\\/style'),
-    '/*__OPENMOTION_INLINE_APP__*/': (await readFile(path.join(directory, 'build/app.js'), 'utf8')).replace(/<\/script/gi, '<\\/script'),
+    '/*__OPENMOTION_INLINE_APP__*/': (await readFile(path.join(directory, 'build/inline.js'), 'utf8')).replace(/<\/script/gi, '<\\/script'),
     '/*__OPENMOTION_INLINE_BOOTSTRAP__*/': json(bootstrap),
     '/*__OPENMOTION_INLINE_RECOMMENDATION__*/': json({ ...recommendation, onboarding: false }),
   };
@@ -58,12 +79,13 @@ export async function renderInlineOnboarding({ appRoot, output, language = 'en',
   await mkdir(path.dirname(output), { recursive: true });
   await writeFile(output, fragment, { encoding: 'utf8', flag: 'wx', mode: 0o600 });
   return { status: 'prepared', mode: 'inline-document', path: output, bytes,
+    previewSource: references.length ? 'project' : 'builtin',
     sha256: createHash('sha256').update(fragment).digest('hex'), resourceVersion: presentation.resourceVersion,
     templateIds: recommendation.cards.map(card => card.templateId), language,
     welcomeMarkdown: welcomeMarkdown(language),
     publicationRequired: true,
     draftBehavior: 'clipboard-copy; no task submission', nativeMcpSessionVerified: false,
-    instructions: 'Complete onboarding in this same installation turn; never enqueue a user message or defer presentation. Initialize the browser and finish file reads/checks first. This runtime document needs publication with this script --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY using the active chat\'s explicitly permitted visualization directory; runtime write access alone is insufficient. With the returned reference ready, prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal the loaded tab and obtain its page state in one call. Do not reopen or inspect it again or repeat an open_in_codex opening. Complete mandatory browser bookkeeping next and immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. Preserve the production welcome/cards and full MP4s. Recreate copies the brief to the clipboard with a floating copied/paste Toast; no extra textbox or task submission. Preparation/publication is not visible delivery or native MCP discovery.' };
+    instructions: 'Complete onboarding in this same installation turn; never enqueue a user message or defer presentation. Initialize the browser and finish file reads/checks first. This runtime document needs publication with this script --publish-from PATH --sha256 SHA256 --host-directory DIRECTORY using the active chat\'s explicitly permitted visualization directory; runtime write access alone is insufficient. With the returned reference ready, prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal the loaded tab and obtain its page state in one call. Do not reopen or inspect it again or repeat an open_in_codex opening. Complete mandatory browser bookkeeping next and immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. Preserve the production welcome/cards and full-duration videos. Recreate copies the brief to the clipboard with a floating copied/paste Toast; no extra textbox or task submission. Preparation/publication is not visible delivery or native MCP discovery.' };
 }
 
 export async function publishInlineOnboarding({ source, expectedSHA256, hostDirectory }) {

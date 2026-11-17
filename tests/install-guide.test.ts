@@ -163,12 +163,14 @@ test('archive-only guide publication never accesses the moving default', async t
 });
 
 test('late completion archives its exact version without rolling a newer default back', async t => {
-  const { directory, record } = await fixture(t), newer = '# Install OpenMotion 0.6.4-test.10\n';
-  const store = storage(directory, record, newer);
-  const result = await publishGuide(directory, config, store);
-  assert.equal(result.phase, 'superseded'); assert.equal(result.promoted, false);
-  assert.deepEqual(store.writes.map(x => x.key), [store.plan.versionKey]);
-  assert.equal(store.objects.get(store.plan.fixedKey)!.toString(), newer);
+  const { directory, record } = await fixture(t);
+  for (const version of ['0.6.4-test.10', '0.0.2-test.22']) {
+    const newer = '# Install OpenMotion ' + version + '\n', store = storage(directory, record, newer);
+    const result = await publishGuide(directory, config, store);
+    assert.equal(result.phase, 'superseded'); assert.equal(result.promoted, false);
+    assert.deepEqual(store.writes.map(x => x.key), [store.plan.versionKey]);
+    assert.equal(store.objects.get(store.plan.fixedKey)!.toString(), newer);
+  }
 });
 
 test('unrecognized or conflicting same-version defaults require inspection instead of replacement', async t => {

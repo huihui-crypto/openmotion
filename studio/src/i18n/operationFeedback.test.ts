@@ -7,6 +7,17 @@ import { languages } from './messages';
 import { SCRIPT_DEPENDENCY_DELETE_MESSAGE } from '../utils/deleteScriptDependencies';
 import { toastErrorMessage } from '../components/ui/toastErrorMessage';
 
+it('localizes late history conflicts without suggesting another attempt', () => {
+  for (const key of ['Content has changed. This step cannot be undone.', 'Content has changed. This step cannot be redone.']) {
+    expect(toastErrorMessage(key)).toBe(key);
+    for (const { locale } of languages) {
+      const message = systemMessage(key, (source, values) => translate(locale, source, values));
+      if (locale !== 'en') expect(message).not.toBe(key);
+    }
+  }
+  expect(translate('zh-CN', 'Content has changed. This step cannot be undone.')).toBe('内容已变更，无法撤销这一步');
+});
+
 it('localizes script dependency deletion refusals in every editor language', () => {
   expect(toastErrorMessage(SCRIPT_DEPENDENCY_DELETE_MESSAGE)).toBe(SCRIPT_DEPENDENCY_DELETE_MESSAGE);
   for (const { locale } of languages) {
@@ -68,5 +79,30 @@ it('preserves split failure distinctions without exposing raw server errors', ()
   for (const message of messages) {
     expect(translate('zh-CN', message)).not.toBe(message);
     expect(translate('en', message)).toBe(message);
+  }
+});
+
+it('keeps audio, ripple and remaining audited feedback readable in Chinese and English', () => {
+  const messages = [
+    ['Use track FX to group audio clips.', '请通过轨道 FX 创建音频分组。'],
+    ['Audio clips cannot be grouped with visual elements.', '音频与画面元素不能组合。'],
+    ['Gap closed on the main track.', '已收拢主轨空隙。'],
+    ['Estimated loudness: −16 LUFS (−3.2 dB).', '调整后预计响度：−16 LUFS（−3.2 dB）。'],
+    ['Estimated loudness: −24 LUFS (+12.0 dB); gain limit prevents reaching target.', '调整后预计 −24 LUFS（+12.0 dB），受增益上限限制，未达到目标。'],
+    ['Estimated loudness: −18.4 LUFS (+0.0 dB); peak protection prevents reaching target.', '调整后预计 −18.4 LUFS（+0.0 dB），受峰值保护限制，未达到目标。'],
+    ['Adjusted 3 clips: 1 expected to reach target; 2 unable to reach target.', '已调整 3 段音频：1 段预计达到目标，2 段未达到目标。'],
+    ['Render command copied', '已复制渲染命令'],
+    ['Values JSON copied', '已复制变量值 JSON'],
+    ['Get the HyperFrames desktop app at https://example.com/app', '可在此下载 HyperFrames 桌面应用：https://example.com/app'],
+    ['No longer ducks under the voice.', '已关闭人声避让。'],
+  ];
+  for (const [source, expected] of messages) {
+    expect(systemMessage(source, (key, values) => translate('zh-CN', key, values))).toBe(expected);
+    expect(systemMessage(source, (key, values) => translate('en', key, values))).toBe(source);
+  }
+  for (const shortcut of ['⌘Z', 'Ctrl+Z']) {
+    const help = translate('zh-CN', 'Main track magnet: closes gaps after deletion. Undo ({shortcut}) restores the edit; turn this off to keep gaps.', { shortcut });
+    expect(help).toContain(shortcut);
+    expect(help).toContain('关闭此功能可保留空隙');
   }
 });

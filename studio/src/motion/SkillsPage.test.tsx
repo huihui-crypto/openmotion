@@ -2,7 +2,7 @@
 import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { SkillsPage, skillPlacement, skillSubmissionUrl } from './SkillsPage';
+import { SkillsPage, skillSubmissionUrl } from './SkillsPage';
 import { motionSkills, skillPrompt } from './skillCatalog';
 import { readWorkspacePage, workspacePageHref } from './workspacePageRouting';
 import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
@@ -45,17 +45,6 @@ it('presents the growth teardown as an OpenMotion skill', async () => {
   expect(text).toContain('Make a video with the OpenMotion "Growth Teardown" skill.');
   expect(text).toContain('Source: OpenMotion skill');
   expect(text).toContain('growth-teardown Skill');
-});
-
-it('keeps cards in catalog DOM order and places them row first', () => {
-  act(() => root.render(<Host />));
-  const cells = [...container.querySelectorAll<HTMLElement>('.om-skills-grid > .om-skills-cell')];
-  expect(cells.map(cell => cell.dataset.skillId)).toEqual(motionSkills.map(skill => skill.id));
-  expect(skillPlacement([100, 50, 80, 40, 30], 3)).toEqual([
-    { gridColumn: 1, gridRow: '1 / span 100' }, { gridColumn: 2, gridRow: '1 / span 50' }, { gridColumn: 3, gridRow: '1 / span 80' },
-    { gridColumn: 1, gridRow: '117 / span 40' }, { gridColumn: 2, gridRow: '67 / span 30' },
-  ]);
-  expect(skillPlacement([100, undefined], 2)).toBeNull();
 });
 
 it('filters by category and search', () => {

@@ -6,8 +6,8 @@ export type TemplateAsset = Readonly<{
   id: string; title: string; description: string; durationSeconds: number;
   kind?: 'reference'; descriptions?: Partial<Record<Language, string>>;
   videoCategories?: Partial<Record<Language, string>>;
-} & ({ videoBase64: string; posterBase64: string; posterMimeType: 'image/jpeg'; videoUrl?: never; posterUrl?: never }
-  | { videoUrl: string; posterUrl: string; videoBase64?: never; posterBase64?: never; posterMimeType?: never })>;
+} & ({ videoBase64: string; videoMimeType?: 'video/mp4' | 'video/webm'; posterBase64: string; posterMimeType: 'image/jpeg'; videoUrl?: never; posterUrl?: never }
+  | { videoUrl: string; posterUrl: string; videoBase64?: never; videoMimeType?: never; posterBase64?: never; posterMimeType?: never })>;
 export type TemplateCardsBootstrap = Readonly<{ resourceVersion: string; templates: readonly TemplateAsset[] }>;
 export type CreateArgs = Readonly<{
   requestId: string; projectType: 'template'; templateId: string; title: string; requirements: string;

@@ -51,25 +51,25 @@ export function normalizeRequestBody(el: TimelineElement, projectRelativeSrc: st
 }
 
 const signedDb = (db: number) => `${db >= 0 ? "+" : "−"}${Math.abs(db).toFixed(1)} dB`;
-const lufsText = (lufs: number) => `${lufs < 0 ? "−" : ""}${Math.abs(lufs).toFixed(0)} LUFS`;
+const lufsText = (lufs: number) => `${lufs < 0 ? "−" : ""}${Math.abs(lufs).toFixed(1).replace(/\.0$/, "")} LUFS`;
 
-const LIMIT_SUFFIX = {
-  "gain-ceiling": "the most the +12 dB ceiling allows",
-  "true-peak": "held back to keep peaks under −1.5 dBTP",
-} satisfies Record<NonNullable<NormalizePlan["limitedBy"]>, string>;
+/** Compare the plan, not its rounded display value. Allow only floating-point noise. */
+export const reachesLoudnessTarget = (plan: NormalizePlan): boolean =>
+  Math.abs(plan.projectedLufs - plan.targetLufs) < 1e-6;
 
 export function normalizeToastText(plan: NormalizePlan): string {
-  if (!plan.limitedBy)
-    return `Normalized to ${lufsText(plan.targetLufs)} (${signedDb(plan.changeDb)})`;
-  const reached = `${lufsText(Math.round(plan.projectedLufs))}`;
-  return `Raised to ${reached} (${signedDb(plan.changeDb)}), ${LIMIT_SUFFIX[plan.limitedBy]}`;
+  const result = `Estimated loudness: ${lufsText(plan.projectedLufs)} (${signedDb(plan.changeDb)})`;
+  if (reachesLoudnessTarget(plan)) return `${result}.`;
+  if (plan.limitedBy === "gain-ceiling") return `${result}; gain limit prevents reaching target.`;
+  if (plan.limitedBy === "true-peak") return `${result}; peak protection prevents reaching target.`;
+  return `${result}; target not reached.`;
 }
 
 function isNormalizePlan(value: unknown): value is NormalizePlan {
   if (typeof value !== "object" || value === null) return false;
   return ["targetLufs", "projectedLufs", "volume", "changeDb"].every(
-    (key) => typeof Reflect.get(value, key) === "number",
-  );
+    (key) => typeof Reflect.get(value, key) === "number" && Number.isFinite(Reflect.get(value, key)),
+  ) && [null, "gain-ceiling", "true-peak"].includes(Reflect.get(value, "limitedBy"));
 }
 
 export async function requestNormalizePlan(

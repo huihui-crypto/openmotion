@@ -80,3 +80,7 @@ The configured destination bucket is `open-design-releases` and the public origi
 The new entries require separate trusted default-branch registration and npm trusted-publisher setup before use. Those administrative steps are not performed by this feature PR. Existing R2 credentials are reused only in the final snapshot job. No workflow was dispatched or package published as part of implementing these controls. See [setup, records and recovery](release-workflows.md).
 
 Default installation guides use floating npm tags (`@test` for DEV, `@latest` for stable) and state the current version separately. Versioned guides remain pinned for reproduction. Native cold-install results are post-delivery evidence for test and a required gate before stable `latest`. Neither establishes real creation or human acceptance.
+
+## Active version series
+
+The active stable series starts at 0.0.1; 0.6.x is reserved for historical packages. Follow the release manual for publication ordering. Stable still requires both exact prod native checks before latest and the default guide advance. Existing ^0.6.x dependencies and lockfiles require an explicit version migration; use the latest-tag guide or an exact new version. No old package or snapshot is overwritten.

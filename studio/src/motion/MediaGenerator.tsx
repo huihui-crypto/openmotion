@@ -5,6 +5,10 @@ import { gatewayRequest, generateAsset, loadGateway, type GatewayStatus, type Mo
 import type { MediaRequest } from './MediaGatewayContext';
 import { useMediaPopoverPosition } from './useMediaPopoverPosition';
 import { useArtifactViewActive } from './ArtifactViewState';
+import { useToast } from '../hooks/useToast';
+import { StudioToastViewport } from '../components/StudioToastViewport';
+import { isStudioSaveErrorAlreadyToasted } from '../utils/studioSaveDiagnostics';
+import { TimelineMediaActionError, timelineMediaActionOutcome } from '../utils/timelineMediaActionError';
 import { requestedProject } from './workspaceRouting';
 
 export function generationParameters(model: Model, ratio: string, duration: number, extra: Record<string, unknown>) {
@@ -21,9 +25,17 @@ export function generationParameters(model: Model, ratio: string, duration: numb
   }
   return extra;
 }
+function latestJob(current: GenerationJob | undefined, incoming: GenerationJob): GenerationJob {
+  if (!current) return incoming;
+  const terminal = (job: GenerationJob) => !['queued', 'running'].includes(job.state);
+  if (current.updatedAt > incoming.updatedAt || terminal(current) && !terminal(incoming) && current.updatedAt >= incoming.updatedAt) return current;
+  return incoming;
+}
+
 type Kind = 'image' | 'video' | 'music' | 'voice';
 export function MediaGenerator({ request, onClose, onSettings }: { request: MediaRequest; onClose: () => void; onSettings: () => void }) {
   const { t } = useI18n();
+  const toast = useToast();
   const editing = request.intent === 'edit' && request.selection?.modality === 'image';
   const [data, setData] = useState<{ status: GatewayStatus; models: Model[] } | null>(null);
   const [projectId, setProjectId] = useState('');
@@ -33,6 +45,10 @@ export function MediaGenerator({ request, onClose, onSettings }: { request: Medi
   const [start, setStart] = useState(request.placement?.start ?? 0), [duration, setDuration] = useState(request.placement?.duration ?? 3);
   const [params, setParams] = useState('{}'), [jobs, setJobs] = useState<GenerationJob[]>([]);
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [placed, setPlaced] = useState<string[]>([]);
+  const actionPending = useRef(false);
+  const cancellingRef = useRef(new Set<string>());
+  const [cancelling, setCancelling] = useState<string[]>([]);
+  const [unconfirmed, setUnconfirmed] = useState<string[]>([]);
   const [replaced, setReplaced] = useState<string | null>(null);
   const active = useArtifactViewActive();
   const popover = useMediaPopoverPosition(request.anchor, 640, active);
@@ -66,7 +82,7 @@ export function MediaGenerator({ request, onClose, onSettings }: { request: Medi
       try {
         const value = await gatewayRequest<{ jobs: GenerationJob[] }>('generations?projectId=' + encodeURIComponent(projectId));
         if (active) {
-          setJobs(value.jobs);
+          setJobs(previous => value.jobs.map(job => latestJob(previous.find(item => item.id === job.id), job)));
           for (const job of value.jobs) if (job.state === 'completed' && job.idempotencyKey?.startsWith(request.id) && !delivered.current.has(job.id)) { delivered.current.add(job.id); request.onComplete?.(job); }
         }
       } catch (e) { if (active) setError(e instanceof Error ? e.message : String(e)); }
@@ -105,21 +121,58 @@ export function MediaGenerator({ request, onClose, onSettings }: { request: Medi
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setBusy(false); }
   }
-  async function place(job: GenerationJob, asset: string) {
-    if (!request.target) return;
-    setBusy(true); setError('');
-    try { const current = await gatewayRequest<{ projectId: string }>(projectStatusPath); if (current.projectId !== job.projectId) throw new Error(t('Switch back to the original project to place this asset'));
-      await request.target.place(asset, { start, duration, track: request.placement?.track ?? 0 }); setPlaced(prev => [...prev, asset]);
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
-  }
-  async function replace(job: GenerationJob, asset: string) {
-    if (!request.target?.replace || !request.selection) return;
-    setBusy(true); setError('');
+  async function runTimelineAction(action: 'place' | 'replace', job: GenerationJob, asset: string) {
+    const target = request.target;
+    if (!target || actionPending.current || action === 'replace' && (!target.replace || !request.selection)) return;
+    const key = `${action}:${asset}`;
+    if (unconfirmed.includes(key)) return;
+    actionPending.current = true;
+    setBusy(true);
+    let dispatched = false;
     try {
       const current = await gatewayRequest<{ projectId: string }>(projectStatusPath);
-      if (current.projectId !== job.projectId) throw new Error(t('Switch back to the original project to place this asset'));
-      await request.target.replace(asset, request.selection); setReplaced(asset);
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally { setBusy(false); }
+      if (!current || typeof current.projectId !== 'string') throw new TimelineMediaActionError('failed');
+      const activeProject = usePlayerStore.getState().timelineProjectId;
+      if (current.projectId !== job.projectId || target.projectId !== job.projectId || activeProject && activeProject !== target.projectId) throw new TimelineMediaActionError('project-changed');
+      dispatched = true;
+      if (action === 'place') {
+        await target.place(asset, { start, duration, track: request.placement?.track ?? 0 });
+        setPlaced(previous => [...previous, asset]);
+      } else {
+        await target.replace!(asset, request.selection!);
+        setReplaced(asset);
+      }
+    } catch (error) {
+      const outcome = error instanceof TimelineMediaActionError ? error.outcome : dispatched ? timelineMediaActionOutcome(error) : 'failed';
+      if (outcome === 'unconfirmed') setUnconfirmed(previous => [...previous, key]);
+      // Keep existing save-conflict/recovery notices, without adding a duplicate.
+      if (!isStudioSaveErrorAlreadyToasted(error)) {
+        const message = outcome === 'project-changed'
+          ? action === 'place' ? 'Return to the original project before placing this asset on the timeline.' : 'Return to the original project before replacing this image.'
+          : outcome === 'unconfirmed'
+            ? action === 'place' ? 'Could not confirm placement. Check the timeline.' : 'Could not confirm image replacement. Check the timeline.'
+            : action === 'place' ? 'Could not place the asset on the timeline.' : 'Could not replace the image.';
+        toast.showToast(message, 'error');
+      }
+    } finally { actionPending.current = false; setBusy(false); }
+  }
+  async function cancel(job: GenerationJob) {
+    if (cancellingRef.current.has(job.id)) return;
+    cancellingRef.current.add(job.id);
+    setCancelling([...cancellingRef.current]);
+    try {
+      const result = await gatewayRequest<{ job: GenerationJob }>(`generations/${job.id}/cancel`, 'POST', {});
+      const next = result?.job;
+      if (!next || next.id !== job.id || next.projectId !== job.projectId || !['queued', 'running', 'completed', 'failed', 'cancelled'].includes(next.state) || !Array.isArray(next.assets) || !Number.isFinite(next.updatedAt)) throw new Error('Unconfirmed cancellation response');
+      setJobs(previous => previous.map(item => item.id === job.id ? latestJob(item, next) : item));
+      if (next.state === 'completed') toast.showToast('Generation already completed.', 'info');
+      if (next.state === 'queued' || next.state === 'running') toast.showToast('Could not confirm cancellation. Check the task status.', 'error');
+    } catch {
+      toast.showToast('Could not confirm cancellation. Check the task status.', 'error');
+    } finally {
+      cancellingRef.current.delete(job.id);
+      setCancelling([...cancellingRef.current]);
+    }
   }
   const nativeProjectId = request.target?.projectId;
   const visibleJobs = editing ? jobs.filter(job => job.reference?.path === request.selection?.path) : jobs;
@@ -137,14 +190,15 @@ export function MediaGenerator({ request, onClose, onSettings }: { request: Medi
     <footer><span className="motion-media-muted">{model?.provider === 'codex' ? t('Uses your local Codex account') : t('Uses your provider account')}{request.target && ` · ${start.toFixed(1)}–${(start + duration).toFixed(1)}s`}</span><button className="motion-media-primary" disabled={busy || !prompt.trim() || !projectId || !model || !available(model)} onClick={() => void submit()}>{busy ? t('Working…') : t('Generate')}</button></footer>
     {data && (!model || !available(model)) && <button className="motion-media-connect" onClick={onSettings}>{t('Connect a provider to generate this media')}</button>}
     {visibleJobs.length > 0 && <div className="motion-generation-results" aria-live="polite">{visibleJobs.slice(0, 8).map(job => <article key={job.id}>
-      <div className="motion-media-row"><span title={job.prompt}>{job.model.label} <small>{t(job.state)}</small></span>{['queued', 'running'].includes(job.state) && <button onClick={() => void gatewayRequest(`generations/${job.id}/cancel`, 'POST', {}).then(() => setJobs(prev => prev.map(j => j.id === job.id ? { ...j, state: 'cancelled' } : j))).catch(e => setError(e.message))}>{t('Cancel')}</button>}</div>
+      <div className="motion-media-row"><span title={job.prompt}>{job.model.label} <small>{t(job.state)}</small></span>{['queued', 'running'].includes(job.state) && <button disabled={cancelling.includes(job.id)} aria-busy={cancelling.includes(job.id)} onClick={() => void cancel(job)}>{t('Cancel')}</button>}</div>
       {job.error && <p className="motion-media-error">{t(job.error)}</p>}
       {job.assets.map(asset => <div className="motion-generated-asset" key={asset.path}>
         {asset.available !== false && nativeProjectId && asset.mimeType.startsWith('image/') && <img alt={job.prompt} src={`/api/projects/${encodeURIComponent(nativeProjectId)}/preview/${asset.path}`} />}
         <span><strong>{asset.path.split('/').pop()}</strong><small>{t(asset.available === false ? 'File moved or removed · check the media library' : 'Saved to project assets')}</small></span>
-        <div className="motion-generated-actions">{editing && request.target?.replace && asset.mimeType.startsWith('image/') && <button className="motion-media-primary" disabled={busy || asset.available === false || !!replaced} onClick={() => void replace(job, asset.path)}>{t(replaced === asset.path ? 'Replaced · undo in timeline' : 'Replace selected image')}</button>}
-        {request.target && <button disabled={busy || asset.available === false || placed.includes(asset.path)} onClick={() => void place(job, asset.path)}>{t(placed.includes(asset.path) ? 'Placed' : 'Place on timeline')}</button>}</div>
+        <div className="motion-generated-actions">{editing && request.target?.replace && asset.mimeType.startsWith('image/') && <button className="motion-media-primary" disabled={busy || asset.available === false || !!replaced || unconfirmed.includes(`replace:${asset.path}`)} onClick={() => void runTimelineAction('replace', job, asset.path)}>{t(unconfirmed.includes(`replace:${asset.path}`) ? 'Check the timeline' : replaced === asset.path ? 'Replaced · undo in timeline' : 'Replace selected image')}</button>}
+        {request.target && <button disabled={busy || asset.available === false || placed.includes(asset.path) || unconfirmed.includes(`place:${asset.path}`)} onClick={() => void runTimelineAction('place', job, asset.path)}>{t(unconfirmed.includes(`place:${asset.path}`) ? 'Check the timeline' : placed.includes(asset.path) ? 'Placed' : 'Place on timeline')}</button>}</div>
       </div>)}
     </article>)}</div>}
+    <StudioToastViewport {...toast} />
   </aside>;
 }

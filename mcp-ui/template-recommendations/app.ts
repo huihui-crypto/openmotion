@@ -1,4 +1,3 @@
-import { App } from '@modelcontextprotocol/ext-apps/app-with-deps';
 import { templateIds } from './types.ts';
 import { isLanguage, resolveLanguage, translations } from './i18n.ts';
 import { createInlineFeedback } from '../../packages/design-system/inline-feedback.ts';
@@ -307,7 +306,7 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
       if (url === undefined) {
         const binary = win.atob(asset.videoBase64!), bytes = new Uint8Array(binary.length);
         for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        url = win.URL.createObjectURL(new win.Blob([bytes.buffer], { type: 'video/mp4' }));
+        url = win.URL.createObjectURL(new win.Blob([bytes.buffer], { type: asset.videoMimeType ?? 'video/mp4' }));
       }
       const article = element('article', 'omtc-card'); article.dataset.templateId = card.templateId;
       const cover = element('button', 'omtc-cover'); cover.type = 'button';
@@ -318,9 +317,9 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
       categoryLabel.dataset.videoCategory = ''; categoryLabel.hidden = true;
       cover.append(poster, video, categoryLabel, previewLabel);
       const info = element('div', 'omtc-info'), heading = element('div', 'omtc-heading');
-      const position = element('span', 'omtc-position', String(card.position)), titleButton = element('button', 'omtc-title', card.title);
+      const titleButton = element('button', 'omtc-title', card.title);
       titleButton.type = 'button'; titleButton.title = card.title; titleButton.dataset.templateTitle = '';
-      heading.append(position, titleButton);
+      heading.append(titleButton);
       const description = element('p', 'omtc-description', card.description), status = element('p', 'omtc-status', t('loading'));
       const cloneButton = element('button', 'omtc-clone'), cardFeedback = element('p', 'omtc-feedback');
       label(status, 'loading'); cloneButton.type = 'button'; cardFeedback.hidden = true; cardFeedback.setAttribute('role', 'status');
@@ -359,18 +358,4 @@ export function mountTemplateCards(root: HTMLElement, bootstrap: TemplateCardsBo
     setHostContext(value: HostContext) { context = { ...context, ...value }; refreshLabels(); },
     destroy() { if (destroyed) return; cleanupView(); actionFeedback.destroy(); destroyed = true; snapshot = null; for (const cleanup of lifetime.splice(0)) cleanup(); },
   };
-}
-
-/** The production entry is inert when imported by the DOM test harness. */
-if (typeof window !== 'undefined' && window.__OPENMOTION_TEMPLATE_CARDS__) {
-  const root = document.getElementById('openmotion-template-cards');
-  if (root) {
-    const app = new App({ name: 'OpenMotion template recommendations', version: '1.0.0' }, {});
-    const ui = mountTemplateCards(root, window.__OPENMOTION_TEMPLATE_CARDS__, app);
-    app.ontoolresult = result => ui.update(result.structuredContent);
-    app.onhostcontextchanged = () => ui.setHostContext(app.getHostContext() ?? {});
-    app.onteardown = async () => { ui.destroy(); return {}; };
-    window.addEventListener('pagehide', () => ui.destroy(), { once: true });
-    app.connect().then(() => { ui.setHostContext(app.getHostContext() ?? {}); ui.setConnected(true); }).catch(() => ui.setConnected(false));
-  }
 }

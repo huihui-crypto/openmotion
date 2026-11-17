@@ -90,10 +90,11 @@ it('generates for its own project while another project is globally active, then
   await act(async () => root!.render(render(false)));
   await act(async () => button('Place on timeline').click());
   expect(place).toHaveBeenCalledTimes(1);
-  expect(document.body.textContent).toContain('The composition changed.');
+  expect(document.body.textContent).toContain('Could not place the asset on the timeline.');
 });
 
 it('edits a reference with a supported model, preserves placement and applies only the explicitly chosen result', async () => {
+  usePlayerStore.setState({ timelineProjectId: 'native' });
   vi.useFakeTimers(); const replace = vi.fn().mockResolvedValue(undefined); const place = vi.fn();
   const reference = { key: 'image', elementId: 'image', path: 'assets/original.png', src: 'assets/original.png', modality: 'image' as const, label: 'Forest' };
   let submitted: Record<string, unknown> | undefined;

@@ -1,3 +1,4 @@
+import { TimelineMediaActionError } from "../utils/timelineMediaActionError";
 import { mainVisualTrack } from "../player/components/timelineLinkage";
 // Asset-drop handlers for the timeline: drop an existing project asset at a
 // placement, or upload dragged-in OS files and place them sequentially.
@@ -49,6 +50,7 @@ interface DropGesture {
   placed: TimelineElement[];
   onNewTrack: boolean;
   deferRefresh?: boolean;
+  reportFailure?: boolean;
 }
 
 function timelineDropTarget(
@@ -126,12 +128,14 @@ export function useTimelineAssetDropOps({
     ): Promise<TimelineElement | undefined> => {
       if (isRecordingRef?.current) {
         if (existingPendingId) finishPendingAssetDrop(existingPendingId);
+        if (gesture.reportFailure) throw new TimelineMediaActionError("failed");
         showToast("Cannot edit timeline while recording", "error");
         return undefined;
       }
       const targetPath = activeCompPath || "index.html";
       if (checkEditable && !checkEditable([timelineDropTarget(targetPath, placement)])) {
         if (existingPendingId) finishPendingAssetDrop(existingPendingId);
+        if (gesture.reportFailure) throw new TimelineMediaActionError("failed", true);
         return undefined;
       }
       const pid = projectIdRef.current;
@@ -140,6 +144,7 @@ export function useTimelineAssetDropOps({
       const kind = getTimelineAssetKind(assetPath);
       if (!kind) {
         if (existingPendingId) finishPendingAssetDrop(existingPendingId);
+        if (gesture.reportFailure) throw new TimelineMediaActionError("failed");
         showToast("Only image, video, and audio assets can be dropped onto the timeline.");
         return undefined;
       }
@@ -255,6 +260,10 @@ export function useTimelineAssetDropOps({
         }
         return element;
       } catch (error) {
+        if (gesture.reportFailure) {
+          dismissPendingAssetDrop(pendingId);
+          throw error;
+        }
         if (!stillActive()) return undefined;
         finishPendingAssetDrop(pendingId);
         const message =
@@ -278,8 +287,8 @@ export function useTimelineAssetDropOps({
 
   const handleTimelineAssetDrop = useCallback(
     async (assetPath: string, placement: TimelineDropPlacement, durationOverride?: number, reportFailure = false) => {
-      const result = await dropAssetAt(assetPath, placement, durationOverride);
-      if (reportFailure && !result) throw new Error('Could not place the asset on the timeline. Check that the composition is editable.');
+      const result = await dropAssetAt(assetPath, placement, durationOverride, { placed: [], onNewTrack: false, reportFailure });
+      if (reportFailure && !result) throw new TimelineMediaActionError("failed");
     },
     [dropAssetAt],
   );

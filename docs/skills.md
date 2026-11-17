@@ -104,7 +104,7 @@ A prior local trial used only “做一个哈利波特宣传片” in a fresh gp
 
 ## Shared production reading scope
 
-Common engineering rules live in production; selected creative entries own their sequence and creative design. The context's [scoped reading examples](../skills/openmotion-production/references/context.md#按范围收紧读集的例子) distinguish local wording edits, existing-music replacement and unchanged HTML/MP4 delivery. Registered references expose available documents, not a recursive mandatory read set. Typography/font resources, original action design and sound narrative design are conditional; technical checks, final-file playback and actual display evidence keep their existing requirements. Deterministic document/registry checks establish that these paths are available, not that every host Agent will follow them or that a film improved.
+Common engineering rules live in production; selected creative entries own their sequence and creative design. The context's [scoped reading examples](../skills/openmotion-production/references/context.md#按范围收紧读集的例子) distinguish local wording edits, existing-music replacement and unchanged HTML/MP4 delivery. Registered references expose available documents, not a recursive mandatory read set. Both reference-video routes share [reading and measuring a reference video](../skills/openmotion-production/references/reference-video.md) (`openmotion://workflow/production/reference`); each keeps its own intent judgement, record and delivery rules. Typography/font resources, original action design and sound narrative design are conditional; technical checks, final-file playback and actual display evidence keep their existing requirements. Deterministic document/registry checks establish that these paths are available, not that every host Agent will follow them or that a film improved.
 
 ## openmotion-recreate 能力扩展点
 
@@ -118,9 +118,9 @@ Common engineering rules live in production; selected creative entries own their
 | [production.md](../skills/openmotion-production/references/production.md) 第 3 条 | 生成前先按共享生成边界判断，再进入 openmotion-media | 与上一行同步修改 |
 | SKILL.md §5 Sound | 默认沿用原片音轨并重新对齐；念出原品牌的旁白在可生成且已同意时换成用户的台词，否则删除并说明 | — |
 | SKILL.md §5 原片作底层（用户自有成片只改几处细节） | 仅此情况可把原片放在时间线上并打补丁 | 支持实拍局部修改或分镜混排时扩展适用条件 |
-| [rebuild.md](../skills/openmotion-recreate/references/rebuild.md) 重建方式、[reconstruction.md](../skills/openmotion-recreate/references/reconstruction.md) 难画面分段重建、[verify.md](../skills/openmotion-recreate/references/verify.md) 与 `measure_frame.mjs` | 按代码重建的动态图形设计测量和对比 | 新画面类型需确认测量指标和取样是否仍适用 |
+| 共享 [reference-video.md](../skills/openmotion-production/references/reference-video.md) 参考读取、测量与可编辑表现（与视频转模版共用），[rebuild.md](../skills/openmotion-recreate/references/rebuild.md) 复刻自己的重建取舍、[reconstruction.md](../skills/openmotion-recreate/references/reconstruction.md) 难画面分段重建、[verify.md](../skills/openmotion-recreate/references/verify.md) 与 `measure_frame.mjs` | 按代码重建的动态图形设计测量和对比 | 新画面类型需确认测量指标和取样是否仍适用 |
 
-以下是交付底线，不随能力扩展放开：不得把整条原片、整帧序列或烘焙进背景的可编辑内容冒充重建（rebuild.md）；不交付在工程外修改的 MP4（SKILL.md §5）。
+以下是交付底线，不随能力扩展放开：不得把整条原片、整帧序列或烘焙进背景的可编辑内容冒充重建（reference-video.md）；不交付在工程外修改的 MP4（SKILL.md §5）。
 
 ## Tool 契约审计与宿主能力边界
 

@@ -48,6 +48,8 @@ test('Motion editor events admit only closed categories, UUID projects and bound
     ['studio_edit_result', { outcome: 'failure', edit_kind: 'other', surface: 'other', error_code: 'CONFLICT' }],
     ['studio_history_step_result', { action: 'redo', outcome: 'unavailable', interaction_method: 'keyboard' }],
     ['studio_asset_import_result', { outcome: 'partial', entry_point: 'assets_drop', requested_count: 3, added_count: 2, failed_count: 1, error_category: 'too_large' }],
+    ['studio_export_request_result', { export_id: exportId, outcome: 'unknown', ...settings, error_code: 'INVALID_RESPONSE' }],
+    ['studio_asset_import_result', { outcome: 'unknown', entry_point: 'assets_button', requested_count: 3, added_count: 0, failed_count: 0, unknown_count: 2, pending_count: 1 }],
   ];
   for (const [event, properties] of valid) {
     assert.equal(validProperties(studioEvents, event, properties), true, event);
@@ -263,6 +265,27 @@ test('browser ingress rejects forged identity, worker events and oversized batch
   assert.equal((await send({ events: [packet()], padding: 'x'.repeat(65536) })).status, 400);
   await tracking.flush(); assert.equal(events.length, 1); tracking.close();
   assert.equal((await send({ events: [packet()] })).status, 200); assert.equal(tracking.pending(), 0);
+}, false));
+
+test('browser ingress admits manual I/O pairs and rejects private or incomplete recovery properties', () => fixture(async store => {
+  const events: PendingEvent[] = [], tracking = core(async batch => { events.push(...batch); return 'accepted'; });
+  const request = transport(store, { tracking });
+  const send = (event: string, properties: Record<string, unknown>) => request('/motion-api/tracking', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ events: [{ ...packet(), event, properties }] }),
+  });
+  const shared = { action: 'download_render', attempt_id: crypto.randomUUID() };
+  const result = { ...shared, outcome: 'unknown', file_status: 'available', delivery_status: 'browser_save_requested' };
+  assert.equal((await send('studio_io_action', shared)).status, 200);
+  assert.equal((await send('studio_io_result', result)).status, 200);
+  for (const properties of [
+    { ...result, file_name: 'PRIVATE_FILE' }, { ...result, path: 'PRIVATE_PATH' }, { ...result, error: 'PRIVATE_ERROR' },
+    { ...result, action: 'automatic_refresh' }, { ...result, attempt_id: 'PRIVATE_TASK_ID' },
+    { ...result, outcome: 'saved' }, { ...result, delivery_status: 'saved' }, { ...result, requested_count: -1 },
+    { action: 'recheck_file', outcome: 'unknown' }, { ...shared },
+  ]) assert.equal((await send('studio_io_result', properties)).status, 400);
+  await tracking.flush();
+  assert.deepEqual(events.map(event => [event.event, event.properties]), [['studio_io_action', shared], ['studio_io_result', result]]);
+  tracking.close();
 }, false));
 
 test('domain events follow real commits, skip replay and retain safe failure without source contents', () => fixture(async store => {

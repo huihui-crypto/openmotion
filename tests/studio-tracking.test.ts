@@ -15,8 +15,8 @@ import type { PendingEvent } from '../tracking/core.ts';
 import { pluginRoot } from '../hyperframes.ts';
 import { Phase1Service } from '../phase1.ts';
 
-test('all 78 retained Studio producers have a closed contract and accepted real-shaped payload', async () => {
-  assert.equal(Object.keys(studioTrackingFixtures).length, 78);
+test('all 80 retained Studio producers have a closed contract and accepted real-shaped payload', async () => {
+  assert.equal(Object.keys(studioTrackingFixtures).length, 80);
   assert.deepEqual(Object.keys(studioUsageEvents).sort(), Object.keys(studioTrackingFixtures).sort());
   for (const [name, input] of Object.entries(studioTrackingFixtures)) {
     const properties = studioUsageProperties(name, { ...input, prompt: 'PRIVATE_PROMPT', distinct_id: 'PRIVATE_ID' });
@@ -90,13 +90,13 @@ test('all retained events traverse real local admission and Node sender; opt-out
     assert.equal((await send(packets.slice(i, i + 16))).status, 200);
     assert.equal(await tracking.flush(), 'accepted');
   }
-  assert.equal(indexed.length, 78);
+  assert.equal(indexed.length, 80);
   assert(indexed.every(row => row.properties.host_agent === 'deepseek' && row.properties.host_agent_source === 'mcp_client_info'));
   assert(!JSON.stringify(indexed).includes('PRIVATE'));
   assert.equal((await send([{ ...packets[0], host_context: identifyHost({ name: 'codex' }) }])).status, 400);
   tracking.setEnabled(false);
   assert.equal((await send(packets.slice(0, 1))).status, 200); assert.equal(tracking.pending(), 0);
-  assert.equal(indexed.length, 78); tracking.close();
+  assert.equal(indexed.length, 80); tracking.close();
 }, false));
 
 test('host identity uses declared clients, preserves unknown and scopes all handoff URLs', () => {

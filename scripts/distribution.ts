@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packagedSkills } from '../shared/workflow.ts';
 import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/design-system/index.js';
-import { onboardingSourceFiles } from '../shared/onboarding-templates.ts';
+import { onboardingSourceFiles, onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -602,10 +602,14 @@ export async function distributionFiles(profile: string, include: (file: string)
     'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts', 'tracking/task-ledger.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
+    'mcp-ui/template-recommendations/project-previews/manifest.json',
+    ...onboardingTemplateIds.flatMap(id => ['webm', 'jpg'].map(extension =>
+      `mcp-ui/template-recommendations/project-previews/${id}.${extension}`)),
     // The inline Node renderer streams the welcome from this shared translation source.
     'mcp-ui/template-recommendations/i18n.ts', 'mcp-ui/template-recommendations/types.ts',
     'mcp-ui/template-recommendations/LICENSE', 'mcp-ui/template-recommendations/NOTICE.md',
     'mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/app.css',
+    'mcp-ui/template-recommendations/build/inline.js',
     'mcp-ui/template-recommendations/build/identity.json',
     'mcp-ui/template-recommendations/assets/product-promo.mp4',
     'mcp-ui/template-recommendations/assets/product-promo.jpg',

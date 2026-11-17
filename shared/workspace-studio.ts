@@ -1,6 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { lstatSync, writeFileSync, unlinkSync } from 'node:fs';
-import { renderFilenameStem } from './render-name.ts';
+import { lstatSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
@@ -13,6 +12,7 @@ import { isMain } from './entry.ts';
 import { withAvailableHistorySteps } from './studio-history-availability.ts';
 import { MAX_ASSET_BYTES } from './asset-limits.ts';
 import { repairCodeExtrudeMaterial } from './registry-material-compat.ts';
+import { StudioRenderAttempts, StudioRenderBusy } from './studio-render-attempts.ts';
 
 import { createFontCatalog, prepareFont, preparedFontResponse } from './studio-fonts.ts';
 
@@ -28,6 +28,7 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
   if (typeof createStudioServer !== 'function') throw new Error('Hyperframes workspace host factory is unavailable');
   const { getRequestListener } = await import(pathToFileURL(require.resolve('@hono/node-server')).href);
   const { Hono } = await import(pathToFileURL(require.resolve('hono')).href);
+  const { streamSSE } = await import(pathToFileURL(require.resolve('hono/streaming')).href);
   const { serveStatic } = await import(pathToFileURL(require.resolve('@hono/node-server/serve-static')).href);
   const { bodyLimit } = await import(pathToFileURL(require.resolve('hono/body-limit')).href);
   const coreRoot = path.dirname(require.resolve('@hyperframes/core/package.json'));
@@ -69,39 +70,88 @@ export async function startWorkspaceStudio(runtimeRoot: string, dataDirectory: s
           return result;
         };
         const nativeApp = host.app;
-        const renderRequest = new AsyncLocalStorage<{ filename?: string }>();
+        const attempts = new StudioRenderAttempts(scoped.projectDirectory);
+        const shutdown = host.shutdown.bind(host);
+        host.shutdown = async () => { try { await shutdown(); } finally { attempts.close(); } };
+        const renderRequest = new AsyncLocalStorage<{ filename?: string; createdAt?: number; requestId?: string; busy?: boolean }>();
         const startRender = host.adapter.startRender.bind(host.adapter);
-        host.adapter.startRender = (options: { outputPath: string }) => {
+        host.adapter.startRender = (options: { outputPath: string; jobId: string }) => {
           const request = renderRequest.getStore();
           if (!request) return startRender(options);
-          const directory = path.dirname(options.outputPath);
-          const extension = path.extname(options.outputPath);
-          const title = renderFilenameStem(scoped.projectCatalog().projects.find(project => project.id === id)?.title);
-          // Native history and deletion share one metadata file across all formats.
-          // Reserve that stem before starting the worker, including concurrent submissions.
-          for (let n = 0; ; n++) {
-            const stem = n ? title + ' (' + n + ')' : title;
-            if (['.mp4', '.mov', '.webm', '.gif'].some(ext => lstatSync(path.join(directory, stem + ext), { throwIfNoEntry: false }))) continue;
-            const metadata = path.join(directory, stem + '.meta.json');
-            try { writeFileSync(metadata, '{}', { flag: 'wx' }); }
-            catch (error) { if ((error as NodeJS.ErrnoException).code === 'EEXIST') continue; throw error; }
-            request.filename = stem + extension;
-            try { return startRender({ ...options, outputPath: path.join(directory, request.filename) }); }
-            catch (error) { unlinkSync(metadata); throw error; }
+          const title = scoped.projectCatalog().projects.find(project => project.id === id)?.title;
+          try {
+            const { state, attempt } = attempts.start(options, title, startRender, request.requestId);
+            request.filename = attempt.filename;
+            request.createdAt = attempt.createdAt;
+            return state;
+          } catch (error) {
+            if (error instanceof StudioRenderBusy) request.busy = true;
+            throw error;
           }
         };
         host.app = new Hono().get('/api/fonts', async c => c.json({ fonts: await fonts.families() }))
-          .post('/api/projects/:id/render', c => {
-            const result: { filename?: string } = {};
+          .post('/api/projects/:id/render', async c => {
+            const busy = () => c.json({ code: 'EXPORT_BUSY', applied: false, error: 'An export is already in progress. Check the original task.' }, 409);
+            if (attempts.hasActiveWorker()) return busy();
+            const body = await c.req.raw.clone().json().catch(() => null);
+            const result: { filename?: string; createdAt?: number; requestId?: string; busy?: boolean } = {};
+            if (typeof body?.requestId === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(body.requestId)) result.requestId = body.requestId;
             return renderRequest.run(result, async () => {
               const response = await nativeApp.fetch(c.req.raw);
+              // Native handlers may turn adapter errors into a 500 response.
+              // Keep a racing refusal distinct from an accepted render.
+              if (result.busy) return busy();
               if (!response.ok || !result.filename) return response;
-              return c.json({ ...await response.json(), filename: result.filename });
+              return c.json({ ...await response.json(), filename: result.filename, createdAt: result.createdAt });
             });
+          })
+          .get('/api/projects/:id/renders', c => c.json({ renders: attempts.list() }))
+          .get('/api/render/:jobId/progress', c => {
+            const jobId = c.req.param('jobId');
+            if (attempts.wasDeleted(jobId)) return c.notFound();
+            if (!attempts.get(jobId)) return nativeApp.fetch(c.req.raw);
+            return streamSSE(c, async stream => {
+              while (!stream.aborted) {
+                const current = attempts.get(jobId);
+                if (!current) break;
+                await stream.writeSSE({ event: 'progress', data: JSON.stringify(current) });
+                if (current.status !== 'rendering' && current.status !== 'cancelling') break;
+                await stream.sleep(500);
+              }
+            });
+          })
+          .post('/api/render/:jobId/cancel', c => {
+            const jobId = c.req.param('jobId');
+            if (attempts.wasDeleted(jobId)) return c.notFound();
+            const attempt = attempts.cancel(jobId);
+            return attempt ? c.json({ status: attempt.status }) : nativeApp.fetch(c.req.raw);
+          })
+          .delete('/api/render/:jobId', c => {
+            try {
+              return attempts.delete(c.req.param('jobId')) ? c.json({ deleted: true }) : nativeApp.fetch(c.req.raw);
+            } catch (error) {
+              if (error instanceof Error && error.message === 'Render has no confirmed terminal state') return c.json({ error: error.message }, 409);
+              throw error;
+            }
+          })
+          .get('/api/render/:jobId/:action{view|download}', (c, next) => {
+            const jobId = c.req.param('jobId');
+            if (attempts.wasDeleted(jobId)) return c.notFound();
+            const attempt = attempts.get(jobId) ?? attempts.list().find(attempt => attempt.id === jobId);
+            if (!attempt) return next();
+            if (!attempt.fileAvailable) return c.notFound();
+            if (c.req.param('action') === 'download') {
+              const fallback = attempt.filename.replace(/[^\x20-\x7e]|["\\]/g, '_');
+              const encoded = encodeURIComponent(attempt.filename).replace(/[!'()*]/g, character => '%' + character.charCodeAt(0).toString(16).toUpperCase());
+              c.header('Content-Disposition', `attachment; filename="${fallback}"; filename*=UTF-8''${encoded}`);
+            }
+            return serveStatic({ root: attempts.directory, path: attempt.filename })(c, () => c.notFound());
           })
           .get('/api/projects/:id/renders/file/:filename', async c => {
             const filename = c.req.param('filename');
             if (/[\/\\\x00]/.test(filename) || !/\.(mp4|mov|webm|gif)$/i.test(filename)) return c.notFound();
+            const attempt = attempts.list().find(attempt => attempt.filename === filename);
+            if (attempt && !attempt.fileAvailable) return c.notFound();
             const directory = path.join(scoped.projectDirectory, 'renders');
             if (!lstatSync(directory, { throwIfNoEntry: false })?.isDirectory() ||
                 !lstatSync(path.join(directory, filename), { throwIfNoEntry: false })?.isFile()) return c.notFound();

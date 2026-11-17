@@ -52,14 +52,20 @@ async function setupFixture(t: any) {
   return { directory, application, home, skillsDirectory, manifest, codex, config };
 }
 
-test('successful setup hands the current Agent a project-free template library before any MCP use', async t => {
+test('setup retains the welcome/card contract and project-free library without claiming chat activation', async t => {
   const options = await setupFixture(t);
   const installed = await setup(options);
   assert.equal(installed.onboarding.hostSessionVerified, false);
+  assert.match(installed.onboarding.welcomeMarkdown, /open-source video creation partner/);
+  assert.doesNotMatch(installed.onboarding.welcomeMarkdown, /👇|👆|three|cards/);
+  assert.equal(installed.onboarding.welcomeMarkdown.split('\n\n').length, 3);
+  assert.doesNotMatch(installed.onboarding.welcomeMarkdown, /https?:|\]\(|HOST_|MCP|receipt/);
   assert.deepEqual(installed.onboarding.directAccess.toolsArgs, [path.join(installed.appRoot, 'scripts/npm-installer.mjs'), 'tools', '--home', installed.launcher.replace(/[/\\]run-mcp.mjs$/, ''), '--host', 'codex', '--codex', options.codex]);
   const examples = [...installed.onboarding.instructions.matchAll(/```text\n([\s\S]*?)```/g)].map(([, text]) => text);
   assert.equal(examples.length, 2);
-  const [cards, library] = examples;
+  const [cards, fallback] = examples;
+  assert.equal(fallback.trim().split('\n\n').length, 3);
+  assert.doesNotMatch(fallback, /👇|👆|这 3 个|https?:/);
   for (const raw of examples) {
     const example = raw.replaceAll('**', '');
     assert(example.startsWith('🎉 OpenMotion 安装好啦，右侧就是模板库！\n\n'));
@@ -69,12 +75,11 @@ test('successful setup hands the current Agent a project-free template library b
     assert.doesNotMatch(example, /打开并编辑|要用这个模板/);
   }
   assert.doesNotMatch(cards, /1\. \*\*产品宣传片|2\. \*\*动态图表|3\. \*\*决策树动画/);
-  assert.match(installed.onboarding.instructions, /onboarding: false/);
-  assert.match(installed.onboarding.instructions, /stream the separate welcomeMarkdown once as the final reply/);
+  assert.match(installed.onboarding.instructions, /onboarding:true/);
+  assert.match(installed.onboarding.instructions, /welcome above the three cards/);
   assert.match(cards, /不想自己找？先看看我挑的这 3 个/);
-  assert.match(cards, /你可以点击上方卡片上的「复刻模板」，然后补充/);
-  assert.match(cards, /补充「我的要求」或添加附件，发送后就开始创作/);
-  assert.doesNotMatch(library, /卡片|3 个推荐|填入输入框|回复.*[123]/);
+  assert.match(cards, /👇/);
+  assert.equal(JSON.parse(await readFile(installed.onboarding.detailsFile, 'utf8')).onboardingComplete, false);
   assert(Array.isArray(installed.onboarding.catalog.templates));
   assert.equal(installed.onboarding.preview.status, 'ready', installed.onboarding.preview.warning);
   assert.equal(installed.onboarding.preview.projectCreated, false);
@@ -95,6 +100,7 @@ export async function prepareInlineOnboarding({output}) { await fs.mkdir(path.di
   await writeFile(options.codex, cli + `\nif(args[0]==='queue') {fs.writeFileSync(${JSON.stringify(queueLog)},JSON.stringify(args));console.log('Queued message 11111111-1111-4111-8111-111111111111 for thread '+args[2]+'.');}\n`);
   const installed = await setup(options);
   assert.equal(installed.onboarding.onboardingStatus, 'awaiting_host_delivery');
+  assert.equal(installed.onboarding.hostHandoff.automaticActivation, 'blocked');
   assert.equal(installed.onboarding.callback, undefined);
   assert.equal(installed.onboarding.inlinePresentation.status, 'prepared');
   assert.equal(installed.onboarding.preview.status, 'ready');

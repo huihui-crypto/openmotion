@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { normalizeInlineResult } from './shared/inline-video-result.js';
-import { inlineVideoUri } from './shared/inline-video.ts';
+import { inlineVideoUri, legacyInlineVideoUri } from './shared/inline-video.ts';
 import { publicToolName, legacyToolName, publicToolResult } from './shared/public-names.mjs';
 import { assetReadToolResult } from './shared/asset-library.ts';
 import { createInterface } from 'node:readline';
@@ -107,8 +107,8 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
   if (message.method === 'ping') return result({});
   if (registry.profile === 'phase1' && message.method === 'resources/list') return result({ resources: [...workflowResources(), { uri: inlineVideoUri, name: 'Final video playback', mimeType: 'text/html;profile=mcp-app' }, ...(clientState?.presentation ? [clientState.presentation.descriptor] : [])] });
   if (registry.profile === 'phase1' && message.method === 'resources/read') {
-    if (message.params?.uri === inlineVideoUri) {
-      try { return result({ contents: [{ uri: inlineVideoUri, mimeType: 'text/html;profile=mcp-app',
+    if (message.params?.uri === inlineVideoUri || message.params?.uri === legacyInlineVideoUri) {
+      try { return result({ contents: [{ uri: message.params.uri, mimeType: 'text/html;profile=mcp-app',
         text: await readFile(new URL('./web/inline-video.html', import.meta.url), 'utf8'),
         _meta: { ui: { prefersBorder: true, csp: { connectDomains: [], resourceDomains: ['data:', 'blob:'] } },
           'openai/ui': { availableDisplayModes: ['inline'], preferredDisplayMode: 'inline' } } }] }); }
@@ -175,6 +175,13 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         if (value.projectId && value.sessionId) selections.set(store, { projectId: value.projectId, sessionId: value.sessionId });
         if (internalName === 'motion_assets' && args.action === 'read') return result(assetReadToolResult(value));
         const { _inlineMedia: legacyMedia, ...visible } = value;
+        if (finalVideo) {
+          // Agent execution envelopes can truncate private data URLs. Keep presentation small;
+          // the App retrieves the verified bytes through its direct server-tool connection.
+          const presentation = { ...visible, inlineVideoTransport: 'server-tool' };
+          return result({ content: [{ type: 'text', text: JSON.stringify(presentation) }], structuredContent: presentation,
+            _meta: { ui: { resourceUri: inlineVideoUri } } });
+        }
         const _inlineMedia = normalized?._meta?.inlineVideo ?? legacyMedia;
         return result({ content: [{ type: 'text', text: JSON.stringify(visible) }], structuredContent: visible,
           ...(_inlineMedia ? { _meta: { inlineVideo: _inlineMedia } } : {}) });
