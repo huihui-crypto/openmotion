@@ -1,5 +1,11 @@
 # 公开变更记录
 
+## 2026-11-17: Add the optional Style Recipes library Skill
+
+- Add `openmotion-style-recipes`, eleven written style recipes for common jobs: four talking-head overlays (highlighter notes, whiteboard marker, spec sheet, red-pen archive), three narrated explainers (paper collage, whiteboard doodle, paper map journey), three product and brand pieces (website launch film, glitch logo sting, bold type poster) and a shortlist-first method for cutting long recordings into shorts.
+- Each recipe states its look, motion rules, required inputs, what to avoid and review checks. All are recipes/drafts: no executable template or rendered comparison is claimed.
+- The standalone installer and the positive distribution list include the new Skill; it has no retired forwarding folder. It adds no MCP Tool, production route, account or pricing change.
+
 ## 2026-11-17: Play a bounded preview for large final videos in chat
 
 - Codex's MCP stdio transport drops message lines above 16 MiB, so final videos over roughly 12 MiB never appeared in chat and the host waited indefinitely. The former 32 MiB inline cap was above that ceiling.

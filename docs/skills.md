@@ -20,6 +20,8 @@ The [native engine boundary](../skills/openmotion-production/references/native.m
 
 可选 [`presenter-story`](../library/skills/openmotion-presenter-story/SKILL.md) 提供三份真人口播 / Motion 设计配方：知识清单、工作流演示、产品讲解。它要求用自己的录制和实际语音时间码编排字幕、画中画与动效；展示媒体为目录里的上游原片及改编，不是新 Skill 的成片验收。它不包含人物素材或可执行模板，仍复用现有制作路线。
 
+可选 [`openmotion-style-recipes`](../library/skills/openmotion-style-recipes/SKILL.md) 提供 11 份风格配方：口播叠加（荧光笔笔记、白板马克笔、参数表、红笔档案）、无人出镜讲解（纸片拼贴、白板手绘、纸地图旅程）、产品与品牌（官网发布片、故障风 Logo、大字海报）以及「先列候选再剪」的长视频切短视频方法。全部是文字配方，尚无可执行模板或成片对比；它不注册 MCP，也不改变核心制作入口。
+
 2026-11-06：五个入口统一为 motion- 前缀，视频转模板纳入一期插件、四宿主薄适配器与 MCP Resources。同时融合已评审的通用工程入口方案，保留原制作实现和导演质量参考；同时保留 main PR #28 的实际复刻流程、独立参考和测量脚本。历史多轮实验记录见下文，其证据不自动覆盖本次命名与分发变更。
 
 ## Director v1.5.5 integration

@@ -120,6 +120,18 @@ const presenterStoryFiles = [
   'library/skills/openmotion-presenter-story/references/presenter-listicle/MOTION_DESIGN.md',
   'library/skills/openmotion-presenter-story/references/product-walkthrough/MOTION_DESIGN.md',
   'library/skills/openmotion-presenter-story/references/workflow-demo/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/SKILL.md',
+  'library/skills/openmotion-style-recipes/references/bold-type-poster/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/glitch-logo-sting/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/highlighter-notes/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/paper-collage-explainer/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/paper-map-journey/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/red-pen-archive/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/shortlist-shorts/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/spec-sheet/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/website-launch/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/whiteboard-doodle/MOTION_DESIGN.md',
+  'library/skills/openmotion-style-recipes/references/whiteboard-marker/MOTION_DESIGN.md',
 ];
 
 const presenterTechFiles = [
@@ -511,7 +523,7 @@ export const distributionDocuments = [
   ...motionPackageFiles,
   ...designSystemDocuments,
   'docs/fonts.md',
-  ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
+  ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix', 'openmotion-style-recipes'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
   ...localReadmeResourceFiles,
   'README.md', 'README.zh-CN.md', 'CONTRIBUTING.md', 'CONTRIBUTING.zh-CN.md', 'AGENTS.md', 'CLAUDE.md', 'docs/README.md', 'repository-media.json',
   'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md',

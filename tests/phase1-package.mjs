@@ -19,7 +19,7 @@ const expected=JSON.parse(await readFile(path.join(root,'shared/mcp-profiles.jso
 const {packagedSkills}=await import(pathToFileURL(path.join(root,'shared/workflow.ts')).href);
 assert.deepEqual((await readdir(path.join(root,'skills'))).sort(),[...packagedSkills].sort());
 const standaloneLibrary=path.join(work,'standalone-library');
-const librarySkills=['openmotion-brandkit','openmotion-presenter-story','openmotion-design-remix'];
+const librarySkills=['openmotion-brandkit','openmotion-presenter-story','openmotion-design-remix','openmotion-style-recipes'];
 assert.deepEqual((await readdir(path.join(root,'library/skills'))).sort(),[...librarySkills].sort());
 for(const canonical of librarySkills){
  const installed=spawnSync(process.execPath,[path.join(root,'scripts/install-library-skill.mjs'),canonical,standaloneLibrary],{encoding:'utf8',cwd:tmpdir()});
