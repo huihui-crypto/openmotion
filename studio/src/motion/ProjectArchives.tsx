@@ -71,7 +71,8 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
         name: 'openmotion_project_archive', arguments: { action: 'export', requestId, ...(projectIds ? { projectIds } : { all: true }) },
       }) });
       download(result);
-      tracking.reportProjectManage('export', 'success', projectIds?.length ?? workspace.projects.length);
+      // The archive service may skip projects (an uninitialised default); report what the ZIP holds.
+      tracking.reportProjectManage('export', 'success', Array.isArray(result.projects) ? result.projects.length : projectIds?.length ?? workspace.projects.length);
       toast.showToast(t('Project ZIP ready'), 'info', 'feedback', { label: t('Download'), key: requestId, onClick: () => download(result) });
     } catch (error) {
       tracking.reportProjectManage('export', 'failure', projectIds?.length ?? workspace.projects.length);
