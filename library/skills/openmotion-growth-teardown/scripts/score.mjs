@@ -3,6 +3,8 @@
 // the film's own visual cues (typing, pops, blips, whooshes, hits).
 // Usage (standalone): node scripts/score.mjs out/cues.json out/assets/score.wav
 import { readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const SR = 44100;
 const BPM = 104, BEAT = 60 / BPM;
@@ -82,7 +84,7 @@ export async function renderScore({ duration, cues }, file) {
   await writeFile(file, buf);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [cuesFile, outFile] = process.argv.slice(2);
   await renderScore(JSON.parse(await readFile(cuesFile, 'utf8')), outFile);
   console.log('Wrote ' + outFile);

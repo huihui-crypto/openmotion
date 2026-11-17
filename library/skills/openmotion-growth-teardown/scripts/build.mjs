@@ -2,7 +2,7 @@
 // Generate an editable HyperFrames project (1920x1080, 30 fps) from growth.json.
 // Usage:
 //   node scripts/build.mjs --check growth.json
-//   node scripts/build.mjs growth.json out/ [--lang zh] [--music file.m4a]
+//   node scripts/build.mjs evidence/growth.json out/ [--lang zh] [--music file] [--no-score] [--gallery a.json,b.json]
 import { mkdir, readFile, writeFile, copyFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
@@ -70,7 +70,7 @@ const t = d => { const [y, m, day] = d.split('-').map(Number); return Date.UTC(y
 const unit = data.metric.unit ?? '';
 function fmt(v) {
   const a = Math.abs(v);
-  const n = a >= 1e9 ? (v / 1e9).toFixed(a >= 1e10 ? 0 : 2).replace(/\.?0+$/, '') + 'B'
+  const n = a >= 1e9 ? (v / 1e9).toFixed(a >= 1e10 ? 0 : 2).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + 'B'
     : a >= 1e6 ? (v / 1e6).toFixed(a >= 1e8 ? 0 : 1).replace(/\.0$/, '') + 'M'
     : a >= 1e3 ? (v / 1e3).toFixed(a >= 1e5 ? 0 : 1).replace(/\.0$/, '') + 'K' : String(Math.round(v));
   return unit === '$' ? '$' + n : n + (unit && unit !== '$' ? unit : '');
@@ -292,7 +292,7 @@ async function evidenceCard(id, ref, k, x, y, w, h, title) {
 <div id="${id}-card${k}" style="position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 18px 50px rgba(30,40,90,.16),0 0 0 1px rgba(20,22,28,.06)">${inner}</div>`;
 }
 
-const fmt2 = d => { const u = d.metric?.unit ?? ''; const pts = d.metric?.points || []; const v = d.metric?.headline?.value ?? pts[pts.length - 1]?.value ?? 0; const a = Math.abs(v); const n = a >= 1e9 ? (v / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B' : a >= 1e6 ? Math.round(v / 1e6) + 'M' : a >= 1e3 ? Math.round(v / 1e3) + 'K' : String(v); return (u === '$' ? '$' + n : n) + ' ' + String(d.metric?.label || '').toUpperCase(); };
+const fmt2 = d => { const u = d.metric?.unit ?? ''; const pts = d.metric?.points || []; const v = d.metric?.headline?.value ?? pts[pts.length - 1]?.value ?? 0; const a = Math.abs(v); const n = a >= 1e9 ? (v / 1e9).toFixed(2).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + 'B' : a >= 1e6 ? Math.round(v / 1e6) + 'M' : a >= 1e3 ? Math.round(v / 1e3) + 'K' : String(v); return (u === '$' ? '$' + n : n) + ' ' + String(d.metric?.label || '').toUpperCase(); };
 // ---------- scenes ----------
 const scenes = [];
 const cues = [];

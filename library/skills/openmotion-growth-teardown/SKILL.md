@@ -54,11 +54,11 @@ Use only what the source published; do not generate stand-in images of real peop
 ## 4. Generate and render the film
 
 ```sh
-node scripts/build.mjs growth.json out/ --evidence evidence/
+node scripts/build.mjs evidence/growth.json out/
 cd out && npx hyperframes check && npx hyperframes render -o growth.mp4
 ```
 
-The generator writes a native HyperFrames project: `index.html` plus one composition per scene. The storyline is fixed because it works for any company:
+Build from `evidence/growth.json`: it is the copy with every collected image, wall and logo filled in. The generator writes a native HyperFrames project: `index.html` plus one composition per scene. The storyline is fixed because it works for any company:
 
 | Scene | What it shows |
 | --- | --- |
