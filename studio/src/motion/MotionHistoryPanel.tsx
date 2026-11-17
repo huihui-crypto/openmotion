@@ -70,13 +70,14 @@ export function MotionHistoryPanel({ onRestored = reloadProject, compact = false
     return () => { mounted.current = false; clearInterval(timer); activeRead.current?.abort(); };
   }, [refresh]);
 
-  const run = async (operation: () => Promise<void>, action?: 'keep_current' | 'pin' | 'unpin' | 'restore') => {
+  // An operation returns false when it had nothing to do; only work that happened is reported as a success.
+  const run = async (operation: () => Promise<void | boolean>, action?: 'keep_current' | 'pin' | 'unpin' | 'restore') => {
     if (running.current || historyOperation.busy || writeBlockedReason || renderQueue.isRendering) return;
     running.current = true;
     historyOperation.setBusy(true);
     activeRead.current?.abort();
     setBusy(true); setError(''); setNotice('');
-    try { await operation(); if (action) trackVersionHistoryResult(action, 'success', projectId); }
+    try { if (await operation() !== false && action) trackVersionHistoryResult(action, 'success', projectId); }
     catch (cause) { if (action) trackVersionHistoryResult(action, 'failure', projectId); if (mounted.current) showToast(cause instanceof Error ? cause.message : 'Version operation failed', 'error'); }
     finally { running.current = false; historyOperation.setBusy(false); if (mounted.current) setBusy(false); }
   };
@@ -84,7 +85,7 @@ export function MotionHistoryPanel({ onRestored = reloadProject, compact = false
     await waitForPendingDomEditSaves();
     await historyRequest(projectId, '/checkpoint', {});
     const current = (await refresh()).at(-1);
-    if (!current) { setNotice('You can pin a version after your first saved edit.'); return; }
+    if (!current) { setNotice('You can pin a version after your first saved edit.'); return false; }
     await historyRequest(projectId, '/pin', { entryId: current.id, pinned: true });
     await refresh(); setSelectedId(current.id); setOnlyPinned(false); setNotice('Current version pinned');
   }, 'keep_current');

@@ -129,7 +129,8 @@ export function AssetsPage({ active, hasProject = false }: { active: boolean; ha
       tracking.reportAssetUpdate(changes, 'success', modality);
       if (changes.trashed === true) toast.showToast(t('Asset removed'), 'info', undefined, {
         key: `restore:${assetId}`, label: t('Undo'), onClick: async () => {
-          await persistUpdate(assetId, { trashed: false });
+          try { await persistUpdate(assetId, { trashed: false }); tracking.reportAssetUpdate({ trashed: false }, 'success', modality); }
+          catch (error) { tracking.reportAssetUpdate({ trashed: false }, 'failure', modality); throw error; }
           toast.showToast(t('Asset restored'), 'info');
         },
       });
