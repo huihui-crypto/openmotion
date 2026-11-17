@@ -1,5 +1,6 @@
-// Standalone Studio keeps its saved choice; embed=1 follows the host browser's
-// color scheme without persisting it. index.html mirrors this before first paint.
+// Standalone Studio defaults to Light; embedded Studio (embed=1) defaults to System,
+// i.e. it follows the host app until the user picks Light or Dark. Each context keeps
+// its own saved choice. index.html mirrors this before first paint.
 import { useSyncExternalStore } from "react";
 import {
   readStudioUiPreferences,
@@ -14,7 +15,8 @@ export function savedStudioTheme(): StudioTheme {
 }
 
 export function savedStudioThemePreference(): StudioThemePreference {
-  return readStudioUiPreferences().theme ?? 'light';
+  const preferences = readStudioUiPreferences();
+  return studioUsesHostTheme() ? preferences.embeddedTheme ?? 'system' : preferences.theme ?? 'light';
 }
 const systemTheme = (): StudioTheme => window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
 
@@ -35,19 +37,19 @@ export function studioUsesHostTheme(): boolean {
   return new URLSearchParams(location.search).get("embed") === "1";
 }
 
-/** Embedded hosts and standalone System mode track the same media preference. */
+/** System mode (the embedded default) tracks the host's color-scheme media preference. */
 export function bindEmbeddedStudioTheme(): () => void {
   const root = document.documentElement;
   root.dataset.themePreference = savedStudioThemePreference();
   if (!window.matchMedia) return () => {};
   const preference = window.matchMedia("(prefers-color-scheme: dark)");
   const apply = () => {
-    if (studioUsesHostTheme() || root.dataset.themePreference === 'system') applyStudioTheme(preference.matches ? "dark" : "light");
+    if (root.dataset.themePreference === 'system') applyStudioTheme(preference.matches ? "dark" : "light");
   };
   const storage = (event: StorageEvent) => {
     if (event.key !== 'hf-studio-ui-preferences' && event.key !== null) return;
     const choice = savedStudioThemePreference(); root.dataset.themePreference = choice;
-    applyStudioTheme(studioUsesHostTheme() || choice === 'system' ? systemTheme() : choice);
+    applyStudioTheme(choice === 'system' ? systemTheme() : choice);
   };
   apply();
   preference.addEventListener("change", apply);
@@ -56,9 +58,9 @@ export function bindEmbeddedStudioTheme(): () => void {
 }
 
 export function setStudioTheme(theme: StudioThemePreference): void {
-  writeStudioUiPreferences({ theme });
+  writeStudioUiPreferences(studioUsesHostTheme() ? { embeddedTheme: theme } : { theme });
   document.documentElement.dataset.themePreference = theme;
-  applyStudioTheme(studioUsesHostTheme() || theme === 'system' ? systemTheme() : theme);
+  applyStudioTheme(theme === 'system' ? systemTheme() : theme);
 }
 
 function subscribe(listener: () => void): () => void {

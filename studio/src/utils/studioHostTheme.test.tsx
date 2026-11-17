@@ -47,6 +47,18 @@ describe("embedded Studio theme before first paint", () => {
     expect(localStorage.getItem(KEY)).toBe(preferences);
   });
 
+  it.each([
+    { dark: true, saved: "light", expected: "light" },
+    { dark: false, saved: "dark", expected: "dark" },
+  ])("keeps the embedded choice $saved over host $dark", ({ dark, saved, expected }) => {
+    history.replaceState(null, "", "/?embed=1");
+    localStorage.setItem(KEY, JSON.stringify({ theme: "system", embeddedTheme: saved }));
+    vi.spyOn(window, "matchMedia").mockReturnValue({ matches: dark } as MediaQueryList);
+    new Function(boot)();
+    expect(shownStudioTheme()).toBe(expected);
+    expect(document.documentElement.dataset.themePreference).toBe(saved);
+  });
+
   it("defaults light without a media-query API, even when storage is unavailable", () => {
     history.replaceState(null, "", "/?embed=1");
     vi.stubGlobal("matchMedia", undefined);
@@ -107,13 +119,30 @@ describe("live embedded host theme", () => {
     expect(savedStudioThemePreference()).toBe('light');
   });
 
-  it('applies preference changes from another tab while keeping embedded appearance host-owned', () => {
+  it('applies preference changes from another tab', () => {
     hostScheme(true); unbind = bindEmbeddedStudioTheme();
     localStorage.setItem(KEY, JSON.stringify({ theme: 'system' }));
     window.dispatchEvent(new StorageEvent('storage', { key: KEY }));
     expect(shownStudioTheme()).toBe('dark');
+  });
+
+  it('lets embedded users override the host and keeps that choice apart from standalone', () => {
     history.replaceState(null, '', '/?embed=1');
-    setStudioTheme('light');
+    localStorage.setItem(KEY, JSON.stringify({ theme: 'dark' }));
+    const change = hostScheme(true); unbind = bindEmbeddedStudioTheme();
+    expect(savedStudioThemePreference()).toBe('system');
     expect(shownStudioTheme()).toBe('dark');
+    setStudioTheme('light');
+    expect(shownStudioTheme()).toBe('light');
+    change(true);
+    expect(shownStudioTheme()).toBe('light');
+    expect(JSON.parse(localStorage.getItem(KEY)!)).toMatchObject({ theme: 'dark', embeddedTheme: 'light' });
+    setStudioTheme('system');
+    change(false);
+    expect(shownStudioTheme()).toBe('light');
+    change(true);
+    expect(shownStudioTheme()).toBe('dark');
+    history.replaceState(null, '', '/');
+    expect(savedStudioThemePreference()).toBe('dark');
   });
 });
