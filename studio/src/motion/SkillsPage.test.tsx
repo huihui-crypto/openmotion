@@ -162,7 +162,9 @@ it('does not select a failed command after its popover has closed', async () => 
 });
 
 it('localizes every Skills string and instruction in all supported languages', async () => {
-  const { default: skillsUi } = await import('../i18n/skills-ui.json');
+  const { default: skillsCore } = await import('../i18n/skills-ui.json');
+  const { default: skillLibrary } = await import('../i18n/skill-library');
+  const skillsUi = Object.fromEntries(Object.entries(skillsCore).map(([locale, messages]) => [locale, { ...messages, ...skillLibrary[locale] }])) as Record<string, Record<string, string>>;
   const { default: prompts } = await import('./skill-prompts.json');
   const { languages } = await import('../i18n/messages');
   const placeholders = (text: string) => [...text.matchAll(/\{\w+\}/g)].map(match => match[0]).sort();

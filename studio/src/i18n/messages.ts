@@ -8,6 +8,7 @@ import mcpUi from './mcp-ui.json';
 import assetsUi from './assets-ui.json';
 import brandKitUi from './brand-kit-ui.json';
 import skillsUi from './skills-ui.json';
+import skillLibraryUi from './skill-library';
 import projectUi from './project-ui.json';
 import exportRecoveryUi from './export-recovery-ui.json';
 import importRecoveryUi from './import-recovery-ui.json';
@@ -42,7 +43,7 @@ export const isLocale = (value: unknown): value is Locale => languages.some(lang
 // supported language. Retained, unexposed advanced-editor strings still fall back.
 export const mvpMessages: Partial<Record<Locale, Record<string, Message>>> = { 'zh-CN': mvpZhCN, ...mvpUi };
 const uiMessages: Partial<Record<Locale, Record<string, Message>>>[] = [
-  mvpMessages, errorUi, templateUi, settingsUi, mcpUi, assetsUi, skillsUi, brandKitUi, projectUi, exportRecoveryUi, importRecoveryUi, platformExportUi,
+  mvpMessages, errorUi, templateUi, settingsUi, mcpUi, assetsUi, skillsUi, skillLibraryUi, brandKitUi, projectUi, exportRecoveryUi, importRecoveryUi, platformExportUi,
 ];
 const effectiveDictionaries: Record<string, Record<string, Message>> = Object.fromEntries(Object.entries(dictionaries).map(([locale, messages]) => {
   const localized = { ...messages };
