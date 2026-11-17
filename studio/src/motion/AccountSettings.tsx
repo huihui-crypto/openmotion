@@ -1,3 +1,4 @@
+import * as tracking from './pageTracking';
 import { Tooltip } from "../components/ui/Tooltip";
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AccountSummary } from '../../../shared/provider-directory';
@@ -40,12 +41,14 @@ export function AccountSettings({ subscription = false, openProviders }: { subsc
     setLastState(state.account?.state);
   }, [state.account?.state, lastState, t, toast.showToast]);
   async function action(name: 'login' | 'logout' | 'cancel') {
+    tracking.reportSettingsClick('account', name === 'login' ? 'sign_in' : name === 'logout' ? 'sign_out' : 'cancel_sign_in');
     setBusy(true);
     try { state.setAccount(await gatewayRequest<AccountSummary>('settings/account/' + name, 'POST', {})); notifyProvidersChanged(); window.dispatchEvent(new Event('motion:account-changed')); }
     catch (error) { toast.showToast(error instanceof Error ? error.message : t('Could not update account'), 'error'); }
     finally { setBusy(false); }
   }
   async function refreshBilling() {
+    tracking.reportSettingsClick('account', 'refresh_billing');
     setRefreshing(true);
     try { await state.refresh(true); } finally { setRefreshing(false); }
   }
@@ -67,7 +70,7 @@ export function AccountSettings({ subscription = false, openProviders }: { subsc
       <section className="om-settings-section"><div className="om-settings-row"><h2 className="om-subtitle">{t('Subscription & usage')}</h2>{signedIn && <Tooltip label={t('Refresh account')} wrap><button className="motion-icon-button" aria-label={t('Refresh account')} disabled={refreshing} aria-busy={refreshing} onClick={() => void refreshBilling()}><RemixIcon name={refreshing ? 'loader-4-line' : 'refresh-line'} size={17} className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} /></button></Tooltip>}</div>
         {!(signedIn && account.billingUnavailable) && <div className="om-account-metrics"><div className="om-card"><span className="om-muted">{t('Current plan')}</span><h3 className="om-title">{signedIn && account.plan ? account.plan === 'free' ? t('Free plan') : account.plan : '—'}</h3><p className="om-muted">{t(signedIn ? 'Managed by OpenDesign' : 'Sign in to view your plan')}</p></div><div className="om-card"><span className="om-muted">{t('Available balance')}</span><h3 className="om-title">{signedIn && account.balance != null ? `$${account.balance}` : '—'}</h3><p className="om-muted">{t(signedIn ? 'Account credits in USD' : 'Sign in to view usage')}</p></div></div>}
         {signedIn && account.billingUnavailable && <div className="om-settings-row"><p className="om-muted">{t(account.billingError?.status === 403 ? "The billing service declined this request. Open Manage subscription to check your plan in OpenDesign." : "Couldn't load your plan and balance. Account models are unaffected and can be used as usual.")}</p><button className="om-button" disabled={refreshing} aria-busy={refreshing} onClick={() => void refreshBilling()}><RemixIcon name={refreshing ? 'loader-4-line' : 'refresh-line'} size={15} className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />{t('Refresh')}</button></div>}
-        {signedIn && <a className="om-button" href={account.consoleUrl + '/dashboard?billing=plan'} target="_blank" rel="noreferrer">{t('Manage subscription')}<RemixIcon name="external-link-line" size={15} /></a>}
+        {signedIn && <a className="om-button" href={account.consoleUrl + '/dashboard?billing=plan'} target="_blank" rel="noreferrer" onClick={() => tracking.reportSettingsClick('account', 'manage_subscription')}>{t('Manage subscription')}<RemixIcon name="external-link-line" size={15} /></a>}
       </section>
       <section className="om-card om-settings-row"><div><h2 className="om-subtitle">{t('Your models, your choice')}</h2><p className="om-muted">{t('Use account models or connect your own API keys. Choose a default for each capability.')}</p></div><button className="om-button" onClick={openProviders}>{t('Model providers')}<RemixIcon name="arrow-right-line" size={15} /></button></section>
     </>}

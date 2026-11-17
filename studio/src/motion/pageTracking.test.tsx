@@ -14,6 +14,8 @@ const { SkillsPage } = await import('./SkillsPage');
 const { BrandKitPage } = await import('./BrandKitPage');
 const { I18nProvider } = await import('../i18n/I18n');
 const tracking = await import('./pageTracking');
+// Load the (mocked) transport once so every report below is delivered synchronously.
+await (await import('./reporting')).loadReportingTransport();
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root, container: HTMLDivElement, copy: ReturnType<typeof vi.fn>;
@@ -162,4 +164,50 @@ it('reports the MCP page entry, client and setup choices, and each copy result w
   expect(of('ui_click').at(-1)?.properties).toMatchObject({ area: 'mcp_resources', element: 'manage_providers' });
   expectAdmitted();
   expect(JSON.stringify(sent)).not.toMatch(/PRIVATE_DATA_DIR|mcp\.ts/);
+});
+
+it('reports the assets, settings and project manager events within the admitted schema and without names, keys or paths', async () => {
+  tracking.reportAssetsPageView(true);
+  tracking.reportAssetsClick('assets_library', 'kind_filter', { asset_kind: 'video' });
+  tracking.reportAssetsClick('assets_library', 'open_asset', { modality: 'PRIVATE_KIND' });
+  tracking.reportAssetsClick('asset_create', 'mode_switch', { task_mode: 'agent' });
+  tracking.reportAssetGenerationSubmit('image', 'success', 2, true);
+  tracking.reportAssetGenerationSubmit('not-a-modality', 'failure', 0, false);
+  tracking.reportAssetUpdate({ name: 'PRIVATE_ASSET_NAME' }, 'success', 'audio');
+  tracking.reportAssetUpdate({ trashed: true }, 'failure', 'video');
+  tracking.reportLibraryImport('library_drop', 3, 2);
+  tracking.reportSettingsPageView('providers', false);
+  tracking.reportSettingsClick('settings_nav', 'section_select', { settings_section: 'privacy' });
+  tracking.reportSettingsClick('provider_list', 'select_provider', { provider: { id: 'fal', protocol: 'media' } });
+  tracking.reportProviderSetting({ id: 'custom-PRIVATE', custom: true }, 'save_provider', 'success');
+  tracking.reportProviderSetting({ id: 'openai', protocol: 'openai' }, tracking.providerAction('Default model updated')!, 'failure');
+  tracking.reportAgentSetting('codex', 'set_default_agent', 'success');
+  tracking.reportDiagnosticExport('rate_limited', 812.6);
+  tracking.reportProjectsPageView(true);
+  tracking.reportProjectsClick('export_projects', { selection_count: 2 });
+  tracking.reportProjectManage('trash', 'partial', 3, 1);
+  expect(sent.map(row => row.event)).toEqual(['page_view', 'ui_click', 'ui_click', 'ui_click', 'asset_generation_submit_result', 'asset_update_result', 'asset_update_result',
+    'studio_asset_import_result', 'page_view', 'ui_click', 'ui_click', 'provider_setting_result', 'provider_setting_result', 'agent_setting_result', 'diagnostic_export_result',
+    'page_view', 'ui_click', 'project_manage_result']);
+  expect(of('asset_update_result').map(row => row.properties.action)).toEqual(['rename', 'trash']);
+  expect(of('studio_asset_import_result')[0].properties).toMatchObject({ entry_point: 'library_drop', outcome: 'partial', failed_count: 1 });
+  expect(of('provider_setting_result')[0].properties).toEqual({ page_name: 'settings', provider_kind: 'custom', action: 'save_provider', outcome: 'success' });
+  expect(of('provider_setting_result')[1].properties).toMatchObject({ provider_id: 'openai', action: 'set_default_model' });
+  expect(of('ui_click')[1].properties.modality).toBeUndefined();
+  expect(tracking.providerAction('Something else')).toBeUndefined();
+  expectAdmitted();
+  expect(JSON.stringify(sent)).not.toMatch(/PRIVATE/);
+});
+
+it('reports version history results through the editor channel only when the host installed it', async () => {
+  const editor = await import('./editorTracking');
+  const received: { event: string; properties: Record<string, unknown> }[] = [];
+  editor.trackVersionHistoryResult('restore', 'success', '11111111-1111-4111-8111-111111111111');
+  expect(received).toHaveLength(0);
+  editor.installEditorTracking(((event: string, properties: Record<string, unknown>) => { received.push({ event, properties }); }) as never);
+  editor.trackVersionHistoryResult('pin', 'failure', 'project');
+  editor.trackStudioClick('version_history', 'history_filter', 'project', undefined, 'pinned');
+  editor.installEditorTracking(undefined);
+  expect(received.map(row => [row.event, row.properties.action ?? row.properties.element])).toEqual([['version_history_result', 'pin'], ['ui_click', 'history_filter']]);
+  for (const row of received) expect(validProperties(studioEvents, row.event, row.properties), JSON.stringify(row)).toBe(true);
 });

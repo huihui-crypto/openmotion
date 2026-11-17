@@ -40,7 +40,15 @@ const templateDetail = { detail_view_id: 'uuid', detail_mode: ['modal'], resourc
   instruction_kind: ['template_use', 'reference_recreate', 'recreate_submit'] } as const;
 const templateList = { result_count: 'integer', search_id: 'uuid', sort: sortOrder, applied_filter_count: 'integer' } as const;
 // Application pages that report their own views and clicks. The template library keeps page_name=studio.
-const pages = ['home', 'studio', 'skills', 'brand_kit', 'mcp'] as const;
+const pages = ['home', 'studio', 'skills', 'brand_kit', 'mcp', 'assets', 'settings', 'projects'] as const;
+// Workspace assets: which shelf the library shows and what kind of media an action is about.
+const assetKind = ['all', 'image', 'video', 'audio', 'trash'] as const;
+const modality = ['image', 'video', 'audio'] as const;
+// Settings sections as routed in the workspace; providers and Agents are named by their built-in ids only.
+const settingsSection = ['account', 'subscription', 'providers', 'models', 'local', 'general', 'appearance', 'privacy', 'about', 'help', 'mcp', 'brand-kit'] as const;
+const provider = { provider_id: 'slug', provider_kind: ['builtin', 'custom', 'account', 'agent'] } as const;
+const workspacePages = { asset_kind: assetKind, modality, task_mode: ['direct', 'agent'], settings_section: settingsSection, ...provider, agent_id: 'slug',
+  manager_tab: ['projects', 'trash'], selection_count: 'integer' } as const;
 // MCP connection page: which Agent client tab is shown, how the user reached the page and how they set it up.
 const mcpClient = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt', 'mcp'] as const;
 const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'asset_chat', 'direct_link'] as const;
@@ -105,7 +113,7 @@ export const omEvents = {
   worker_heartbeat: { producers: ['worker'], fields: { collector_id: 'uuid', instance_id: 'uuid', active: 'boolean', queue_count: 'integer' }, required: ['collector_id', 'instance_id', 'active', 'queue_count'] },
   incident_confirmed: { producers: ['mcp', 'worker'], fields: { incident_id: 'uuid', incident_type: ['false_success', 'duplicate_charge', 'content_loss', 'cross_project_write', 'wrong_version_delivery', 'other'], severity: ['sev1', 'sev2', 'sev3'], subject_id: 'code', evidence_ref: 'code' }, required: ['incident_id', 'incident_type', 'severity', 'subject_id'] },
   recovery_recorded: { producers: ['mcp', 'worker'], fields: { incident_id: 'uuid', test_case_id: 'code', fault_type: 'code', data_integrity: ['preserved', 'lost', 'unknown'], duplicate_charge_check: ['clear', 'found', 'unknown'], recovery_result: ['success', 'failure', 'unknown'] }, required: ['incident_id', 'test_case_id', 'fault_type', 'data_integrity', 'duplicate_charge_check', 'recovery_result'] },
-  page_view: { producers: ['studio'], fields: { page_name: pages, view_id: 'uuid', embedded: 'boolean', has_project: 'boolean', brand_collection: brandCollection, entry_from: mcpEntry, mcp_client: mcpClient }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
+  page_view: { producers: ['studio'], fields: { page_name: pages, view_id: 'uuid', embedded: 'boolean', has_project: 'boolean', brand_collection: brandCollection, entry_from: mcpEntry, mcp_client: mcpClient, settings_section: settingsSection }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
   studio_load_result: { producers: ['studio'], fields: { load_id: 'uuid', outcome, duration_ms: 'integer', embedded: 'boolean', ...project, ...projectScale, ...template }, required: ['load_id', 'outcome', 'duration_ms', 'embedded'] },
   ui_click: { producers: ['studio'], fields: { page_name: pages,
     area: ['workspace', 'templates', 'template_card', 'template_detail', 'template_instruction', 'template_discovery',
@@ -113,7 +121,10 @@ export const omEvents = {
       'brand_collection', 'brand_library', 'brand_card', 'brand_detail',
       'header', 'project_drawer', 'left_panel', 'right_panel', 'clips', 'assets', 'catalog',
       'preview', 'properties', 'layers', 'timeline', 'export_panel', 'settings',
-      'mcp_client', 'mcp_setup', 'mcp_start', 'mcp_templates', 'mcp_capabilities', 'mcp_resources', 'mcp_faq', 'mcp_footer'],
+      'mcp_client', 'mcp_setup', 'mcp_start', 'mcp_templates', 'mcp_capabilities', 'mcp_resources', 'mcp_faq', 'mcp_footer',
+      'assets_library', 'asset_detail', 'asset_create', 'asset_tasks',
+      'settings_nav', 'provider_list', 'provider_detail', 'default_agent', 'local_agents', 'account', 'diagnostics', 'help_resources',
+      'project_manager', 'version_history'],
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
       'open_detail', 'start_use', 'expand_instruction', 'category_select', 'filter_open', 'filter_clear',
       'filter_option', 'sort_option', 'surprise_me', 'submit_video', 'detail_previous', 'detail_next',
@@ -130,19 +141,25 @@ export const omEvents = {
       'ask_agent_element', 'ask_agent_clip', 'ask_agent_time_range', 'ask_agent_playhead', 'ask_agent_catalog_item',
       'preview_template', 'use_template', 'template_category', 'template_search',
       'client_tab', 'setup_method', 'connection_guide', 'download_config', 'use_local_agent', 'open_library', 'manage_providers',
-      'view_documentation', 'community', 'report_issue', 'faq_open', 'tool_list_open', 'scroll_to_section'],
+      'view_documentation', 'community', 'report_issue', 'faq_open', 'tool_list_open', 'scroll_to_section',
+      'kind_filter', 'trash_view', 'upload', 'open_asset', 'create_asset', 'mode_switch', 'add_reference', 'edit_version', 'use_as_reference',
+      'download_asset', 'switch_version', 'select_task', 'cancel_task', 'retry_save', 'resume_task',
+      'section_select', 'select_provider', 'add_provider', 'provider_filter', 'select_agent', 'rescan_agents', 'open_terminal',
+      'sign_in', 'sign_out', 'cancel_sign_in', 'refresh_billing', 'manage_subscription', 'export_diagnostics', 'open_resource',
+      'import_projects', 'export_projects', 'manager_tab', 'rename_project', 'duplicate_project', 'trash_project', 'restore_project',
+      'delete_project', 'copy_path', 'reveal_project', 'open_history', 'history_filter', 'select_version', 'keep_current', 'pin_version', 'restore_version'],
     // The chosen value of a control with a small fixed set of choices; never free text.
     option: ['on', 'off', 'light', 'dark', 'en', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr',
       'all', 'images', 'video', 'audio', 'fonts',
       'captions', 'code-animation', 'vfx', 'transitions', 'effects', 'text-effects', 'social', 'data', 'scenes',
-      '0.25', '0.5', '1', '1.5', '2', 'featured', 'ads', 'clone', 'motion', 'script', 'other'],
+      '0.25', '0.5', '1', '1.5', '2', 'featured', 'ads', 'clone', 'motion', 'script', 'pinned', 'other'],
     interaction_method: ['pointer', 'keyboard'], ...project, ...template,
     placement, position: 'integer', template_action: ['recreate', 'recreate_submit', 'open_edit'], target_agent: hosts,
     copy_attempt_id: 'uuid', download_attempt_id: 'uuid',
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
     selected: 'boolean', expanded: 'boolean', previous_sort: sortOrder, changed: 'boolean', ...templateDetail, ...templateList,
     ...skill, ...brand, brand_collection: brandCollection, ...mcp,
-    doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer' },
+    doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer', ...workspacePages },
     required: ['page_name', 'area', 'element'] },
   // Studio UI exports run in the editor's own render pipeline, not the worker that owns export_result.
   studio_export_request_result: { producers: ['studio'], fields: { export_id: 'uuid', outcome: ['accepted', 'rejected'], ...exportSettings,
@@ -164,7 +181,7 @@ export const omEvents = {
   studio_history_step_result: { producers: ['studio'], fields: { action: ['undo', 'redo'], outcome: ['success', 'unavailable', 'failure'],
     interaction_method: ['pointer', 'keyboard'], ...project }, required: ['action', 'outcome'] },
   studio_asset_import_result: { producers: ['studio'], fields: { outcome: ['success', 'partial', 'failure'],
-    entry_point: ['assets_button', 'assets_drop', 'timeline_button', 'timeline_drop', 'properties', 'other'],
+    entry_point: ['assets_button', 'assets_drop', 'timeline_button', 'timeline_drop', 'properties', 'library_button', 'library_drop', 'library_new_version', 'other'],
     requested_count: 'integer', added_count: 'integer', failed_count: 'integer',
     error_category: ['too_large', 'unsupported_format', 'unreadable', 'runtime_not_ready', 'other'], ...project },
     required: ['outcome', 'entry_point', 'requested_count', 'added_count', 'failed_count'] },
@@ -198,6 +215,25 @@ export const omEvents = {
   // MCP connection page. One result per copy attempt; `includes_setup` says whether the connection instruction was prepended.
   mcp_copy_result: { producers: ['studio'], fields: { page_name: ['mcp'], ...mcp, ...template, copy_kind: ['connection_instruction', 'manual_config', 'starter', 'capability_example', 'template'],
     copy_status: ['clipboard_written', 'failed'], includes_setup: 'boolean' }, required: ['copy_kind', 'copy_status', 'mcp_client'] },
+  // Workspace assets. A submitted generation is accepted work, not a finished asset; the worker reports the media result.
+  asset_generation_submit_result: { producers: ['studio'], fields: { page_name: ['assets'], modality, outcome: ['success', 'failure'],
+    reference_count: 'integer', new_version: 'boolean' }, required: ['modality', 'outcome', 'reference_count', 'new_version'] },
+  asset_update_result: { producers: ['studio'], fields: { page_name: ['assets'], modality, action: ['rename', 'trash', 'restore', 'switch_version', 'other'],
+    outcome: ['success', 'failure'] }, required: ['action', 'outcome'] },
+  // Settings. One result per saved change; credentials, names, URLs and model ids never become fields.
+  provider_setting_result: { producers: ['studio'], fields: { page_name: ['settings'], ...provider, action: ['save_provider', 'remove_key', 'toggle_provider',
+    'sync_models', 'refresh_agent', 'delete_provider', 'add_provider', 'add_model', 'update_model', 'remove_model', 'set_default_model'],
+    outcome: ['success', 'failure'] }, required: ['provider_kind', 'action', 'outcome'] },
+  agent_setting_result: { producers: ['studio'], fields: { page_name: ['settings'], agent_id: 'slug', action: ['inspect', 'refresh_status', 'refresh_models',
+    'add_model', 'set_default_agent', 'open_terminal'], outcome: ['success', 'failure'] }, required: ['action', 'outcome'] },
+  diagnostic_export_result: { producers: ['studio'], fields: { page_name: ['settings'], outcome: ['success', 'rate_limited', 'failure'], duration_ms: 'integer' },
+    required: ['outcome', 'duration_ms'] },
+  // Project manager and version history. Project names and paths are never fields.
+  project_manage_result: { producers: ['studio'], fields: { page_name: ['projects'], action: ['import', 'export', 'rename', 'duplicate', 'trash', 'restore',
+    'delete', 'copy_path', 'reveal'], outcome: ['success', 'partial', 'failure'], project_count: 'integer', failed_count: 'integer' },
+    required: ['action', 'outcome', 'project_count'] },
+  version_history_result: { producers: ['studio'], fields: { page_name: ['studio'], action: ['keep_current', 'pin', 'unpin', 'restore'],
+    outcome: ['success', 'failure'], ...project }, required: ['action', 'outcome'] },
   // Brand Kit page. `success` on create means the extraction was accepted and started, not that the kit is ready.
   brand_kit_create_result: { producers: ['studio'], fields: { page_name: ['brand_kit'], outcome: ['success', 'failure'], create_attempt_id: 'uuid' },
     required: ['outcome', 'create_attempt_id'] },

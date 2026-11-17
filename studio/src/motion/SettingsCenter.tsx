@@ -1,3 +1,4 @@
+import * as tracking from './pageTracking';
 import type { McpEntry } from './pageTracking';
 import { useEffect, useState } from 'react';
 import { modelKinds } from '../../../shared/provider-directory';
@@ -32,10 +33,13 @@ const sections: { id: SettingsSection; label: string; icon: string; group: strin
   { id: 'help', label: 'Help', icon: 'question-line', group: 'Resources' },
   { id: 'about', label: 'About OpenMotion', icon: 'information-line', group: 'Resources' },
 ];
-export function SettingsCenter({ section, onSection, openConnections, navigationCollapsed = false, providerId, onProviderChange }: { navigationCollapsed?: boolean; section: SettingsSection; onSection: (section: SettingsSection) => void; openConnections: (entry: McpEntry) => void; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
+export function SettingsCenter({ section, onSection: onSectionRaw, openConnections, navigationCollapsed = false, providerId, onProviderChange, hasProject = false }: { hasProject?: boolean; navigationCollapsed?: boolean; section: SettingsSection; onSection: (section: SettingsSection) => void; openConnections: (entry: McpEntry) => void; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
   const { t } = useI18n();
   const [search, setSearch] = useState('');
   const filtered = sections.filter(item => t(item.label).toLowerCase().includes(search.toLowerCase()));
+  // One view per section shown; the section is remounted for each route.
+  useEffect(() => { tracking.reportSettingsPageView(section, hasProject); }, [section]);
+  const onSection = (next: SettingsSection) => { if (next !== section) tracking.reportSettingsClick('settings_nav', 'section_select', { settings_section: next }); onSectionRaw(next); };
   return <div className="om-settings-center" onKeyDown={event => event.stopPropagation()}>
     <div className="om-settings-navigation-slot om-collapsible" data-collapsed={navigationCollapsed} aria-hidden={navigationCollapsed} inert={navigationCollapsed}><div className="om-settings-navigation-clip"><aside className="om-settings-navigation"><h1 className="om-navigation-title">{t('Settings')}</h1><label className="om-field"><RemixIcon name="search-line" size={16} /><input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder={t('Search settings…')} aria-label={t('Search settings')} /></label>
       <div className="om-settings-mobile-navigation"><Select label={t('Settings')} value={section} onCommit={value => onSection(value as SettingsSection)} options={sections.map(item => ({ value: item.id, label: t(item.label), icon: <RemixIcon name={item.icon} size={16} /> }))} /></div><nav aria-label={t('Settings')} className="om-settings-sections">{filtered.map((item, index) => <div key={item.id}>{filtered[index - 1]?.group !== item.group && <p className="om-eyebrow">{t(item.group)}</p>}<button className="om-nav-item" aria-current={section === item.id ? 'page' : undefined} onClick={event => { if (item.id === 'privacy' && section !== 'privacy') trackStudioClick('settings', 'privacy_settings', undefined, clickMethod(event)); onSection(item.id); }}><RemixIcon name={item.icon} size={16} /><span>{t(item.label)}</span></button></div>)}{!filtered.length && <p className="om-muted">{t('No matching settings')}</p>}</nav>
@@ -73,10 +77,10 @@ function ResourceSettings({ about, openConnections }: { about: boolean; openConn
   useEffect(() => { let active = true; void gatewayRequest<{ version: string }>('health').then(data => { if (active) setVersion(data.version); }).catch(() => {}); return () => { active = false; }; }, []);
   const links = [{ label: 'Documentation', href: `${GITHUB_REPOSITORY}/tree/main/docs`, icon: 'file-text-line' }, ...repositorySupportLinks, { label: 'View source code', href: GITHUB_REPOSITORY, icon: 'code-s-slash-line' }];
   return <div className="om-settings-page"><h1 className="om-title">{t(about ? 'About OpenMotion' : 'Help')}</h1>{about && <section className="om-card om-about-identity"><h2 className="om-product-brand" aria-label="OpenMotion" /><p className="om-muted">{t('An editable workspace for AI video and motion.')}</p><span className="om-badge">{version ? `${t('Version')} ${version}` : t('Version unavailable')}</span></section>}
-    <div className="om-card om-resource-links">{links.map(link => <a className="om-nav-item om-resource-link" key={link.href} href={link.href} target="_blank" rel="noopener noreferrer"><span className="om-menu-label"><RemixIcon name={link.icon} size={16} />{t(link.label)}</span><RemixIcon name="external-link-line" size={16} /></a>)}<button className="om-nav-item om-resource-link" onClick={openConnections}><span className="om-menu-label"><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</span><RemixIcon name="arrow-right-line" size={16} /></button></div>
+    <div className="om-card om-resource-links">{links.map((link, index) => <a className="om-nav-item om-resource-link" key={link.href} href={link.href} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSettingsClick('help_resources', 'open_resource', { position: index + 1 })}><span className="om-menu-label"><RemixIcon name={link.icon} size={16} />{t(link.label)}</span><RemixIcon name="external-link-line" size={16} /></a>)}<button className="om-nav-item om-resource-link" onClick={openConnections}><span className="om-menu-label"><RemixIcon name="plug-line" size={16} />{t('Connect Agent')}</span><RemixIcon name="arrow-right-line" size={16} /></button></div>
     {!about && <section className="om-card om-resource-links" aria-labelledby="om-community-heading">
       <h2 id="om-community-heading" className="om-subtitle">{t('Community')}</h2>
-      {communityLinks.map(link => <a key={link.href} className="om-nav-item om-resource-link" href={link.href} target="_blank" rel="noopener noreferrer">
+      {communityLinks.map((link, index) => <a key={link.href} className="om-nav-item om-resource-link" href={link.href} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSettingsClick('help_resources', 'community', { position: index + 1 })}>
         <span>{link === feishu ? t('Feishu group') : link.platform}</span><RemixIcon name="external-link-line" size={16} />
       </a>)}
     </section>}

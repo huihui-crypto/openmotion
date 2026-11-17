@@ -1,3 +1,4 @@
+import * as tracking from './pageTracking';
 import { useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -52,6 +53,7 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
   const showManager = () => {
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setTab('projects'); setSelection(new Set()); setOpened(true); onManagerOpen();
+    tracking.reportProjectsPageView(Boolean(workspace.status?.projectId));
   };
   const chooseImport = () => input.current?.click();
   const download = (result: ExportResult) => {
@@ -69,8 +71,10 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
         name: 'openmotion_project_archive', arguments: { action: 'export', requestId, ...(projectIds ? { projectIds } : { all: true }) },
       }) });
       download(result);
+      tracking.reportProjectManage('export', 'success', projectIds?.length ?? workspace.projects.length);
       toast.showToast(t('Project ZIP ready'), 'info', 'feedback', { label: t('Download'), key: requestId, onClick: () => download(result) });
     } catch (error) {
+      tracking.reportProjectManage('export', 'failure', projectIds?.length ?? workspace.projects.length);
       toast.showToast(t('Could not export projects: {message}', { message: archiveErrorMessage(error) }), 'error', 'feedback',
         { label: t('Retry'), key: requestId, onClick: () => exportProjects(projectIds, requestId) });
     } finally { acting.current = false; setBusy(null); }
@@ -85,10 +89,12 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
       const result = await motionApi<{ projects: { projectId: string }[] }>('/project-archives/import?requestId=' + requestId,
         { method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: file });
       workspace.retryConnection();
+      tracking.reportProjectManage('import', 'success', result.projects.length);
       setQuery('');
       if (!opened) showManager();
       toast.showToast(t('Imported {count} projects as new copies.', { count: result.projects.length }), 'info', 'feedback');
     } catch (error) {
+      tracking.reportProjectManage('import', 'failure', 0);
       const message = archiveErrorMessage(error);
       if (message.startsWith('INVALID_PROJECT_ARCHIVE')) {
         // Keep the actionable server reason visible. It is already bounded and
@@ -121,8 +127,10 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
     try {
       await manage({ action: 'rename', projectId: draft.projectId, title: title.trim(), expectedTitle: draft.expectedTitle, requestId });
       workspace.retryConnection(); setRenameDraft(null);
+      tracking.reportProjectManage('rename', 'success', 1);
       toast.showToast(t('Project renamed'), 'info', 'feedback');
     } catch (error) {
+      tracking.reportProjectManage('rename', 'failure', 1);
       const conflict = (error as Error).message.startsWith('PROJECT_NAME_CONFLICT');
       toast.showToast(conflict ? t('The project name changed. Reload it before renaming.') : t('Project action failed: {message}', { message: (error as Error).message }), 'error', 'feedback',
         { label: t('Retry'), key: requestId, onClick: () => conflict ? beginRename(draft.projectId, title, draft.returnFocus) : renameProject(draft, title, requestId) });
@@ -169,6 +177,7 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
       acting.current = false; setBusy(null);
       workspace.retryConnection();
     }
+    tracking.reportProjectManage(action, failed.length === 0 ? 'success' : completed.size ? 'partial' : 'failure', requests.length, failed.length);
     if (completed.size) {
       setSelection(previous => new Set([...previous].filter(id => !completed.has(id))));
       if (!failed.length) toast.showToast(t(requests.length > 1 ? 'Projects updated: {count}' : action === 'trash' ? 'Project moved to trash' : action === 'restore' ? 'Project restored' : 'Project permanently deleted', { count: completed.size }), 'info', 'feedback');
@@ -195,7 +204,9 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
         if (action === 'info') await navigator.clipboard.writeText(info.path);
         toast.showToast(t(action === 'info' ? 'Project path copied' : 'Opened in file manager'), 'info', 'feedback');
       }
+      tracking.reportProjectManage(action === 'info' ? 'copy_path' : action, 'success', 1);
     } catch (error) {
+      tracking.reportProjectManage(action === 'info' ? 'copy_path' : action, 'failure', 1);
       toast.showToast(t('Project action failed: {message}', { message: archiveErrorMessage(error) }), 'error', 'feedback',
         { label: t('Retry'), key: requestId, onClick: () => performProjectAction(action, projectId, title, requestId) });
     } finally { acting.current = false; setBusy(null); }
@@ -220,11 +231,11 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
     }} />
     <StudioToastViewport {...toast} />
     {opened && <SettingsDialog title={t('All projects')} className="om-project-manager-dialog" onClose={() => setOpened(false)} returnFocus={returnFocus.current}>
-      <Tabs value={tab} onValueChange={value => { setTab(value as typeof tab); setSelection(new Set()); setQuery(''); }} className="om-project-manager">
+      <Tabs value={tab} onValueChange={value => { tracking.reportProjectsClick('manager_tab', { manager_tab: value === 'trash' ? 'trash' : 'projects' }); setTab(value as typeof tab); setSelection(new Set()); setQuery(''); }} className="om-project-manager">
         <div className="om-project-manager-toolbar">
           <TabsList aria-label={t('All projects')}><Tab value="projects">{t('Projects')}</Tab><Tab value="trash">{t('Trash')}</Tab></TabsList>
           {tab === 'projects' && <div className="om-settings-actions">
-            <button className="om-button" data-primary disabled={locked} onClick={chooseImport}><RemixIcon name="upload-2-line" size={16} />{t(busy === 'import' ? 'Importing…' : 'Import projects')}</button>
+            <button className="om-button" data-primary disabled={locked} onClick={() => { tracking.reportProjectsClick('import_projects'); chooseImport(); }}><RemixIcon name="upload-2-line" size={16} />{t(busy === 'import' ? 'Importing…' : 'Import projects')}</button>
             <Popover modal={false} align="end" aria-label={t('Import help')} className="om-project-import-help"
               trigger={<button type="button" className="motion-icon-button" aria-label={t('Import help')}><RemixIcon name="question-line" size={18} /></button>}>
               <h3 className="om-subtitle">{t('Start with a HyperFrames project')}</h3>
@@ -243,7 +254,7 @@ export function useProjectArchives(workspace: Workspace, waitForSaves: () => Pro
             </div>
             <div className="om-settings-actions">
               {tab === 'projects' ? <>
-                <button className="om-button" disabled={locked || !catalog.length} onClick={() => void exportProjects(selected.length ? selected.map(project => project.projectId) : undefined)}>{t(busy === 'export' ? 'Exporting…' : selected.length ? 'Export selected' : 'Export all projects')}</button>
+                <button className="om-button" disabled={locked || !catalog.length} onClick={() => { tracking.reportProjectsClick('export_projects', { selection_count: selected.length }); void exportProjects(selected.length ? selected.map(project => project.projectId) : undefined); }}>{t(busy === 'export' ? 'Exporting…' : selected.length ? 'Export selected' : 'Export all projects')}</button>
                 <button className="om-button" disabled={locked || !selected.length} onClick={() => void runLifecycle('trash', selected)}>{t('Move to trash')}</button>
               </> : <>
                 <button className="om-button" disabled={locked || !selected.length} onClick={() => void runLifecycle('restore', selected)}>{t('Restore')}</button>

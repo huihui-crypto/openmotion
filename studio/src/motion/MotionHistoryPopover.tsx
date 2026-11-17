@@ -5,6 +5,7 @@ import { IconButton, Tooltip } from '../components/ui';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';
 import { MotionHistoryPanel } from './MotionHistoryPanel';
+import { trackStudioClick } from './editorTracking';
 
 export function MotionHistoryPopover() {
   const { t } = useI18n();
@@ -13,7 +14,7 @@ export function MotionHistoryPopover() {
   const triggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => setOpen(false), [projectId]);
 
-  return <Popover.Root modal open={open} onOpenChange={setOpen}>
+  return <Popover.Root modal open={open} onOpenChange={next => { if (next && !open) trackStudioClick('version_history', 'open_history', projectId); setOpen(next); }}>
     <Tooltip label={t('Version history')}>
       <Popover.Trigger render={<IconButton ref={triggerRef} className="text-text-0" aria-label={t('Version history')}
         icon={<RemixIcon name="history-line" size={16} />} />} />

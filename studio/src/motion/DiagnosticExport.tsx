@@ -1,3 +1,4 @@
+import * as tracking from './pageTracking';
 import { useRef, useState } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { browserDiagnostics, nextDiagnosticRequest, recordBrowserDiagnostic } from './diagnostics';
@@ -30,16 +31,18 @@ export function DiagnosticExport() {
         document.body.append(link); link.click();
         toast.showToast('Download started. Check your browser downloads.', 'info', 'feedback');
         recordBrowserDiagnostic('activity_diagnostic_export', `request=${request} outcome=download_triggered durationMs=${Math.round(performance.now() - start)}`);
+        tracking.reportDiagnosticExport('success', performance.now() - start);
       }
       finally { link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
     } catch (error) {
       recordBrowserDiagnostic('diagnostic_export_failed', `request=${request} status=${status} durationMs=${Math.round(performance.now() - start)}`);
+      tracking.reportDiagnosticExport(status === 429 ? 'rate_limited' : 'failure', performance.now() - start);
       toast.showToast(error instanceof Error && error.message === 'Please wait 30 seconds before exporting diagnostics again.'
       ? error.message : 'Could not export diagnostics. Use the command line if Studio cannot connect.', 'error', 'feedback'); }
     finally { pending.current = false; setBusy(false); }
   }
   return <div className="om-card-stack">
-    <button className="om-button" type="button" onClick={() => void download()} disabled={busy}><RemixIcon name="download-2-line" size={15} />{t(busy ? 'Preparing diagnostics…' : 'Export diagnostic ZIP')}</button>
+    <button className="om-button" type="button" onClick={() => { tracking.reportSettingsClick('diagnostics', 'export_diagnostics'); void download(); }} disabled={busy}><RemixIcon name="download-2-line" size={15} />{t(busy ? 'Preparing diagnostics…' : 'Export diagnostic ZIP')}</button>
     <p className="om-muted">{t('Saves logs on your device with sensitive values redacted. No upload. Review the ZIP before sharing.')}</p>
     <StudioToastViewport {...toast} />
   </div>;

@@ -1,3 +1,4 @@
+import * as tracking from './pageTracking';
 import { Tooltip } from "../components/ui/Tooltip";
 import { useEffect, useState } from 'react';
 import { type DirectoryModel, type ProviderConnection, type ProviderDirectory } from '../../../shared/provider-directory';
@@ -45,13 +46,17 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
     return matches && (status === 'all' || status === 'enabled' && provider.enabled || status === 'disabled' && !provider.enabled || status === 'configured' && provider.configured || status === 'unconfigured' && !provider.configured) && (protocol === 'all' || provider.protocol === protocol) && `${provider.label} ${provider.id}`.toLowerCase().includes(query.toLowerCase());
   }) ?? [];
   const provider = visibleProviders.find(provider => provider.id === selected);
-  const select = (id: string) => { setSelected(id); setDetailOpen(true); onProviderChange?.(id); };
+  const select = (id: string) => {
+    const item = visibleProviders.find(provider => provider.id === id);
+    if (item) tracking.reportSettingsClick('provider_list', 'select_provider', { provider: item });
+    setSelected(id); setDetailOpen(true); onProviderChange?.(id);
+  };
   const closeDetail = () => { setDetailOpen(false); onProviderChange?.(null); };
   return <section className="om-provider-settings" data-detail={detailOpen} aria-label={t('Model providers')}>
     <aside className="om-provider-list">
       <div className="om-provider-search"><label className="om-field"><RemixIcon name="search-line" size={16} /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder={t('Search providers…')} aria-label={t('Search providers')} /></label>
         <Menu tooltip={t('Filter providers')} className="om-filter-menu" modal={false} aria-label={t('Filter providers')} trigger={<button className="motion-icon-button" aria-label={t('Filter providers')}><RemixIcon name="filter-3-line" size={17} /></button>}>
-          <MenuRadioGroup value={category} onValueChange={value => setCategory(String(value))}>{categories.map(item => <MenuRadioItem value={item.id} key={item.id}>{t(item.label)}</MenuRadioItem>)}</MenuRadioGroup><MenuSeparator /><div className="om-menu-caption">{t('Status')}</div><MenuRadioGroup value={status} onValueChange={value => setStatus(String(value))}>{[['all', 'All statuses'], ['enabled', 'Enabled'], ['disabled', 'Disabled'], ['configured', 'Configured'], ['unconfigured', 'Not configured']].map(([id, label]) => <MenuRadioItem key={id} value={id}>{t(label)}</MenuRadioItem>)}</MenuRadioGroup><MenuSeparator /><div className="om-menu-caption">{t('API protocol')}</div><MenuRadioGroup value={protocol} onValueChange={value => setProtocol(String(value))}>{[['all', 'All protocols'], ['openai', 'OpenAI compatible'], ['anthropic', 'Anthropic'], ['google', 'Google Gemini'], ['media', 'Media'], ['account', 'Your account'], ['agent', 'Local Agent']].map(([id, label]) => <MenuRadioItem key={id} value={id}>{t(label)}</MenuRadioItem>)}</MenuRadioGroup>
+          <MenuRadioGroup value={category} onValueChange={value => { tracking.reportSettingsClick('provider_list', 'provider_filter'); setCategory(String(value)); }}>{categories.map(item => <MenuRadioItem value={item.id} key={item.id}>{t(item.label)}</MenuRadioItem>)}</MenuRadioGroup><MenuSeparator /><div className="om-menu-caption">{t('Status')}</div><MenuRadioGroup value={status} onValueChange={value => setStatus(String(value))}>{[['all', 'All statuses'], ['enabled', 'Enabled'], ['disabled', 'Disabled'], ['configured', 'Configured'], ['unconfigured', 'Not configured']].map(([id, label]) => <MenuRadioItem key={id} value={id}>{t(label)}</MenuRadioItem>)}</MenuRadioGroup><MenuSeparator /><div className="om-menu-caption">{t('API protocol')}</div><MenuRadioGroup value={protocol} onValueChange={value => setProtocol(String(value))}>{[['all', 'All protocols'], ['openai', 'OpenAI compatible'], ['anthropic', 'Anthropic'], ['google', 'Google Gemini'], ['media', 'Media'], ['account', 'Your account'], ['agent', 'Local Agent']].map(([id, label]) => <MenuRadioItem key={id} value={id}>{t(label)}</MenuRadioItem>)}</MenuRadioGroup>
         </Menu>
       </div>
       <div className="om-provider-list-caption"><span className="om-eyebrow">{t(categories.find(item => item.id === category)?.label ?? 'All providers')} · {providers.length}</span>{(category !== 'all' || query || status !== 'all' || protocol !== 'all') && <Tooltip label={t('Clear filters')} wrap><button className="motion-icon-button" aria-label={t('Clear filters')} onClick={() => { setQuery(''); setCategory('all'); setStatus('all'); setProtocol('all'); }}><RemixIcon name="close-line" size={14} /></button></Tooltip>}</div>
@@ -61,7 +66,7 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
         <ProviderAvatar name={item.label} provider={item} /><span className="om-provider-item-name">{item.label}<small className="sr-only">{t(item.category === 'account' ? 'Your account' : item.custom ? 'Custom provider' : item.kinds.length > 1 ? 'Multimodal' : kindLabels[item.kinds[0]])}</small></span>
         {providerListStatus(item) === 'available' ? <span className="om-status-dot" role="img" aria-label={t('Available')} /> : providerListStatus(item) === 'disabled' ? <span className="om-badge">{t('Disabled')}</span> : null}
       </button></Tooltip>)}{directory.data && !providers.length && <p className="om-empty om-muted">{t('No matching providers')}</p>}</nav>
-      <button className="om-button om-add-provider" onClick={() => setAdding(true)}><RemixIcon name="add-line" size={16} />{t('Add provider')}</button>
+      <button className="om-button om-add-provider" onClick={() => { tracking.reportSettingsClick('provider_list', 'add_provider'); setAdding(true); }}><RemixIcon name="add-line" size={16} />{t('Add provider')}</button>
     </aside>
     <div className="om-provider-detail">
       <button className="om-button om-provider-back" onClick={closeDetail}><RemixIcon name="arrow-left-line" size={16} />{t('Providers')}</button>
@@ -84,8 +89,9 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
   useEffect(() => { setBaseUrl(provider.baseUrl); setLabel(provider.label); }, [provider.baseUrl, provider.label]);
   const change: Change = async (action, message) => {
     setBusy(true);
-    try { await action(); notifyProvidersChanged(); showToast(t(message), 'info'); return true; }
-    catch (error) { showToast(error instanceof Error ? error.message : t('Could not save settings'), 'error'); return false; }
+    const reported = tracking.providerAction(message);
+    try { await action(); notifyProvidersChanged(); showToast(t(message), 'info'); if (reported) tracking.reportProviderSetting(provider, reported, 'success'); return true; }
+    catch (error) { if (reported) tracking.reportProviderSetting(provider, reported, 'failure'); showToast(error instanceof Error ? error.message : t('Could not save settings'), 'error'); return false; }
     finally { setBusy(false); }
   };
   return <div className="om-provider-detail-inner">
@@ -134,7 +140,7 @@ function TextField({ label, value, onChange, type = 'text', required, placeholde
 function AddProvider({ onClose, onAdded, showToast }: { onClose: () => void; onAdded: (id: string) => void; showToast: ReturnType<typeof useToast>['showToast'] }) {
   const { t } = useI18n();
   const [label, setLabel] = useState(''), [apiKey, setApiKey] = useState(''), [baseUrl, setBaseUrl] = useState(''), [protocol, setProtocol] = useState('openai'), [busy, setBusy] = useState(false);
-  return <SettingsDialog title={t('Add custom provider')} onClose={onClose}><form className="om-provider-form" onSubmit={event => { event.preventDefault(); setBusy(true); void gatewayRequest<{ id: string }>('settings/providers', 'POST', { label, apiKey: apiKey.trim() || undefined, baseUrl, protocol }).then(({ id }) => { setApiKey(''); onAdded(id); }).catch(error => showToast(error.message, 'error')).finally(() => setBusy(false)); }}>
+  return <SettingsDialog title={t('Add custom provider')} onClose={onClose}><form className="om-provider-form" onSubmit={event => { event.preventDefault(); setBusy(true); void gatewayRequest<{ id: string }>('settings/providers', 'POST', { label, apiKey: apiKey.trim() || undefined, baseUrl, protocol }).then(({ id }) => { tracking.reportProviderSetting({ id, custom: true }, 'add_provider', 'success'); setApiKey(''); onAdded(id); }).catch(error => { tracking.reportProviderSetting({ id: '', custom: true }, 'add_provider', 'failure'); showToast(error.message, 'error'); }).finally(() => setBusy(false)); }}>
     <div className="om-provider-avatar-preview"><ProviderAvatar name={label || 'P'} /></div>
     <TextField label={t('Provider name')} value={label} onChange={setLabel} required placeholder={t('My provider')} />
     <TextField label={t('API key')} value={apiKey} onChange={setApiKey} type="password" placeholder={t('Paste your API key')} />

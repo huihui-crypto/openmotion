@@ -1,3 +1,4 @@
+import * as tracking from './pageTracking';
 import { Tooltip } from "../components/ui/Tooltip";
 import { useEffect, useRef, useState, type ComponentProps, type Dispatch, type SetStateAction } from 'react';
 import type { AssetReference, LibraryAsset } from '../../../shared/asset-library';
@@ -72,7 +73,11 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
         setDraft(current => current === draft ? { ...current, model: selected.id, parameters: parsed } : current);
         onCreated(result.job);
       }
-    } catch (error) { if (mounted.current) onError((error as Error).message); } finally { if (mounted.current) setBusy(false); }
+      tracking.reportAssetGenerationSubmit(draft.modality, 'success', draft.references.length, Boolean(draft.target));
+    } catch (error) {
+      tracking.reportAssetGenerationSubmit(draft.modality, 'failure', draft.references.length, Boolean(draft.target));
+      if (mounted.current) onError((error as Error).message);
+    } finally { if (mounted.current) setBusy(false); }
   };
   const referenceControls = (items: AssetDraft['references'], update: (references: AssetDraft['references']) => void, maximum = Infinity) => <div className="om-asset-references"><button className="om-nav-item om-creation-reference" onClick={onReference} disabled={items.length >= maximum}><RemixIcon name="add-line" size={16} />{t('Reference asset')}</button>{items.map(item => <button key={`${item.reference.assetId}/${item.reference.versionId}`} className="om-badge om-nav-item" onClick={() => update(items.filter(r => r !== item))} aria-label={t('Remove reference: {name}', { name: item.name })}><RemixIcon name="image-line" size={14} /><span>{item.name}</span><RemixIcon name="close-line" size={14} /></button>)}</div>;
   const references = referenceControls(draft.references, references => setDraft({ ...draft, references }), maximumReferences);

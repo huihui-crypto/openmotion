@@ -277,3 +277,10 @@ export function takeImportEntry(): ImportEntryPoint | undefined {
 
 /** Test-only: forget module state between cases. */
 export function resetEditorTrackingForTests() { gesture = null; lastEdit = null; historyMethod = null; importEntry = null; pendingKinds.length = 0; activeProjectId = null; inventory = null; openTemplateId = undefined; }
+
+// ── Version history ──
+
+/** One result per version operation in the editor's history panel; the click that started it is a separate ui_click. */
+export function trackVersionHistoryResult(action: Fields<'version_history_result'>['action'], outcome: 'success' | 'failure', projectId?: string | null) {
+  void trackMotion('version_history_result', { page_name: 'studio', action, outcome, ...projectFields(projectId ?? activeProjectId) });
+}

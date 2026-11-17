@@ -27,9 +27,10 @@ it('downloads one local ZIP, disables duplicate clicks and releases the browser 
   });
   const button = await render(); expect(button.textContent).toBe('导出诊断 ZIP');
   await act(async () => { button.click(); button.click(); });
-  expect(button.disabled).toBe(true); expect(fetcher).toHaveBeenCalledTimes(1);
+  // Usage reporting may read its own configuration; only diagnostic requests count here.
+  const diagnosticCalls = () => fetcher.mock.calls.filter(([url]) => url === '/motion-api/diagnostics');
+  expect(button.disabled).toBe(true); expect(diagnosticCalls()).toHaveLength(1);
   expect(document.querySelector('[role=status]')).toBeNull();
-  expect(fetcher.mock.calls[0][0]).toBe('/motion-api/diagnostics');
   await act(async () => finish(new Response('ZIP', { headers: { 'Content-Type': 'application/zip', 'Content-Disposition': 'attachment; filename="openmotion-diagnostics-fixture.zip"' } })));
   expect(recordBrowserDiagnostic).toHaveBeenCalledWith('activity_diagnostic_export', expect.stringContaining('outcome=download_triggered'));
   expect(button.disabled).toBe(false); expect(create).toHaveBeenCalledTimes(1); expect(click).toHaveBeenCalledTimes(1);

@@ -138,3 +138,92 @@ export function reportMcpCopyResult(kind: McpCopyKind, status: 'clipboard_writte
     ...(extra.setup ? { setup_method: extra.setup } : {}), ...slugField('capability_id', extra.capability), ...slugField('template_id', extra.template),
     ...(extra.includesSetup === undefined ? {} : { includes_setup: extra.includesSetup }) });
 }
+
+// ---------- Workspace assets ----------
+const assetsPage = { page_name: 'assets' } as const;
+type AssetClickArea = Extract<Click['area'], `asset${string}`>;
+export type AssetKindField = NonNullable<Click['asset_kind']>;
+export type Modality = NonNullable<Click['modality']>;
+const MODALITIES: readonly string[] = ['image', 'video', 'audio'];
+/** A media type from the library; anything unexpected is left out. */
+export const modalityField = (value: unknown) => typeof value === 'string' && MODALITIES.includes(value) ? { modality: value as Modality } : {};
+
+export function reportAssetsPageView(hasProject: boolean) {
+  send('page_view', { ...assetsPage, ...shell(hasProject) });
+}
+export function reportAssetsClick(area: AssetClickArea, element: Click['element'],
+  fields: Pick<Click, 'asset_kind' | 'task_mode' | 'position' | 'expanded'> & { modality?: unknown } = {}) {
+  const { modality, ...rest } = fields;
+  send('ui_click', { ...assetsPage, area, element, ...rest, ...modalityField(modality) });
+}
+export function reportAssetGenerationSubmit(modality: unknown, outcome: 'success' | 'failure', referenceCount: number, newVersion: boolean) {
+  const field = modalityField(modality);
+  if (!field.modality) return;
+  send('asset_generation_submit_result', { ...assetsPage, modality: field.modality, outcome, reference_count: referenceCount, new_version: newVersion });
+}
+/** Which change an asset write made: only the kind of change, never the new name. */
+export function assetUpdateAction(changes: Record<string, unknown>): Fields<'asset_update_result'>['action'] {
+  if (changes.trashed === true) return 'trash';
+  if (changes.trashed === false) return 'restore';
+  if (typeof changes.name === 'string') return 'rename';
+  if (typeof changes.currentVersionId === 'string') return 'switch_version';
+  return 'other';
+}
+export function reportAssetUpdate(changes: Record<string, unknown>, outcome: 'success' | 'failure', modality: unknown) {
+  send('asset_update_result', { ...assetsPage, action: assetUpdateAction(changes), outcome, ...modalityField(modality) });
+}
+
+// ---------- Settings ----------
+const settingsPage = { page_name: 'settings' } as const;
+export type SettingsSectionField = NonNullable<Click['settings_section']>;
+type SettingsClickArea = Extract<Click['area'], 'settings_nav' | 'provider_list' | 'provider_detail' | 'default_agent' | 'local_agents' | 'account' | 'diagnostics' | 'help_resources'>;
+type ProviderAction = Fields<'provider_setting_result'>['action'];
+type ProviderKind = Fields<'provider_setting_result'>['provider_kind'];
+/** A provider as it may be reported: built-in ids by name, custom providers only as「custom」. */
+export const providerFields = (provider: { id: string; custom?: boolean; protocol?: string }): { provider_kind: ProviderKind; provider_id?: string } => {
+  const kind: ProviderKind = provider.custom ? 'custom' : provider.protocol === 'account' ? 'account' : provider.protocol === 'agent' ? 'agent' : 'builtin';
+  return { provider_kind: kind, ...(kind === 'custom' ? {} : slugField('provider_id', provider.id)) };
+};
+// The confirmation each provider change already shows names the change; reporting reads the same key.
+const PROVIDER_ACTIONS: Record<string, ProviderAction> = {
+  'Provider settings saved': 'save_provider', 'Saved key removed': 'remove_key', 'Provider updated': 'toggle_provider', 'Models synced': 'sync_models',
+  'Agent status refreshed': 'refresh_agent', 'Provider deleted': 'delete_provider', 'Model added': 'add_model', 'Model updated': 'update_model',
+  'Model removed': 'remove_model', 'Default model updated': 'set_default_model',
+};
+export const providerAction = (message: string): ProviderAction | undefined => PROVIDER_ACTIONS[message];
+
+export function reportSettingsPageView(section: SettingsSectionField, hasProject: boolean) {
+  send('page_view', { ...settingsPage, ...shell(hasProject), settings_section: section });
+}
+export function reportSettingsClick(area: SettingsClickArea, element: Click['element'],
+  fields: Pick<Click, 'settings_section' | 'expanded' | 'position'> & { provider?: { id: string; custom?: boolean; protocol?: string }; agent?: string } = {}) {
+  const { provider, agent, ...rest } = fields;
+  send('ui_click', { ...settingsPage, area, element, ...rest, ...(provider ? providerFields(provider) : {}), ...slugField('agent_id', agent) });
+}
+export function reportProviderSetting(provider: { id: string; custom?: boolean; protocol?: string }, action: ProviderAction, outcome: 'success' | 'failure') {
+  send('provider_setting_result', { ...settingsPage, ...providerFields(provider), action, outcome });
+}
+export function reportAgentSetting(agent: string | undefined, action: Fields<'agent_setting_result'>['action'], outcome: 'success' | 'failure') {
+  send('agent_setting_result', { ...settingsPage, ...slugField('agent_id', agent), action, outcome });
+}
+export function reportDiagnosticExport(outcome: Fields<'diagnostic_export_result'>['outcome'], durationMs: number) {
+  send('diagnostic_export_result', { ...settingsPage, outcome, duration_ms: Math.max(0, Math.round(durationMs)) });
+}
+
+// ---------- Project manager ----------
+const projectsPage = { page_name: 'projects' } as const;
+export function reportProjectsPageView(hasProject: boolean) {
+  send('page_view', { ...projectsPage, ...shell(hasProject) });
+}
+export function reportProjectsClick(element: Click['element'], fields: Pick<Click, 'manager_tab' | 'selection_count'> = {}) {
+  send('ui_click', { ...projectsPage, area: 'project_manager', element, ...fields });
+}
+export function reportProjectManage(action: Fields<'project_manage_result'>['action'], outcome: 'success' | 'partial' | 'failure', projectCount: number, failedCount = 0) {
+  send('project_manage_result', { ...projectsPage, action, outcome, project_count: projectCount, ...(failedCount ? { failed_count: failedCount } : {}) });
+}
+/** Library uploads reuse the studio import result with library entry points; file names never leave the browser. */
+export function reportLibraryImport(entry: 'library_button' | 'library_drop' | 'library_new_version', requested: number, added: number) {
+  const failed = Math.max(0, requested - added);
+  send('studio_asset_import_result', { entry_point: entry, outcome: added === 0 ? 'failure' : failed ? 'partial' : 'success',
+    requested_count: requested, added_count: added, failed_count: failed });
+}
