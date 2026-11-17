@@ -45,11 +45,12 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
     if (element?.isConnected) { element.focus(); window.getSelection()?.selectAllChildren(element); }
   }, [manualCopy, commandOpen]);
   const selected = motionSkills.find(skill => skill.id === skillId) ?? null;
-  const visible = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
-    return motionSkills.filter(skill => (!category || skill.category === category)
+  const matching = (group: SkillCategory | null, text: string) => {
+    const needle = text.trim().toLocaleLowerCase();
+    return motionSkills.filter(skill => (!group || skill.category === group)
       && (!needle || [skill.name, skill.title, displayName(skill), t(skill.useWhen), skill.tagline, t(skill.tagline), t(skill.output), skill.repository ?? 'OpenMotion'].some(value => value.toLocaleLowerCase().includes(needle))));
-  }, [query, category, t]);
+  };
+  const visible = useMemo(() => matching(category, query), [query, category, t]);
   // One page view per visit; one detail view per opened Skill; one search result per settled query (500 ms after typing stops).
   useEffect(() => { tracking.reportSkillsPageView(); }, []);
   const detailView = useRef<string | undefined>(undefined), searchId = useRef<string | undefined>(undefined);
@@ -57,15 +58,17 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
     detailView.current = selected ? tracking.newTrackingId() : undefined;
     if (selected && detailView.current) tracking.reportSkillDetailShown(selected, detailView.current);
   }, [selected?.id]);
-  const resultCount = useRef(visible.length); resultCount.current = visible.length;
+  // Any change to the query or category ends the previous search; a card opened before the new one settles carries no search id.
+  const resultCount = visible.length;
   useEffect(() => {
-    if (!query.trim()) { searchId.current = undefined; return; }
-    const timer = setTimeout(() => { searchId.current = tracking.newTrackingId(); tracking.reportSkillSearch(searchId.current, query, resultCount.current, category); }, 500);
+    searchId.current = undefined;
+    if (!query.trim()) return;
+    const timer = setTimeout(() => { searchId.current = tracking.newTrackingId(); tracking.reportSkillSearch(searchId.current, query, resultCount, category); }, 500);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, category]);
   const pickCategory = (value: SkillCategory | null) => {
     setCategory(value);
-    tracking.reportSkillCategory(value, motionSkills.filter(skill => !value || skill.category === value).length);
+    tracking.reportSkillCategory(value, matching(value, query).length);
   };
   // The instruction follows the interface language, including the example brief and borrowed technique.
   const prompt = selected ? skillPrompt({ ...selected, output: t(selected.output), example: t(selected.example), technique: t(selected.technique) }, parameters, locale, installUrl) : '';

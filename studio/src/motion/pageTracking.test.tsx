@@ -69,6 +69,30 @@ it('reports the Skills funnel: view, category, search, open, detail, copy result
   expectAdmitted();
 });
 
+it('keeps search, category and card reports on the same filtered list', () => {
+  vi.useFakeTimers();
+  act(() => root.render(<SkillsHost />));
+  const input = container.querySelector<HTMLInputElement>('input[type="search"]')!;
+  const type = (value: string) => act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value); input.dispatchEvent(new Event('input', { bubbles: true })); });
+  type('zzzz-no-match');
+  act(() => button('Explainers').click());
+  expect(of('ui_click').at(-1)?.properties).toMatchObject({ element: 'category_select', result_count: 0 });
+  act(() => button('All').click());
+  type('stagger');
+  act(() => vi.advanceTimersByTime(200));
+  act(() => button('Explainers').click());
+  act(() => vi.advanceTimersByTime(500));
+  expect(of('skill_search_result').map(row => [row.properties.search_keyword, row.properties.result_count, row.properties.skill_category]))
+    .toEqual([['stagger', 0, 'explainers']]);
+  act(() => button('All').click());
+  act(() => vi.advanceTimersByTime(500));
+  type('particle');
+  act(() => button('Particle effects').click());
+  expect(of('ui_click').at(-1)?.properties).toMatchObject({ element: 'open_detail', skill_id: 'proton' });
+  expect(of('ui_click').at(-1)?.properties.search_id).toBeUndefined();
+  expectAdmitted();
+});
+
 it('reports a failed Skill copy as a manual fallback, not a success', async () => {
   copy.mockRejectedValueOnce(new Error('denied'));
   act(() => root.render(<SkillsHost />));
