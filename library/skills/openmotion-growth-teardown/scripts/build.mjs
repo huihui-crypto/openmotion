@@ -44,11 +44,17 @@ points.forEach((p, i) => {
 });
 const lanes = data.lanes || [];
 if (lanes.length < 2 || lanes.length > 4) errors.push('use 2-4 lanes');
-lanes.forEach(l => (l.moves || []).forEach((m, i) => {
-  if (!DATE.test(m.date || '')) errors.push(`${l.id}:${i} needs a date`);
-  if (!m.source?.url && !m.card) errors.push(`${l.id}:${i} needs source.url`);
-  if (width(m.label || '') > 30) errors.push(`${l.id}:${i} label "${m.label}" is longer than 28 characters`);
-}));
+const httpUrl = u => { try { return /^https?:$/.test(new URL(u).protocol); } catch { return false; } };
+lanes.forEach(l => {
+  if (!Array.isArray(l.moves) || l.moves.length < 1 || l.moves.length > 6) { errors.push(`lane "${l.id}" needs 1-6 moves`); return; }
+  l.moves.forEach((m, i) => {
+    if (!DATE.test(m.date || '')) errors.push(`${l.id}:${i} needs a date`);
+    if (!m.source?.url && !m.card) errors.push(`${l.id}:${i} needs source.url`);
+    if (m.source?.url && !httpUrl(m.source.url)) errors.push(`${l.id}:${i} source.url "${m.source.url}" must be a full http(s) URL`);
+    if (width(m.label || '') > 28) errors.push(`${l.id}:${i} label "${m.label}" is longer than 28 characters`);
+  });
+});
+points.forEach((p, i) => { if (p.source?.url && !httpUrl(p.source.url)) errors.push(`metric.points[${i}] source.url "${p.source.url}" must be a full http(s) URL`); });
 const plays = data.plays || [];
 if (plays.length < 2 || plays.length > 3) errors.push('use 2-3 plays');
 plays.forEach((p, i) => {
@@ -59,8 +65,9 @@ plays.forEach((p, i) => {
     if (!lanes.find(l => l.id === lid)?.moves?.[Number(idx)]) errors.push(`plays[${i}] evidence "${ref}" does not exist`);
   }
   if (width(p.headline || '') > 40) errors.push(`plays[${i}].headline is too long for one line`);
+  if (typeof p.stat?.value !== 'number') errors.push(`plays[${i}].stat.value must be a number (the counted fact on screen)`);
   if (!p.instruction) errors.push(`plays[${i}] needs an instruction`);
-  else if (width(p.instruction) > 240) errors.push(`plays[${i}].instruction is ${width(p.instruction)} characters; keep it under 220 so it fits its card`);
+  else if (width(p.instruction) > 220) errors.push(`plays[${i}].instruction is ${width(p.instruction)} characters; keep it under 220 so it fits its card`);
 });
 if (errors.length) { console.error(errors.map(e => '✗ ' + e).join('\n')); process.exit(1); }
 if (checkOnly) { console.log(`✓ ${data.company}: ${points.length} metric points, ${lanes.reduce((n, l) => n + l.moves.length, 0)} moves in ${lanes.length} lanes, ${plays.length} plays`); process.exit(0); }

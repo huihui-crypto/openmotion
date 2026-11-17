@@ -6,9 +6,11 @@
 .om-skills-main { flex: 1; min-width: 0; overflow-y: auto; overscroll-behavior: contain; container-type: inline-size; }
 /* Skills show fewer, larger cards than templates so each demo is easy to read.
    Column count follows the list's own width (skillColumns), so an open detail panel never crowds the cards.
-   Cards fill columns row first, so the first row reads in catalog order. */
-.om-skills-library .om-skills-grid { display: flex; align-items: flex-start; gap: var(--motion-space-16); }
-.om-skills-library .om-skills-column { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--motion-space-16); }
+   Cards fill columns row first, so the first row reads in catalog order.
+   The DOM stays in catalog order for keyboard and screen readers; measured cards are then placed in 1px rows. */
+.om-skills-library .om-skills-grid { display: grid; grid-template-columns: repeat(var(--om-skill-columns, 3), minmax(0, 1fr)); column-gap: var(--motion-space-16); row-gap: var(--motion-space-16); align-items: start; }
+.om-skills-library .om-skills-grid[data-measured] { grid-auto-rows: 1px; row-gap: 0; }
+.om-skills-library .om-skills-cell { min-width: 0; align-self: start; }
 .om-gallery-toolbar.om-skills-toolbar { padding-top: var(--motion-space-16); }
 .om-skills-toolbar > .om-gallery-categories { flex: 1 1 0; }
 .om-skills-toolbar > .om-search-field { flex: 0 1 min(38%, 360px); min-width: 0; margin-inline-start: auto; }

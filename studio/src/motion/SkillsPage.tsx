@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactElement } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useToast } from '../hooks/useToast';
@@ -60,7 +60,23 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
     observer.observe(node);
     return () => observer.disconnect();
   }, []);
-  const columns = useMemo(() => Array.from({ length: columnCount }, (_, column) => visible.map((skill, index) => ({ skill, index })).filter(({ index }) => index % columnCount === column)), [visible, columnCount]);
+  // Cards stay in one catalog-ordered DOM list, so Tab and screen readers follow the first row left to right;
+  // measured heights then place card N in column N % columns without the gaps of a plain grid.
+  const cardNodes = useRef(new Map<string, HTMLElement>()), [heights, setHeights] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(entries => setHeights(previous => {
+      let next = previous;
+      for (const entry of entries) {
+        const id = (entry.target as HTMLElement).dataset.skillId, height = Math.ceil((entry.target as HTMLElement).getBoundingClientRect().height);
+        if (id && height > 0 && previous[id] !== height) { if (next === previous) next = { ...previous }; next[id] = height; }
+      }
+      return next;
+    }));
+    cardNodes.current.forEach(node => observer.observe(node));
+    return () => observer.disconnect();
+  }, [visible]);
+  const placement = useMemo(() => skillPlacement(visible.map(skill => heights[skill.id]), columnCount), [visible, heights, columnCount]);
   // One page view per visit; one detail view per opened Skill; one search result per settled query (500 ms after typing stops).
   useEffect(() => { tracking.reportSkillsPageView(hasProject); }, []);
   const detailView = useRef<string | undefined>(undefined), searchId = useRef<string | undefined>(undefined);
@@ -121,9 +137,10 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
         <section className="om-gallery-intro om-skills-intro"><span className="om-gallery-eyebrow">{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
           <div className="om-gallery-intro-actions"><a className="om-gallery-submit" href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSkillSubmitClicked()}>{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a></div>
         </section>
-        <div className="om-skills-grid" data-columns={columnCount}>
-          {columns.map((items, column) => <div key={column} className="om-skills-column">
-            {items.map(({ skill, index }) => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill, index + 1)} />)}
+        <div className="om-skills-grid" data-columns={columnCount} data-measured={placement ? '' : undefined} style={{ '--om-skill-columns': columnCount } as CSSProperties}>
+          {visible.map((skill, index) => <div key={skill.id} className="om-skills-cell" data-skill-id={skill.id} style={placement?.[index]}
+            ref={node => { if (node) cardNodes.current.set(skill.id, node); else cardNodes.current.delete(skill.id); }}>
+            <SkillCard skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill, index + 1)} />
           </div>)}
         </div>
         {!visible.length && <div className="om-empty"><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button className="om-button" onClick={() => { setQuery(''); setCategory(null); tracking.reportSkillFiltersCleared(); }}>{t('Clear filters')}</button></div>}
@@ -167,6 +184,19 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
 
 /** Column count for the list width; the same breakpoints the Skills page used for its CSS columns. */
 export const skillColumns = (width: number) => width <= 560 ? 1 : width <= 1000 ? 2 : width <= 1400 ? 3 : 4;
+
+const SKILL_GAP = 16; // --motion-space-16
+/** Grid placement for row-first masonry: card N goes to column N % columns, stacked under that column's previous card.
+ *  Returns null until every card has a measured height; the grid then lays cards out row by row without stacking. */
+export function skillPlacement(heights: (number | undefined)[], columns: number): CSSProperties[] | null {
+  if (!heights.length || heights.some(height => !height)) return null;
+  const tops = Array<number>(columns).fill(1);
+  return heights.map((height, index) => {
+    const column = index % columns, start = tops[column];
+    tops[column] += height! + SKILL_GAP;
+    return { gridColumn: column + 1, gridRow: `${start} / span ${height}` };
+  });
+}
 
 /** Gallery card shared with the template library: poster first, upstream demo video while hovered or focused. */
 function SkillCard({ skill, name, useWhen, category, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; category: string; selected: boolean; onSelect: () => void }) {

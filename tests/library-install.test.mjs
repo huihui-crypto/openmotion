@@ -62,6 +62,26 @@ test('standalone openmotion-growth-teardown installs without a retired entry', a
   assert.equal(check.status, 0, check.stderr);
 });
 
+test('growth-teardown --check rejects inputs the generator cannot render', async t => {
+  const root = await isolated(t), fixture = JSON.parse(await readFile('tests/fixtures/growth-teardown.json', 'utf8'));
+  const build = path.resolve('library/skills/openmotion-growth-teardown/scripts/build.mjs');
+  const cases = {
+    'needs 1-6 moves': d => { delete d.lanes[0].moves; },
+    'must be a full http(s) URL': d => { d.lanes[0].moves[0].source.url = 'example.com/blog/free'; },
+    'stat.value must be a number': d => { delete d.plays[0].stat; },
+    'longer than 28 characters': d => { d.lanes[0].moves[0].label = 'x'.repeat(29); },
+    'keep it under 220': d => { d.plays[0].instruction = 'x'.repeat(221); },
+  };
+  for (const [message, mutate] of Object.entries(cases)) {
+    const data = structuredClone(fixture); mutate(data);
+    const file = path.join(root, 'growth.json'); await writeFile(file, JSON.stringify(data));
+    const check = spawnSync(process.execPath, [build, '--check', file], { encoding: 'utf8' });
+    assert.equal(check.status, 1, `${message}: ${check.stdout}${check.stderr}`);
+    assert.match(check.stderr, new RegExp(message.replace(/[()]/g, '\\$&')));
+    assert.doesNotMatch(check.stderr, /TypeError|ERR_INVALID_URL/);
+  }
+});
+
 test('standalone cleanup preserves customized, extra-file and symlink legacy folders', async t => {
   const root = await isolated(t);
   for (const kind of ['customized', 'extra-file', 'symlink']) {
