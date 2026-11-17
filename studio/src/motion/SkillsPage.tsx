@@ -58,14 +58,14 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
     detailView.current = selected ? tracking.newTrackingId() : undefined;
     if (selected && detailView.current) tracking.reportSkillDetailShown(selected, detailView.current);
   }, [selected?.id]);
-  // Any change to the query or category ends the previous search; a card opened before the new one settles carries no search id.
+  // Any change to the query, category or interface language (which changes what matches) ends the previous search; a card opened before the new one settles carries no search id.
   const resultCount = visible.length;
   useEffect(() => {
     searchId.current = undefined;
     if (!query.trim()) return;
     const timer = setTimeout(() => { searchId.current = tracking.newTrackingId(); tracking.reportSkillSearch(searchId.current, query, resultCount, category); }, 500);
     return () => clearTimeout(timer);
-  }, [query, category]);
+  }, [query, category, locale]);
   const pickCategory = (value: SkillCategory | null) => {
     setCategory(value);
     tracking.reportSkillCategory(value, matching(value, query).length);
