@@ -24,10 +24,13 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(25);
+  expect(motionSkills).toHaveLength(121);
   expect(motionSkills[0].id).toBe('motionmaxxing');
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
-  expect(motionSkills.every(skill => skill.repository)).toBe(true);
+  // Skills without an upstream repository are OpenMotion Library Skills (library/skills/<id>).
+  for (const skill of motionSkills) if (!skill.repository) expect(skill.id).toMatch(/^openmotion-[a-z0-9-]+$/);
+  expect(motionSkills.filter(skill => !skill.repository)).toHaveLength(96);
+  expect(motionSkills.slice(1, 11).every(skill => skill.category === 'Talking-head')).toBe(true);
   expect(new Set(motionSkills.map(skill => skill.id)).size).toBe(motionSkills.length);
 });
 
@@ -37,7 +40,7 @@ it('filters by category and search', () => {
   expect(container.querySelectorAll('.om-skill-gallery-card').length).toBe(motionSkills.filter(skill => skill.category === 'Explainers').length);
   act(() => button('All').click());
   const input = container.querySelector<HTMLInputElement>('input[type="search"]')!;
-  act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'particle'); input.dispatchEvent(new Event('input', { bubbles: true })); });
+  act(() => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'proton'); input.dispatchEvent(new Event('input', { bubbles: true })); });
   expect([...container.querySelectorAll('.om-skill-gallery-card strong')].map(node => node.textContent)).toEqual(['Particle effects']);
 });
 

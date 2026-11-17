@@ -54,7 +54,7 @@ const mcpClient = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt'
 const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'asset_chat', 'direct_link'] as const;
 const mcp = { mcp_client: mcpClient, setup_method: ['agent', 'manual'], capability_id: 'slug' } as const;
 // A Skill is identified by its catalogue id and group only; the brief text never leaves the browser.
-const skill = { skill_id: 'slug', skill_category: ['product_promos', 'explainers', 'brand_covers', 'motion_techniques'] } as const;
+const skill = { skill_id: 'slug', skill_category: ['talking_head', 'product_promos', 'explainers', 'product_ads', 'brand_covers', 'editing', 'motion_techniques'] } as const;
 const skillBrief = { duration_seconds: 'integer', aspect_ratio: ['16:9', '9:16', '1:1'], has_subject: 'boolean', has_style: 'boolean', media_required: 'boolean' } as const;
 // A Brand Kit is identified only by its official catalogue id; a user's own kit, website, name and context never become fields.
 const brand = { brand_source: ['official', 'mine'], catalog_id: 'slug' } as const;

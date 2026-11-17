@@ -8,7 +8,9 @@
    Column count follows the list's own width, so an open detail panel never crowds the cards. */
 .om-skills-library .om-skills-grid { columns: 4; column-gap: var(--motion-space-16); }
 @container (max-width: 1400px) { .om-skills-library .om-skills-grid { columns: 3; } }
-.om-skills-library .om-skills-grid > * { margin-bottom: var(--motion-space-16); }
+.om-skills-library .om-skills-grid[data-columns] { display: flex; align-items: flex-start; gap: var(--motion-space-16); }
+.om-skills-column { flex: 1 1 0; min-width: 0; }
+.om-skills-column > * { margin-bottom: var(--motion-space-16); }
 @container (max-width: 1000px) { .om-skills-library .om-skills-grid { columns: 2; } }
 @container (max-width: 560px) { .om-skills-library .om-skills-grid { columns: 1; } }
 .om-gallery-toolbar.om-skills-toolbar { padding-top: var(--motion-space-16); }

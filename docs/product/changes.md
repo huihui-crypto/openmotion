@@ -1,10 +1,11 @@
 # 公开变更记录
 
-## 2026-11-17: Add eleven optional single-style library Skills
+## 2026-11-17: Add 96 single-style library Skills and their Skills-page cards
 
-- Add eleven Library Skills, one written style recipe each, for common jobs: four talking-head overlays (highlighter notes, whiteboard marker, spec sheet, red-pen archive), three narrated explainers (paper collage, whiteboard doodle, paper map journey), three product and brand pieces (website launch film, glitch logo sting, bold type poster) and a shortlist-first method for cutting long recordings into shorts.
-- Each recipe states its look, motion rules, required inputs, what to avoid and review checks. All are recipes/drafts: no executable template or rendered comparison is claimed.
-- The standalone installer and the positive distribution list include the new Skills; they have no retired forwarding folders. `npm run check` now validates Library Skill frontmatter too. It adds no MCP Tool, production route, account or pricing change.
+- Add 96 Library Skills, one written style recipe each: 10 talking-head overlays, 15 narrated explainers, 35 product promos, 12 product-ad and shopping styles, 10 brand and cover pieces, 2 motion effects and 12 editing methods. Each states its look, motion rules with timings, required inputs, what to avoid and review checks; skills that need generated stills or clips route discovery through `openmotion_media_use` and generation through `openmotion_assets_use` with consent.
+- The Studio Skills page lists all 96 as cards with an 8-second OpenMotion sample cover (rendered with HyperFrames, under 450 KB each) and localized copy in all 11 languages. Three categories are added (Talking-head, Product ads, Editing) and the analytics `skill_category` enum is extended to match. Talking-head cards follow the first card.
+- All are recipes/drafts: covers are OpenMotion samples with invented content, not runs on user material, and no executable template is claimed.
+- The standalone installer, the positive distribution list and package tests include the new Skills; `npm run check` validates Library Skill frontmatter.
 
 ## 2026-11-17: Play a bounded preview for large final videos in chat
 

@@ -13,7 +13,7 @@ const shell = (hasProject: boolean) => ({ view_id: newTrackingId(), embedded: em
 
 // ---------- Skills ----------
 const skills = { page_name: 'skills' } as const;
-const CATEGORY = { 'Product promos': 'product_promos', Explainers: 'explainers', 'Brand & covers': 'brand_covers', 'Motion techniques': 'motion_techniques' } as const;
+const CATEGORY = { 'Talking-head': 'talking_head', 'Product promos': 'product_promos', Explainers: 'explainers', 'Product ads': 'product_ads', 'Brand & covers': 'brand_covers', Editing: 'editing', 'Motion techniques': 'motion_techniques' } as const;
 export const skillCategoryId = (category: MotionSkill['category']) => CATEGORY[category];
 /** A catalogue id is sent only when it is a bounded slug; anything else is left out, never rewritten. */
 const skillFields = (skill: MotionSkill) => ({ ...slugField('skill_id', skill.id), skill_category: skillCategoryId(skill.category) });
