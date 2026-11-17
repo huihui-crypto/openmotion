@@ -1,6 +1,11 @@
 import type { Language, TemplateId } from './types.ts';
 
 export const languages = ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'] as const;
+// HTML project previews describe the template; media provenance belongs in the installation guide.
+export const inlineDescriptionPrefixes: Record<Language, string> = {
+  zh: '简介：', en: 'Summary: ', ja: '概要：', ko: '소개: ',
+  fr: 'Présentation : ', es: 'Resumen: ', pt: 'Resumo: ',
+};
 export function isLanguage(value: unknown): value is Language {
   return typeof value === 'string' && languages.includes(value as Language);
 }
@@ -124,4 +129,10 @@ export function welcomeMarkdown(language: Language, cardsPosition: 'before' | 'a
   const recommendations = cardsPosition === 'before' ? text.recommendations.replace('👇', '👆') : text.recommendations;
   const draft = cardsPosition === 'before' ? text.clipboardDraft.replace('下方', '上方') : text.clipboardDraft;
   return [`**${text.heading}**`, text.introduction, text.discovery, `**${recommendations}**`, draft].join("\n\n");
+}
+
+/** A plain reply remains available even when the host cannot mount native cards. */
+export function installationFallbackWelcome(language: Language): string {
+  const text = translations[language].welcome;
+  return [text.heading, text.introduction, text.discovery].join('\n\n');
 }

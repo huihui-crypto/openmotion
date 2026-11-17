@@ -1,3 +1,5 @@
+import { PlatformIcon } from '../../../packages/design-system/react/PlatformIcon';
+import { platformExportTargets } from '../../../shared/platform-export';
 import { useEffect, useRef, useState } from 'react';
 import { brand, designSystemAsset } from '../../../packages/design-system/index.js';
 import { BrandLogo } from '../../../packages/design-system/react/BrandLogo';
@@ -12,7 +14,7 @@ import { useIntegrationInfo } from './useIntegrationInfo';
 import { GITHUB_REPOSITORY } from './githubRepository';
 import { McpTemplateShowcase } from './McpTemplateShowcase';
 import { useCommunityLink } from './CommunityLink';
-import { mcpCapabilities, mcpBenefits, mcpFaq, mcpWorkflowComparison, mcpClientComparison } from './mcpCapabilities';
+import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpFaq, mcpWorkflowComparison, mcpClientComparison } from './mcpCapabilities';
 import { readWorkspacePage, type WorkspacePage } from './workspacePageRouting';
 import * as tracking from './pageTracking';
 import './McpConnectionPage.css';
@@ -31,6 +33,7 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
   const { t, locale } = useI18n(), toast = useToast();
   const community = useCommunityLink();
   const { info, failed, retry } = useIntegrationInfo();
+  const [manualScenario, setManualScenario] = useState('');
   const [localRoute, setLocalRoute] = useState(() => readWorkspacePage(location.search));
   const { client: clientId, setup: setupMode } = route ?? localRoute;
   const changeRoute = (patch: Partial<WorkspacePage>) => {
@@ -67,6 +70,13 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
   const copyCreation = (text: string, includeSetup: boolean, kind: 'starter' | 'capability_example', capability: string) =>
     copy(includeSetup ? `${prompt}\n\n${t(text)}` : t(text), { kind, capability, includesSetup: includeSetup });
   const copyButton = (text: string, label: string, kind: 'connection_instruction' | 'manual_config') => <button className="om-button" disabled={!text || !supported} onClick={() => void copy(text, { kind })}><RemixIcon name="file-copy-line" size={16} />{t(label)}</button>;
+  const copyCapability = async (item: (typeof mcpCapabilities)[number] | (typeof mcpScenarios)[number]) => {
+    if (item.id !== 'platform-export') return copyCreation(item.prompt, item.id !== 'media', 'capability_example', item.id);
+    const instruction = platformExportExample(locale, info ?? undefined);
+    setManualScenario('');
+    try { await navigator.clipboard.writeText(instruction); toast.showToast(t('Copied. Paste into your Agent.'), 'info', 'feedback'); tracking.reportMcpCopyResult('capability_example', 'clipboard_written', clientKey, { capability: item.id, includesSetup: false }); }
+    catch { setManualScenario(instruction); toast.showToast(t('Could not copy. Select and copy the text manually.'), 'error', 'feedback'); tracking.reportMcpCopyResult('capability_example', 'failed', clientKey, { capability: item.id, includesSetup: false }); }
+  };
   return <main ref={page} className="om-mcp-page" aria-labelledby="mcp-title" onKeyDown={event => event.stopPropagation()}>
     <div className="om-mcp-content">
       <section className="om-mcp-hero om-mcp-section">
@@ -103,7 +113,7 @@ export function McpConnectionPage({ openLibrary: openLibraryRaw, openProviders: 
       <McpTemplateShowcase scroller={page} enabled={previewsEnabled} canCopy={Boolean(info && supported)} openLibrary={openLibrary('mcp_templates')} onCategory={value => click('mcp_templates', 'category_select', { option: value })} onCopy={template => { if (info) void copy(`${prompt}\n\n${templatePrompt(info, client.host, template, locale)}`, { kind: 'template', template: template.id, includesSetup: true }); }} />
 
       <section className="om-mcp-section"><h2>{t('Give your Agent a workspace worth keeping')}</h2><div className="om-mcp-benefit-grid">{mcpBenefits.map((item, index) => <article key={item.title} className="om-mcp-feature" data-featured={index === 0}><RemixIcon name={item.icon} size={26} /><h3>{t(item.title)}</h3><p>{t(item.description)}</p></article>)}</div></section>
-      <section className="om-mcp-section" id="mcp-capabilities"><h2>{t('Your visual MCP guide')}</h2><p className="om-muted">{t('Choose a task and copy its example into your connected Agent. Projects and assets stay in your workspace; media generation uses your configured providers.')}</p><div className="om-mcp-capability-grid">{mcpCapabilities.map(item => <article className="om-mcp-feature" key={item.id}><RemixIcon name={item.icon} size={24} /><h3>{t(item.title)}</h3><p>{t(item.description)}</p><button className="om-text-link" disabled={!supported} onClick={() => void copyCreation(item.prompt, item.id !== 'media', 'capability_example', item.id)}>{t('Copy an example')}<RemixIcon name="file-copy-line" size={14} /></button></article>)}</div>
+      <section className="om-mcp-section" id="mcp-capabilities"><h2>{t('Your visual MCP guide')}</h2><p className="om-muted">{t('Choose a task and copy its example into your connected Agent. Projects and assets stay in your workspace; media generation uses your configured providers.')}</p><div className="om-mcp-capability-grid">{[...mcpCapabilities, ...mcpScenarios].map(item => <article className="om-mcp-feature" key={item.id}><RemixIcon name={item.icon} size={24} /><h3>{t(item.title)}</h3>{item.id === 'platform-export' && <div className="flex flex-wrap gap-1.5">{platformExportTargets.map(platform => <span key={platform.id} title={t(platform.label)}><PlatformIcon platform={platform.id} /></span>)}</div>}<p>{t(item.description)}</p><button className="om-text-link" disabled={!supported} onClick={() => void copyCapability(item)}>{t('Copy an example')}<RemixIcon name="file-copy-line" size={14} /></button>{item.id === 'platform-export' && manualScenario && <textarea className="om-field w-full" aria-label={t('Platform export instruction')} readOnly rows={6} value={manualScenario} onFocus={event => event.currentTarget.select()} />}</article>)}</div>
         <details className="om-mcp-tool-details" onToggle={event => click('mcp_capabilities', 'tool_list_open', { expanded: event.currentTarget.open })}><summary>{t('Tools exposed by this installation')}{info && ` · ${info.tools.length}`}</summary><div className="om-mcp-tool-list">{info?.tools.map(tool => <div key={tool.name}><code>{tool.name}</code><p className="om-muted">{t(tool.name === 'openmotion_assets' ? 'Compatibility name for the original nine asset actions. Use openmotion_assets_use to read media content.' : mcpCapabilities.find(item => (item.tools as readonly string[]).includes(tool.name))?.description || tool.description)}</p></div>)}</div></details>
       </section>
       <section className="om-mcp-section" id="mcp-comparison"><div className="om-mcp-section-heading"><div><p className="om-mcp-eyebrow">{t('From a conversation to a reusable project')}</p><h2>{t('Choose the workflow that fits your idea')}</h2><p className="om-muted">{t('Create through MCP, refine in Studio, and keep the project and assets for your next version.')}</p></div></div><ComparisonTable label="Workflow comparison" columns={['Capability', 'OpenMotion + Agent', 'Direct model API', 'Studio by hand']} rows={mcpWorkflowComparison} featured /></section>

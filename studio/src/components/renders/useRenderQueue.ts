@@ -11,29 +11,29 @@ import { readServerError } from "./serverError";
 import { ffmpegInstallMessage, useFfmpegStatus } from "./useFfmpegStatus";
 import { requestStudioFeedback, type FeedbackContext } from "../feedback/feedbackTrigger";
 import { studioApiFetch, studioProjectUrl } from "../../utils/studioApiFetch";
+import { blocksProjectWork, isPendingRender, mergeRenderJobs, readRenderStatus, serverRenderJobs } from "./renderQueueState";
+import { useRenderProgress } from "./useRenderProgress";
+import { beginStudioIo } from "../../telemetry/ioRecovery";
 import { usePlayerStore } from "../../player/store/playerStore";
-import {
-  durationBucket,
-  exportRejection,
-  exportSettings,
-  openTemplateFields,
-  projectScaleFields,
-  projectFields,
-  reportExportRequest,
-  reportExportResult,
-  type ExportOrigin,
-} from "../../motion/editorTracking";
+import { durationBucket, exportRejection, exportSettings, openTemplateFields, projectScaleFields, projectFields,
+  reportExportRequest, reportExportResult, type ExportOrigin } from "../../motion/editorTracking";
 
 export interface RenderJob {
   id: string;
   nativeJobId?: string;
-  status: "rendering" | "complete" | "failed" | "cancelled";
+  requestId?: string;
+  workerActive?: boolean;
+  requestNotFound?: boolean;
+  status: "rendering" | "cancelling" | "unknown" | "complete" | "failed" | "cancelled";
   progress: number;
   stage?: string;
   error?: string;
   filename: string;
   createdAt: number;
   durationMs?: number;
+  lastCheckedAt?: number;
+  fileAvailable?: boolean;
+  settings?: Record<string, unknown>;
 }
 
 // The CLI consumes this same source through @hyperframes/core's re-export.
@@ -61,7 +61,6 @@ export interface StartRenderOptions {
    * `hyperframes render --variables` uses.
    */
   variables?: Record<string, unknown>;
-  /** Which control asked for this render. Reported as a category only; defaults to the header. */
   origin?: ExportOrigin;
 }
 
@@ -101,7 +100,24 @@ export function useRenderQueue(
 ) {
   const mvp = useMvpEditor();
   const emptyComposition = useEmptyPreview(projectId ?? "", mvp);
-  const [jobs, setJobs] = useState<RenderJob[]>([]);
+  const currentProject = useRef(projectId);
+  currentProject.current = projectId;
+  const [queueState, setQueueState] = useState({ projectId, jobs: [] as RenderJob[] });
+  const jobs = queueState.projectId === projectId ? queueState.jobs : [];
+  const setJobs = useCallback((update: (previous: RenderJob[]) => RenderJob[]) => {
+    setQueueState(previous => currentProject.current !== projectId ? previous : {
+      projectId,
+      jobs: update(previous.projectId === projectId ? previous.jobs : []),
+    });
+  }, [projectId]);
+  const jobsRef = useRef(jobs);
+  jobsRef.current = jobs;
+  const closeActiveEventSource = useRenderProgress(projectId, jobs, setJobs);
+  const startingRef = useRef<string | null>(null);
+  const [startingProject, setStartingProject] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const historyRequest = useRef(0);
+  const rechecking = useRef(false);
   // History fetch failure — distinguished from "no renders yet" so the panel
   // never shows a false empty state.
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -118,32 +134,19 @@ export function useRenderQueue(
   // A null status means the probe gave no answer (older server, failed
   // request), which is not evidence of a missing encoder. Unknown fails open.
   const ffmpegMissing = ffmpeg !== null && !ffmpeg.ok;
-  const eventSourceRef = useRef<EventSource | null>(null);
-  const activeJobRef = useRef<string | null>(null);
   // Renders started in THIS tab, mapped to the settings they ran with.
   // `loadRenders` also injects finished jobs from disk history, and those must
   // never trigger a feedback prompt — the user did not just watch them happen.
   const sessionJobs = useRef(new Map<string, FeedbackContext>());
   const promptedJobIds = useRef(new Set<string>());
-  // Accepted renders this tab started and has not yet reported a terminal state for.
-  // Cancels are optimistic: the row flips to "cancelled" before the server confirms, and a
-  // render that had already finished is reconciled afterwards. Hold the terminal report until then.
-  const cancelling = useRef(new Set<string>());
-  // What the cancel route said the render had already become, when it was not "cancelled".
-  const settledBeforeCancel = useRef(new Map<string, "completed" | "failed">());
-  // Cancels the server never confirmed: the render may still be running, so no outcome is reported.
-  const unconfirmedCancels = useRef(new Set<string>());
-  const [cancelSettled, setCancelSettled] = useState(0);
-  const trackedExports = useRef(
-    new Map<
-      string,
-      {
-        exportId: string;
-        settings: ReturnType<typeof exportSettings> & { video_duration_bucket: ReturnType<typeof durationBucket>; template_id?: string };
-        lost?: boolean;
-      }
-    >(),
-  );
+  const requestSettings = useRef(new Map<string, FeedbackContext>());
+  // Keep one business export identity across an uncertain receipt and its
+  // later lookup. Neither a connection loss nor a cancel acknowledgement is terminal.
+  const trackedExports = useRef(new Map<string, {
+    exportId: string;
+    reported: boolean;
+    settings: ReturnType<typeof exportSettings> & { video_duration_bucket: ReturnType<typeof durationBucket>; template_id?: string };
+  }>());
 
   /**
    * The one way a render started here enters the list. Every start path — the
@@ -154,61 +157,68 @@ export function useRenderQueue(
    */
   const addSessionJob = useCallback((job: RenderJob, settings: FeedbackContext) => {
     sessionJobs.current.set(job.id, settings);
-    setJobs((prev) => [...prev, job]);
-  }, []);
-
-  const closeActiveEventSource = useCallback((jobId?: string) => {
-    if (jobId && activeJobRef.current !== jobId) return;
-    eventSourceRef.current?.close();
-    eventSourceRef.current = null;
-    activeJobRef.current = null;
-  }, []);
-
-  // Load completed renders from the server
-  const loadRenders = useCallback(async () => {
-    if (!projectId) return;
-    try {
-      const res = await studioApiFetch(buildProjectApiPath(projectId, `/renders`));
-      if (!res.ok) {
-        setLoadError(`Couldn't load render history (server error ${res.status}).`);
-        return;
-      }
-      const data = await res.json();
-      setLoadError(null);
-      if (Array.isArray(data.renders)) {
-        const hidden = readHiddenIds(projectId);
-        setJobs((prev) => {
-          const existing = new Set(prev.map((j) => j.id));
-          const fromServer: RenderJob[] = data.renders
-            .filter((r: { id: string }) => !existing.has(r.id) && !hidden.has(r.id))
-            .map(
-              (r: {
-                id: string;
-                filename: string;
-                createdAt: number;
-                size: number;
-                status?: string;
-                durationMs?: number;
-              }) => ({
-                id: r.id,
-                status: (r.status === "failed" ? "failed" : "complete") as "complete" | "failed",
-                progress: 100,
-                filename: r.filename,
-                createdAt: r.createdAt,
-                durationMs: r.durationMs,
-              }),
-            );
-          return [...prev, ...fromServer];
-        });
-      }
-    } catch {
-      setLoadError("Couldn't load render history. Is the studio server running?");
-    }
-  }, [projectId]);
+    if (job.requestId) requestSettings.current.set(job.requestId, settings);
+    setJobs((prev) => mergeRenderJobs(prev, [job]));
+  }, [setJobs]);
 
   useEffect(() => {
-    loadRenders();
-  }, [loadRenders]);
+    sessionJobs.current.clear();
+    promptedJobIds.current.clear();
+    requestSettings.current.clear();
+    trackedExports.current.clear();
+    setLoadError(null);
+    setActionError(null);
+    setChecking(false);
+  }, [projectId]);
+
+  const loadRenders = useCallback(async () => {
+    if (!projectId) return;
+    const request = ++historyRequest.current;
+    setChecking(true);
+    try {
+      const res = await studioApiFetch(buildProjectApiPath(projectId, `/renders`));
+      if (currentProject.current !== projectId || request !== historyRequest.current) return;
+      if (!res.ok) throw new Error(`Couldn't load render history (server error ${res.status}).`);
+      const data = await res.json();
+      if (currentProject.current !== projectId || request !== historyRequest.current) return;
+      if (!Array.isArray(data.renders)) throw new Error("Couldn't read render history. Check the original export.");
+      const hidden = readHiddenIds(projectId);
+      const incoming = serverRenderJobs(data.renders).filter(job => !hidden.has(job.id));
+      for (const job of incoming) {
+        const settings = job.requestId && requestSettings.current.get(job.requestId);
+        if (settings) sessionJobs.current.set(job.id, settings);
+      }
+      setJobs(previous => mergeRenderJobs(previous, incoming));
+      setLoadError(null);
+      setActionError(null);
+      return incoming;
+    } catch (error) {
+      if (currentProject.current === projectId && request === historyRequest.current) {
+        setLoadError(error instanceof Error ? error.message : "Couldn't load render history. Is the studio server running?");
+      }
+    } finally {
+      if (currentProject.current === projectId && request === historyRequest.current) setChecking(false);
+    }
+  }, [projectId, setJobs]);
+
+  useEffect(() => { void loadRenders(); }, [loadRenders]);
+
+  const recheckRender = useCallback(async (jobId?: string) => {
+    if (!projectId || rechecking.current) return;
+    rechecking.current = true;
+    const finish = beginStudioIo("recheck_render");
+    try {
+      const incoming = await loadRenders();
+      const requestId = jobId && jobsRef.current.find(old => old.id === jobId)?.requestId;
+      const target = jobId ? incoming?.find(job => job.id === jobId || Boolean(requestId && requestId === job.requestId))
+        : incoming?.toSorted((a, b) => b.createdAt - a.createdAt)[0];
+      if (incoming && jobId && !target) {
+        setJobs(previous => previous.map(job => job.id === jobId && job.status === "unknown" && !job.nativeJobId
+          ? { ...job, requestNotFound: true } : job));
+      }
+      finish({ outcome: incoming ? "success" : "unknown", ...(target ? { state_after: target.status } : {}) });
+    } finally { rechecking.current = false; }
+  }, [projectId, loadRenders, setJobs]);
 
   // Start a render and track progress via SSE
   // Pre-existing branchy fetch/poll flow — the variables passthrough added one branch.
@@ -220,37 +230,31 @@ export function useRenderQueue(
         setActionError("No content to export. Add media first.");
         return;
       }
-      // One request result per start attempt. The id is minted here because the
-      // server's job id embeds the project id and a timestamp.
       const exportId = generateId();
-      // Length and size of what is being rendered, from the player's memory at request time, bucketed.
-      // A composition other than the open one has no loaded timeline here, so it reports `unknown`.
       const player = usePlayerStore.getState();
       const openComposition = !opts.composition || opts.composition === activeCompPathRef.current;
       const timeline = openComposition && player.timelineReady;
-      const tracked = {
-        ...exportSettings(opts.origin, opts),
-        video_duration_bucket: durationBucket(timeline ? player.duration : undefined),
-        ...openTemplateFields(),
-      };
+      const tracked = { ...exportSettings(opts.origin, opts),
+        video_duration_bucket: durationBucket(timeline ? player.duration : undefined), ...openTemplateFields() };
       const scale = projectScaleFields(timeline ? player.elements.length : undefined);
-      const requestResult = (
-        outcome: "accepted" | "rejected",
-        error_code?: Parameters<typeof reportExportRequest>[0]["error_code"],
-      ) =>
-        reportExportRequest({
-          export_id: exportId,
-          outcome,
-          ...tracked,
-          ...scale,
-          ...(error_code ? { error_code } : {}),
-          ...projectFields(projectId),
-        });
+      let requestKey: string | undefined;
+      let reportedRequest = false;
+      const requestResult = (outcome: "accepted" | "rejected" | "unknown",
+        error_code?: Parameters<typeof reportExportRequest>[0]["error_code"]) => {
+        if (reportedRequest) return;
+        reportedRequest = true;
+        reportExportRequest({ export_id: exportId, outcome, ...tracked, ...scale,
+          ...(error_code ? { error_code } : {}), ...projectFields(projectId) });
+        if (requestKey) {
+          const pending = trackedExports.current.get(requestKey);
+          if (outcome === "rejected") trackedExports.current.delete(requestKey);
+          else if (pending) pending.reported = true;
+        }
+      };
       // The server would answer this with a 503 anyway. Refusing here keeps
       // the reason and the fix in the message, and keeps a control that
       // forgot to disable itself from producing a mystery failure.
       if (ffmpegMissing) {
-        // Components still preparing are a different refusal from a machine without FFmpeg.
         requestResult("rejected", ffmpeg?.runtime ? "RUNTIME_NOT_READY" : "FFMPEG_MISSING");
         if (ffmpeg?.runtime) return;
         addSessionJob(
@@ -267,6 +271,34 @@ export function useRenderQueue(
         return;
       }
 
+      if (startingRef.current === projectId || jobsRef.current.some(blocksProjectWork)) {
+        requestResult("rejected", "REQUEST_REJECTED");
+        setActionError("An export is already in progress. Check the original task.");
+        return;
+      }
+      startingRef.current = projectId;
+      setStartingProject(projectId);
+      setActionError(null);
+      try {
+      // A separate export is a new explicit action, never a replay. Recheck
+      // the service before proceeding past an unresolved but inactive record.
+      if (jobsRef.current.some(job => job.status === "unknown")) {
+        const confirmed = await loadRenders();
+        if (currentProject.current !== projectId) return;
+        if (!confirmed) {
+          requestResult("rejected", "SERVER_UNREACHABLE");
+          setActionError("Couldn't check the original export. Check the connection before starting another export.");
+          return;
+        }
+        if (confirmed.some(blocksProjectWork)) {
+          requestResult("rejected", "REQUEST_REJECTED");
+          setActionError("An export is already in progress. Check the original task.");
+          return;
+        }
+      }
+      const requestId = generateId();
+      requestKey = requestId;
+      trackedExports.current.set(requestId, { exportId, reported: false, settings: tracked });
       const fps = opts.fps ?? 30;
       const quality = opts.quality ?? "standard";
       const format = opts.format ?? "mp4";
@@ -302,6 +334,7 @@ export function useRenderQueue(
       // Omit the field entirely — sending "auto" would trip the route's
       // enum validation set.
       const body: {
+        requestId: string;
         fps: number;
         quality: string;
         format: string;
@@ -313,6 +346,7 @@ export function useRenderQueue(
         telemetryDistinctId?: string;
         telemetryOptOut?: boolean;
       } = {
+        requestId,
         fps,
         quality,
         format,
@@ -339,6 +373,21 @@ export function useRenderQueue(
       if (opts.variables && Object.keys(opts.variables).length > 0) {
         body.variables = opts.variables;
       }
+      const keepUnconfirmedRequest = (cause: string,
+        errorCode: Parameters<typeof reportExportRequest>[0]["error_code"] = "SERVER_UNREACHABLE") => {
+        requestResult("unknown", errorCode);
+        const pendingJob: RenderJob = {
+          id: `request-${requestId}`,
+          requestId,
+          status: "unknown",
+          progress: 0,
+          error: `Could not confirm the export request: ${cause}. Check the original export before trying again.`,
+          filename: "Export result pending",
+          createdAt: startTime,
+          settings,
+        };
+        if (currentProject.current === projectId) addSessionJob(pendingJob, settings);
+      };
       let res: Response;
       try {
         res = await studioApiFetch(buildProjectApiPath(projectId, `/render`), {
@@ -347,30 +396,28 @@ export function useRenderQueue(
           body: JSON.stringify(body),
         });
       } catch (err) {
-        // The cause used to be discarded. Every failure — a dead server, an
-        // aborted request, a DNS error, a mid-render crash — surfaced as the
-        // same sentence, and this string is what travels into the feedback
-        // report too, so field reports of a render that fails *every time*
-        // still carried nothing to act on. Keep the CLI guidance, name the
-        // cause after it.
-        requestResult("rejected", "SERVER_UNREACHABLE");
-        const cause = err instanceof Error ? err.message : String(err);
-        const failedJob: RenderJob = {
-          id: generateId(),
-          status: "failed",
-          progress: 0,
-          error: `Could not reach render server: ${cause}. Use \`hyperframes render\` from the CLI instead.`,
-          filename: "Export failed",
-          createdAt: startTime,
-        };
-        addSessionJob(failedJob, settings);
+        keepUnconfirmedRequest(err instanceof Error ? err.message : String(err));
         return;
       }
+      if (currentProject.current !== projectId) return;
       if (!res.ok) {
+        const refusal = await res.clone().json().catch(() => null);
+        if (["EXPORT_BUSY", "RENDER_BUSY"].includes(refusal?.code)) {
+          requestResult("rejected", "REQUEST_REJECTED");
+          await loadRenders();
+          setActionError("An export is already in progress. Check the original task.");
+          return;
+        }
         if (res.status === 409 && (await res.clone().json().catch(() => null))?.code === 'NATIVE_RUNTIME_NOT_READY') {
           requestResult("rejected", "RUNTIME_NOT_READY");
           setActionError('Video components are not ready. Check preparation status.');
           recheckFfmpeg(false);
+          return;
+        }
+        // A host error can occur after the renderer has accepted the job.
+        // Only a definite client rejection permits declaring this attempt failed.
+        if (refusal?.applied !== false && (res.status >= 500 || ![400, 401, 403, 404, 405, 409, 413, 422].includes(res.status))) {
+          keepUnconfirmedRequest(await readServerError(res), exportRejection(res.status));
           return;
         }
         requestResult("rejected", exportRejection(res.status));
@@ -385,134 +432,66 @@ export function useRenderQueue(
         addSessionJob(failedJob, settings);
         return;
       }
-      const { jobId: nativeJobId, filename } = await res.json();
-
-      const FORMAT_EXT: Record<string, string> = {
-        mp4: ".mp4",
-        webm: ".webm",
-        mov: ".mov",
-        gif: ".gif",
-      };
-      const ext = FORMAT_EXT[format] ?? ".mp4";
-      const jobId = filename ? filename.slice(0, -ext.length) : nativeJobId;
-      if (typeof nativeJobId === "string" && nativeJobId) {
-        requestResult("accepted");
-        trackedExports.current.set(jobId, { exportId, settings: tracked });
-      } else requestResult("rejected", "INVALID_RESPONSE");
+      let receipt: { jobId?: unknown; filename?: string; createdAt?: number };
+      try {
+        receipt = await res.json();
+        if (typeof receipt?.jobId !== "string" || !receipt.jobId) throw new Error("Export receipt has no task identity");
+      } catch (error) {
+        keepUnconfirmedRequest(error instanceof Error ? error.message : String(error), "INVALID_RESPONSE");
+        return;
+      }
+      const { jobId: nativeJobId, filename, createdAt } = receipt as { jobId: string; filename?: string; createdAt?: number };
+      requestResult("accepted");
+      if (currentProject.current !== projectId) return;
       const job: RenderJob = {
         nativeJobId,
-        id: jobId,
+        requestId,
+        id: nativeJobId,
         status: "rendering",
         progress: 0,
-        filename: filename ?? `${jobId}${ext}`,
-        createdAt: startTime,
+        filename: filename ?? `${nativeJobId}.${format}`,
+        createdAt: createdAt ?? startTime,
+        settings,
       };
       addSessionJob(job, settings);
-      activeJobRef.current = jobId;
-
-      // Track progress via SSE
-      const es = new EventSource(studioProjectUrl(`/api/render/${encodeURIComponent(nativeJobId)}/progress`, projectId));
-      eventSourceRef.current = es;
-
-      es.addEventListener("progress", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          const terminal =
-            data.status === "complete" || data.status === "failed" || data.status === "cancelled";
-          setJobs((prev) =>
-            prev.map((j) =>
-              j.id === jobId
-                ? {
-                    ...j,
-                    progress: data.progress ?? j.progress,
-                    stage: data.stage ?? data.message ?? j.stage,
-                    status: terminal ? (data.status as RenderJob["status"]) : j.status,
-                    durationMs: data.status === "complete" ? Date.now() - startTime : undefined,
-                    error: data.error ?? j.error,
-                  }
-                : j,
-            ),
-          );
-          if (terminal) {
-            closeActiveEventSource(jobId);
-          }
-        } catch {
-          // ignore parse errors
-        }
-      });
-
-      es.onerror = () => {
-        es.close();
-        const lost = trackedExports.current.get(jobId);
-        if (lost) lost.lost = true;
-        setJobs((prev) =>
-          prev.map((j) =>
-            j.id === jobId && j.status === "rendering"
-              ? {
-                  ...j,
-                  status: "failed" as const,
-                  error: "Connection lost. Is the render server running?",
-                }
-              : j,
-          ),
-        );
-        activeJobRef.current = null;
-      };
-
-      return jobId;
-    },
-    [projectId, activeCompPathRef, closeActiveEventSource, addSessionJob, ffmpeg, ffmpegMissing, recheckFfmpeg, emptyComposition],
-  );
-
-  // Cancel an in-flight render. The job row stays (as "cancelled") so the
-  // user sees the outcome; the SSE stream is closed either way.
-  const cancelRender = useCallback(
-    async (jobId: string) => {
-      setActionError(null);
-      cancelling.current.add(jobId);
-      closeActiveEventSource(jobId);
-      setJobs((prev) =>
-        prev.map((j) =>
-          j.id === jobId && j.status === "rendering" ? { ...j, status: "cancelled" } : j,
-        ),
-      );
-      try {
-        const nativeId = jobs.find(job => job.id === jobId)?.nativeJobId ?? jobId;
-        const res = await studioApiFetch(`/api/render/${encodeURIComponent(nativeId)}/cancel`, { method: "POST" });
-        if (!res.ok && res.status !== 404) {
-          unconfirmedCancels.current.add(jobId);
-          setActionError("Couldn't cancel on the server. The render may still be running.");
-          return;
-        }
-        // Reconcile with the status the route reports: if the render actually
-        // finished (or failed) before the cancel landed, don't leave the row
-        // stuck on the optimistic "cancelled" — reload to pick up the real
-        // outcome (and the finished file's metadata).
-        if (res.ok) {
-          const body = (await res.json().catch(() => null)) as { status?: string } | null;
-          if (body?.status && body.status !== "cancelled") {
-            if (body.status === "complete") settledBeforeCancel.current.set(jobId, "completed");
-            else if (body.status === "failed") settledBeforeCancel.current.set(jobId, "failed");
-            await loadRenders();
-          }
-        }
-      } catch {
-        unconfirmedCancels.current.add(jobId);
-        setActionError("Couldn't reach the server to cancel. The render may still be running.");
+      return nativeJobId;
       } finally {
-        cancelling.current.delete(jobId);
-        setCancelSettled((n) => n + 1);
+        if (startingRef.current === projectId) startingRef.current = null;
+        setStartingProject(previous => previous === projectId ? null : previous);
       }
     },
-    [closeActiveEventSource, loadRenders, jobs],
+    [projectId, activeCompPathRef, addSessionJob, ffmpeg, ffmpegMissing, recheckFfmpeg, emptyComposition, loadRenders],
   );
+
+  const cancelRender = useCallback(async (jobId: string) => {
+    const job = jobsRef.current.find(candidate => candidate.id === jobId);
+    if (!projectId || !job?.nativeJobId || !isPendingRender(job)) return;
+    setActionError(null);
+    setJobs(previous => previous.map(candidate => candidate.id === jobId ? { ...candidate, status: "cancelling" } : candidate));
+    try {
+      const res = await studioApiFetch(studioProjectUrl(`/api/render/${encodeURIComponent(job.nativeJobId)}/cancel`, projectId), { method: "POST" });
+      if (currentProject.current !== projectId) return;
+      if (!res.ok) throw new Error("Couldn't confirm cancellation. Check the original export.");
+      const data = await res.json();
+      const status = readRenderStatus(data.status);
+      if (!status) throw new Error("Couldn't confirm cancellation. Check the original export.");
+      setJobs(previous => previous.map(candidate => candidate.id === jobId && isPendingRender(candidate)
+        ? { ...candidate, status, lastCheckedAt: Date.now() } : candidate));
+    } catch (error) {
+      if (currentProject.current !== projectId) return;
+      const message = error instanceof Error ? error.message : "Couldn't confirm cancellation. Check the original export.";
+      setJobs(previous => previous.map(candidate => candidate.id === jobId && isPendingRender(candidate)
+        ? { ...candidate, status: "unknown", error: message } : candidate));
+      setActionError(message);
+    }
+  }, [projectId, setJobs]);
 
   const deleteRender = useCallback(
     async (jobId: string) => {
       setActionError(null);
       closeActiveEventSource(jobId);
       try {
-        const res = await studioApiFetch(`/api/render/${encodeURIComponent(jobId)}`, { method: "DELETE" });
+        const res = await studioApiFetch(studioProjectUrl(`/api/render/${encodeURIComponent(jobId)}`, projectId), { method: "DELETE" });
         if (!res.ok) {
           setActionError("Couldn't delete the render. It's still on disk.");
           return;
@@ -523,7 +502,7 @@ export function useRenderQueue(
       }
       setJobs((prev) => prev.filter((j) => j.id !== jobId));
     },
-    [closeActiveEventSource],
+    [closeActiveEventSource, projectId, setJobs],
   );
 
   // Hide finished rows from the list (view-only — files stay on disk and can
@@ -531,15 +510,15 @@ export function useRenderQueue(
   // rows don't resurrect from history on reload.
   const clearCompleted = useCallback(() => {
     setJobs((prev) => {
-      const finished = prev.filter((j) => j.status !== "rendering");
+      const finished = prev.filter((j) => !isPendingRender(j));
       if (projectId && finished.length > 0) {
         const hidden = readHiddenIds(projectId);
         for (const j of finished) hidden.add(j.id);
         writeHiddenIds(projectId, hidden);
       }
-      return prev.filter((j) => j.status === "rendering");
+      return prev.filter(isPendingRender);
     });
-  }, [projectId]);
+  }, [projectId, setJobs]);
 
   const dismissActionError = useCallback(() => setActionError(null), []);
 
@@ -548,29 +527,19 @@ export function useRenderQueue(
   // keeps one trigger for every path, including SSE drops and cancels-that-
   // finished-anyway. `requestStudioFeedback` decides whether to actually ask.
   useEffect(() => {
-    // The terminal state this tab observed, once per accepted render. Rows loaded
-    // from disk history and rows for refused starts were never tracked here.
     for (const job of jobs) {
-      const started = job.status === "rendering" ? undefined : trackedExports.current.get(job.id);
-      if (!started) continue;
-      if (job.status === "cancelled" && cancelling.current.has(job.id)) continue;
-      trackedExports.current.delete(job.id);
-      if (unconfirmedCancels.current.delete(job.id)) continue;
-      const reconciled = settledBeforeCancel.current.get(job.id);
-      settledBeforeCancel.current.delete(job.id);
-      reportExportResult({
-        export_id: started.exportId,
-        job_state: reconciled ?? (job.status === "complete" ? "completed" : job.status === "cancelled" ? "cancelled" : "failed"),
+      if (!["complete", "failed", "cancelled"].includes(job.status)) continue;
+      const started = job.requestId && trackedExports.current.get(job.requestId);
+      if (!started || !started.reported || !job.requestId) continue;
+      trackedExports.current.delete(job.requestId);
+      reportExportResult({ export_id: started.exportId,
+        job_state: job.status === "complete" ? "completed" : job.status === "cancelled" ? "cancelled" : "failed",
         duration_ms: Math.min(86_400_000, Math.max(0, Math.round(job.durationMs ?? Date.now() - job.createdAt))),
-        ...started.settings,
-        ...((reconciled ?? job.status) === "failed"
-          ? { error_code: started.lost ? ("CONNECTION_LOST" as const) : ("RENDER_FAILED" as const) }
-          : {}),
-        ...projectFields(projectId),
-      });
+        ...started.settings, ...(job.status === "failed" ? { error_code: "RENDER_FAILED" as const } : {}),
+        ...projectFields(projectId) });
     }
     for (const job of jobs) {
-      if (job.status === "rendering" || job.status === "cancelled") continue;
+      if (job.status !== "complete" && job.status !== "failed") continue;
       const settings = sessionJobs.current.get(job.id);
       if (!settings || promptedJobIds.current.has(job.id)) continue;
       promptedJobIds.current.add(job.id);
@@ -592,26 +561,19 @@ export function useRenderQueue(
         },
       });
     }
-  }, [jobs, projectId, cancelSettled]);
+  }, [jobs, projectId]);
 
-  // Clean up EventSource on unmount or projectId change
-  useEffect(() => {
-    return () => {
-      eventSourceRef.current?.close();
-      eventSourceRef.current = null;
-      trackedExports.current.clear();
-    };
-  }, [projectId]);
-
-  const isRendering = jobs.some((j) => j.status === "rendering");
+  const isRendering = Boolean(projectId && (startingProject === projectId || jobs.some(blocksProjectWork)));
   return useMemo(
     () => ({
       jobs,
       isRendering,
+      checking,
       loadError,
       actionError,
       dismissActionError,
       reloadRenders: loadRenders,
+      recheckRender,
       deleteRender,
       cancelRender,
       clearCompleted,
@@ -627,10 +589,12 @@ export function useRenderQueue(
     [
       jobs,
       isRendering,
+      checking,
       loadError,
       actionError,
       dismissActionError,
       loadRenders,
+      recheckRender,
       deleteRender,
       cancelRender,
       clearCompleted,

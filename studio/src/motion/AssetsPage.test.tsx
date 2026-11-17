@@ -3,10 +3,11 @@ import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { AssetsPage } from './AssetsPage';
-import { assetRequest } from './assetClient';
+import { assetRequest, uploadLibraryAsset } from './assetClient';
+import { AssetUploadError } from './assetUploadError';
 import type { LibraryAsset } from '../../../shared/asset-library';
 
-vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ t: (text: string, values?: { count: number }) => text.replace('{count}', String(values?.count)), formatDate: () => 'Nov 15' }) }));
+vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ t: (text: string, values?: Record<string, string | number>) => text.replace(/\{(\w+)\}/g, (match, key) => String(values?.[key] ?? match)), formatDate: () => 'Nov 15' }) }));
 vi.mock('./ResizablePane', () => ({ ResizablePane: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
 vi.mock('./AssetComposer', () => ({ AssetComposer: ({ onReference }: { onReference: () => void }) => <><input aria-label="Creation draft" /><button onClick={onReference}>References</button></> }));
 vi.mock('./AssetTaskHistory', () => ({ AssetTaskMenu: () => null }));
@@ -61,6 +62,61 @@ const button = (text: string) => [...document.querySelectorAll<HTMLButtonElement
 async function click(text: string) { await act(async () => button(text).click()); await flush(); }
 const previewName = () => container.querySelector('.om-asset-workspace-header strong')?.textContent;
 const updates = () => vi.mocked(assetRequest).mock.calls.map(([args]) => args).filter(args => args.action === 'update');
+
+async function uploadBatch(count: number) {
+  const input = container.querySelector<HTMLInputElement>('input[type=file][multiple]')!;
+  const files = Array.from({ length: count }, (_, i) => new File(['data'], `file-${i}.png`));
+  Object.defineProperty(input, 'files', { configurable: true, value: files });
+  await act(async () => input.dispatchEvent(new Event('change', { bubbles: true }))); await flush();
+}
+it('summarizes four failures and one success once and displays the successful asset in the library', async () => {
+  await render();
+  vi.mocked(uploadLibraryAsset).mockRejectedValue(new AssetUploadError('rejected', 'size'))
+    .mockImplementationOnce(async () => { const asset = fixture('uploaded'); records.set(asset.id, asset); return asset; });
+  await uploadBatch(5);
+  const notices = document.querySelectorAll('[role=alert], [role=status]');
+  expect(notices).toHaveLength(1);
+  expect(notices[0].textContent).toBe('Uploaded 1, not uploaded 4. Known issue: files exceed the size limit. Compress or replace those files.');
+  expect(container.querySelector('[aria-label="Picture uploaded"]')).not.toBeNull();
+  expect(vi.mocked(uploadLibraryAsset)).toHaveBeenCalledTimes(5);
+  expect([...notices[0].querySelectorAll('button')].map(b => b.getAttribute('aria-label'))).toEqual(['Dismiss error']);
+  await act(async () => vi.advanceTimersByTimeAsync(2999));
+  expect(document.querySelector('[role=alert]')).not.toBeNull();
+  await act(async () => vi.advanceTimersByTimeAsync(161));
+  expect(document.querySelector('[role=alert]')).toBeNull();
+  expect(container.querySelector('[aria-label="Picture uploaded"]')).not.toBeNull();
+});
+it('combines only observed causes and keeps unknown results out of the failure count', async () => {
+  await render();
+  vi.mocked(uploadLibraryAsset).mockRejectedValueOnce(new AssetUploadError('rejected', 'unreadable'))
+    .mockRejectedValueOnce(new AssetUploadError('rejected', 'unsupported'))
+    .mockRejectedValueOnce(new AssetUploadError('unknown'));
+  await uploadBatch(3);
+  const text = document.querySelector('[role=alert]')?.textContent;
+  expect(text).toBe('Uploaded 0, not uploaded 2, awaiting confirmation 1. Known issues: unreadable files and unsupported formats. Re-export, convert or replace those files. Check the asset library before uploading unconfirmed files again.');
+  expect(text).not.toContain('oversized');
+  expect(vi.mocked(uploadLibraryAsset)).toHaveBeenCalledTimes(3);
+});
+it('refreshes the library after an unconfirmed response without resubmitting or inventing success', async () => {
+  await render();
+  vi.mocked(uploadLibraryAsset).mockImplementationOnce(async () => { records.set('uncertain', fixture('uncertain')); throw new AssetUploadError('unknown'); });
+  await uploadBatch(1);
+  expect(document.querySelector('[role=alert]')?.textContent).toBe('Uploaded 0, awaiting confirmation 1. Check the asset library before uploading unconfirmed files again.');
+  expect(container.querySelector('[aria-label="Picture uncertain"]')).not.toBeNull();
+  expect(vi.mocked(uploadLibraryAsset)).toHaveBeenCalledOnce();
+});
+it('shows one short success summary and no notice for an empty selection', async () => {
+  await render(); vi.mocked(uploadLibraryAsset).mockResolvedValue(fixture('uploaded'));
+  await uploadBatch(0); expect(document.querySelector('[role=status]')).toBeNull();
+  await uploadBatch(2); expect(document.querySelector('[role=status]')?.textContent).toBe('Uploaded 2.');
+  await act(async () => vi.advanceTimersByTimeAsync(3160));
+  expect(document.querySelector('[role=status]')).toBeNull();
+});
+it('reports a definite rejection with no invented cause', async () => {
+  await render(); vi.mocked(uploadLibraryAsset).mockRejectedValue(new AssetUploadError('rejected'));
+  await uploadBatch(2);
+  expect(document.querySelector('[role=alert]')?.textContent).toBe('Uploaded 0, not uploaded 2.');
+});
 
 it('switches between the narrow gallery and creator without remounting the draft or losing gallery state', async () => {
   await render(); await click('AI Create');

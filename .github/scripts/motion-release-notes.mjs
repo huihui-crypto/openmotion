@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { releaseInputs, verifyDownloaded, repository, releaseChannel, candidateNoteIdentity } from './motion-release.mjs';
 import { sha256 } from '../../scripts/runtime-assets.mjs';
-import { compareReleaseVersions } from '../../scripts/release-version.mjs';
+import { comparePublicationVersions } from '../../scripts/release-version.mjs';
 
 function githubApi(env, fetcher) {
   return async (route, method = 'GET', data, allowMissing = false) => {
@@ -33,8 +33,8 @@ async function listReleases(api) {
 
 function previousRelease(releases, version, prerelease) {
   return releases.filter(r => !r.draft && r.prerelease === prerelease && /^v\d+\.\d+\.\d+(?:-test\.[1-9]\d*(?:\.[1-9]\d*)*)?$/.test(r.tag_name))
-    .filter(r => compareReleaseVersions(r.tag_name.slice(1), version) < 0)
-    .sort((a, b) => compareReleaseVersions(b.tag_name.slice(1), a.tag_name.slice(1)))[0];
+    .filter(r => comparePublicationVersions(r.tag_name.slice(1), version) < 0)
+    .sort((a, b) => comparePublicationVersions(b.tag_name.slice(1), a.tag_name.slice(1)))[0];
 }
 
 export async function prepareCandidateNotes(directory, { env = process.env, fetcher = fetch } = {}) {

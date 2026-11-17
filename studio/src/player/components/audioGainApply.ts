@@ -3,6 +3,7 @@ import type { TimelineElement } from "../store/timelineElement";
 import type { TimelineEditCallbacks } from "./timelineCallbacks";
 import {
   normalizeToastText,
+  reachesLoudnessTarget,
   requestNormalizePlan,
   throwUnlessSaved,
   VOLUME_LANE_REFUSAL,
@@ -43,6 +44,7 @@ export async function normalizeClipsLoudness(
   elements: readonly TimelineElement[],
   writers: VolumeWriters,
 ): Promise<string> {
+  if (elements.length === 0) return "No audio clips selected.";
   if (elements.some(volumeLaneOwnsGain)) throw new Error(VOLUME_LANE_REFUSAL);
   const plans = await Promise.all(elements.map((el) => requestNormalizePlan(projectId, el)));
   await writeClipGains(
@@ -51,7 +53,7 @@ export async function normalizeClipsLoudness(
     "Normalize loudness",
   );
   const [only] = plans;
-  return plans.length === 1 && only
-    ? normalizeToastText(only)
-    : `Normalized ${plans.length} clips to −16 LUFS`;
+  if (plans.length === 1 && only) return normalizeToastText(only);
+  const matched = plans.filter(reachesLoudnessTarget).length;
+  return `Adjusted ${plans.length} clips: ${matched} expected to reach target; ${plans.length - matched} unable to reach target.`;
 }

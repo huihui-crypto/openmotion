@@ -40,7 +40,7 @@ it('real editor helpers reach only same-origin tracking with coalescing and safe
   expect(JSON.stringify(packets)).not.toMatch(/PRIVATE|api_key|installation_id|distinct_id|phc_/);
 });
 
-it('both existing public entry points deliver all 78 migrated producer payloads', async () => {
+it('both existing public entry points deliver all 80 migrated producer payloads', async () => {
   const { packets } = collector();
   const { trackStudioEvent } = await import('../utils/studioTelemetry');
   const { trackEvent } = await import('../telemetry/client');
@@ -53,8 +53,8 @@ it('both existing public entry points deliver all 78 migrated producer payloads'
     }
     await flushStudioUsage();
   }
-  expect(packets).toHaveLength(78);
-  expect(new Set(packets.map(row => row.event)).size).toBe(78);
+  expect(packets).toHaveLength(80);
+  expect(new Set(packets.map(row => row.event)).size).toBe(80);
   expect(JSON.stringify(packets)).not.toContain('PRIVATE');
 });
 

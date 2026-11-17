@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runFile, sha256, writeJSON } from '../../scripts/runtime-assets.mjs';
-import { compareReleaseVersions } from '../../scripts/release-version.mjs';
+import { comparePublicationVersions } from '../../scripts/release-version.mjs';
 
 export function storagePlan(record, { endpoint, bucket, publicOrigin }) {
   const api = new URL(endpoint), origin = new URL(publicOrigin);
@@ -68,7 +68,7 @@ export async function publishGuide(directory, config, { run = runFile, fetcher =
       await writeFile(path.join(directory, 'previous-install.md'), previous.bytes);
       const version = previous.bytes.toString('utf8').match(/^# Install OpenMotion (\S+)\s*$/m)?.[1];
       assert(version, 'Existing default guide has no recognizable version; inspect it before promotion');
-      if (compareReleaseVersions(version, record.version) > 0) {
+      if (comparePublicationVersions(version, record.version) > 0) {
         const publication = { ...record, ...plan, phase: 'superseded', promoted: false, currentVersion: version };
         await writeJSON(path.join(directory, 'publication.json'), publication);
         return publication;

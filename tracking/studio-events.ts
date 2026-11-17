@@ -12,6 +12,12 @@ const error = { error_name: studioErrorNames } as const;
 const sdk = { family: ['dom', 'timing', 'gsap-animation', 'gsap-keyframe', 'lifecycle'], opCount: 'integer' } as const;
 const desktop = { os: ['darwin', 'win32', 'linux', 'macos', 'windows', 'unknown'], app_installed: 'boolean', download_available: 'boolean' } as const;
 const audio = { track_kind: ['voice', 'music', 'sfx', 'unknown'] } as const;
+const studioIo = {
+  action: ['import_files', 'replace_failed_import', 'refresh_import_list', 'recheck_render', 'recheck_file', 'open_render', 'download_render', 'reload_editor'],
+  attempt_id: 'uuid', requested_count: 'integer', added_count: 'integer', failed_count: 'integer', unknown_count: 'integer', pending_count: 'integer',
+  listing_status: ['ready', 'loading', 'failed'], state_after: ['rendering', 'cancelling', 'complete', 'failed', 'cancelled', 'unknown'],
+  file_status: ['available', 'unavailable', 'unknown'], delivery_status: ['browser_save_requested', 'opened', 'popup_blocked'],
+} as const;
 // Fixed identifiers from the pinned engine catalog; authored/custom identifiers become "other".
 export const audioEffects = ['gain', 'peaking', 'lowshelf', 'highshelf', 'highpass', 'lowpass', 'compressor', 'limiter', 'truepeak', 'gate', 'saturate', 'bitcrush', 'pitchshift', 'delay', 'chorus', 'phaser', 'reverb', 'other'] as const;
 export const audioPresets = ['voice-clean', 'voice-broadcast', 'voice-warm', 'rumble-cut', 'room-gate', 'boom-tame', 'harsh-tame', 'telephone', 'radio-am', 'megaphone', 'lofi-tape', 'pa-system', 'intercom', 'doofus-worble', 'chipmunk', 'giant', 'monster', 'room-tight', 'room-natural', 'hall', 'slap-echo', 'dub-throw', 'other'] as const;
@@ -32,6 +38,8 @@ const resolver = { opLabel: resolverOperations, sessionEmpty: 'boolean', session
 export const studioUsageEvents = {
   session_start: studio({}, []),
   studio_session_start: studio({ has_project: 'boolean' }, ['has_project']),
+  studio_io_action: studio(studioIo, ['action', 'attempt_id']),
+  studio_io_result: studio({ ...studioIo, outcome: ['success', 'failure', 'partial', 'cancelled', 'unknown'] }, ['action', 'attempt_id', 'outcome']),
   preview_first_frame: studio({ duration_ms: measurement, composition_seconds: measurement, clip_count: 'integer', media_clip_count: 'integer', studio_version: 'code' }, ['duration_ms']),
   studio_render_start: studio({ fps: measurement, quality: 'code', format: ['mp4', 'mov', 'webm', 'gif'], resolution: 'code' }, ['fps', 'format']),
   render_start: studio({ fps: measurement, quality: 'code', format: ['mp4', 'mov', 'webm', 'gif'], resolution: 'code' }, ['fps', 'format']),

@@ -1,12 +1,7 @@
 // Curated reference pool shared by every onboarding host. Select once per preparation.
 export const onboardingTemplateIds = [
   'motion-664184d9-593e-4984-b473-701248b69cfe',
-  'motion-b31d078a-4e5e-461e-8b43-3101ee0a2f93',
-  'motion-1e48dea5-903d-48f6-b10e-99a70f1c183d',
   'motion-f6f244d1-c549-4081-8a5d-f0e1e3660044',
-  'motion-d8eea6d9-b25b-4727-823d-d102070ea694',
-  'motion-5eb6929e-d9f3-4a49-a69e-0363e45884dc',
-  'motion-dac924da-010f-4445-baf3-a39cb033e48f',
   'motion-0ad92fd0-b2fb-4885-957c-b71152df15fd',
   'motion-a28f0e5d-aa8b-45a7-87f9-9afcac65a09b',
 ] as const;

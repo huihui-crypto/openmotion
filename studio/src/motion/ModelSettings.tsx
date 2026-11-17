@@ -1,6 +1,6 @@
 import * as tracking from './pageTracking';
 import { Tooltip } from "../components/ui/Tooltip";
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { type DirectoryModel, type ProviderConnection, type ProviderDirectory } from '../../../shared/provider-directory';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -14,6 +14,7 @@ import { ProviderAvatar, ModelAvatar, SettingsDialog, SettingsError, SettingsLoa
 
 import { ModelEditor, kindLabels, capabilityLabels } from './ModelEditor';
 import { ModelCatalog } from './ModelCatalog';
+import { apiKeyError, apiUrlError, providerNameError } from './settingsValidation';
 export { kindLabels } from './ModelEditor';
 const categories = [{ id: 'all', label: 'All providers' }, { id: 'configured', label: 'Configured' }, { id: 'multimodal', label: 'Multimodal' }, { id: 'language', label: 'Language' }, { id: 'media', label: 'Media' }, { id: 'local', label: 'Local' }, { id: 'custom', label: 'Custom' }];
 type Change = (action: () => Promise<unknown>, message: string) => Promise<boolean>;
@@ -78,6 +79,29 @@ export function ModelSettings({ onClose, openAccount, initialCategory = 'all', p
   </section>;
 }
 
+function useProviderValidation(label: string | undefined, baseUrl: string | undefined, apiKey: string, provider?: ProviderConnection) {
+  const [validated, setValidated] = useState(false), [focusRequest, setFocusRequest] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
+  const errors = { label: label === undefined ? undefined : providerNameError(label), baseUrl: baseUrl === undefined ? undefined : apiUrlError(baseUrl, provider?.protocol === 'media'), apiKey: apiKeyError(apiKey) };
+  if (provider?.protocol !== 'media' && provider?.credentialSource === 'stored' && !apiKey.trim() && baseUrl !== undefined && !errors.baseUrl) {
+    let storedOrigin: string | undefined;
+    try { storedOrigin = new URL(provider.baseUrl).origin; } catch { /* An unset or malformed stored URL has no origin to compare. */ }
+    if (storedOrigin && new URL(baseUrl).origin !== storedOrigin) {
+      errors.apiKey = 'Enter the API key again when changing the API origin.';
+    }
+  }
+  useEffect(() => {
+    if (!focusRequest) return;
+    const field = formRef.current?.querySelector<HTMLInputElement>('[aria-invalid="true"]');
+    field?.focus(); field?.scrollIntoView({ block: 'nearest' });
+  }, [focusRequest]);
+  return { formRef, reset: () => setValidated(false), errors: validated ? errors : { label: undefined, baseUrl: undefined, apiKey: undefined }, validate: () => {
+    setValidated(true);
+    if (Object.values(errors).some(Boolean)) { setFocusRequest(value => value + 1); return false; }
+    return true;
+  } };
+}
+
 function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: { provider: ProviderConnection; data: ProviderDirectory; openAccount?: () => void; showToast: ReturnType<typeof useToast>['showToast']; onRemoved: () => void }) {
   const { t } = useI18n();
   const [apiKey, setApiKey] = useState(''), [baseUrl, setBaseUrl] = useState(provider.baseUrl), [label, setLabel] = useState(provider.label);
@@ -86,6 +110,8 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
   const models = data.models.filter(model => model.provider === provider.id);
 
   const fixedOrigin = provider.baseUrlEditable === false;
+  const validation = useProviderValidation(provider.custom ? label : undefined, fixedOrigin ? undefined : baseUrl, apiKey, provider);
+  const keyErrorId = useId();
   useEffect(() => { setBaseUrl(provider.baseUrl); setLabel(provider.label); }, [provider.baseUrl, provider.label]);
   const change: Change = async (action, message) => {
     setBusy(true);
@@ -102,13 +128,13 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
     {provider.protocol === 'account' ? <div className="om-card om-account-callout"><RemixIcon name="account-circle-line" size={28} /><div><h2 className="om-subtitle">{t(provider.configured ? 'Your OpenDesign models, in OpenMotion' : 'One account. Your models, together.')}</h2><p className="om-muted">{t(provider.configured ? 'Account models and your own providers can be selected side by side.' : 'Sign in with OpenDesign to sync your models, subscription and usage.')}</p><button className="om-button" data-primary onClick={openAccount}>{t(provider.configured ? 'Manage account' : 'Sign in with OpenDesign')}</button></div></div>
       : provider.protocol === 'agent' ? <div className="om-card om-card-stack"><h2 className="om-subtitle">{t('Local Agent')}</h2><p className="om-muted">{t(provider.reason)}</p><p className="om-muted">{t('Uses your installed Agent and its own sign-in. No API key is copied.')}</p><button className="om-button" disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}/sync`, 'POST', {}), 'Agent status refreshed')}>{t('Refresh status')}</button></div>
       : provider.setupRequired ? <div className="om-card om-card-stack"><h2 className="om-subtitle">{t('Dedicated integration required')}</h2><p className="om-muted">{t(provider.reason)}</p>{provider.website && <a className="om-button" href={provider.website} target="_blank" rel="noreferrer">{t('Provider website')}<RemixIcon name="external-link-line" size={14} /></a>}</div>
-      : <form className="om-provider-form" onSubmit={event => { event.preventDefault(); void change(async () => {
-        await gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}), ...(!fixedOrigin ? { baseUrl: baseUrl.trim() } : {}), ...(provider.custom ? { label } : {}) }); setApiKey(''); setVisible(false);
+      : <form noValidate ref={validation.formRef} className="om-provider-form" onSubmit={event => { event.preventDefault(); if (!validation.validate()) return; void change(async () => {
+        await gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}), ...(!fixedOrigin ? { baseUrl: baseUrl.trim() } : {}), ...(provider.custom ? { label } : {}) }); validation.reset(); setApiKey(''); setVisible(false);
       }, 'Provider settings saved'); }}>
-        {provider.custom && <TextField label={t('Provider name')} value={label} onChange={setLabel} required />}
-        <label className="om-label">{t('API key')}<span className="om-field"><input type={visible ? 'text' : 'password'} aria-label={`${provider.label} API key`} autoComplete="off" spellCheck={false} value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={t(provider.configured ? 'Key saved · enter to replace' : 'Paste your API key')} /><Tooltip label={t(visible ? 'Hide API key' : 'Show API key')} wrap><button type="button" className="motion-icon-button" aria-label={t(visible ? 'Hide API key' : 'Show API key')} onClick={() => setVisible(value => !value)}><RemixIcon name={visible ? 'eye-off-line' : 'eye-line'} size={16} /></button></Tooltip></span></label>
+        {provider.custom && <TextField label={t('Provider name')} value={label} onChange={setLabel} error={validation.errors.label} required />}
+        <label className="om-label">{t('API key')}<span className="om-field"><input type={visible ? 'text' : 'password'} aria-label={`${provider.label} API key`} aria-invalid={Boolean(validation.errors.apiKey) || undefined} aria-describedby={validation.errors.apiKey ? keyErrorId : undefined} autoComplete="off" spellCheck={false} value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder={t(provider.configured ? 'Key saved · enter to replace' : 'Paste your API key')} /><Tooltip label={t(visible ? 'Hide API key' : 'Show API key')} wrap><button type="button" className="motion-icon-button" aria-label={t(visible ? 'Hide API key' : 'Show API key')} onClick={() => setVisible(value => !value)}><RemixIcon name={visible ? 'eye-off-line' : 'eye-line'} size={16} /></button></Tooltip></span><small id={keyErrorId} className="om-field-error" role={validation.errors.apiKey ? 'alert' : undefined}>{validation.errors.apiKey ? t(validation.errors.apiKey) : null}</small></label>
         <div className="om-settings-row"><span className="om-muted">{t(provider.credentialSource === 'environment' ? 'Using environment key' : 'Keys stay on this computer and are never returned by the API.')}</span>{provider.website && <a href={provider.website} target="_blank" rel="noreferrer" className="om-text-link">{t('Get API key')}<RemixIcon name="external-link-line" size={13} /></a>}</div>
-        {!fixedOrigin && <TextField label={t('API base URL')} value={baseUrl} onChange={setBaseUrl} type="url" required placeholder="https://api.example.com/v1" />}
+        {!fixedOrigin && <TextField label={t('API base URL')} value={baseUrl} onChange={setBaseUrl} error={validation.errors.baseUrl} type="url" required placeholder="https://api.example.com/v1" />}
         <div className="om-settings-row"><div className="om-settings-actions"><button className="om-button" data-primary disabled={busy || !apiKey.trim() && baseUrl === provider.baseUrl && label === provider.label}>{t(busy ? 'Saving…' : 'Save settings')}</button>
           {provider.credentialSource === 'stored' && <button className="om-button" type="button" disabled={busy} onClick={() => void change(async () => { await gatewayRequest(`settings/providers/${provider.id}`, 'PUT', { apiKey: null }); setApiKey(''); }, 'Saved key removed')}>{t('Remove saved key')}</button>}</div>
           {provider.docs && <a className="om-text-link" href={provider.docs} target="_blank" rel="noreferrer">{t('Usage guide')}<RemixIcon name="external-link-line" size={13} /></a>}
@@ -121,8 +147,8 @@ function ProviderDetail({ provider, data, openAccount, showToast, onRemoved }: {
     </section>
     {provider.custom && <div className="om-settings-row om-provider-remove"><span className="om-muted">{t('Remove this provider and its saved models from this workspace.')}</span><button className="om-button" disabled={busy} onClick={() => setRemoving(true)}>{t('Delete provider')}</button></div>}
     {removing && <SettingsDialog title={t('Delete provider')} onClose={() => setRemoving(false)}><p className="om-muted">{t('This removes the saved key and models. Existing project media is kept.')}</p><div className="om-settings-actions"><button className="om-button" onClick={() => setRemoving(false)}>{t('Cancel')}</button><button className="om-button" data-primary disabled={busy} onClick={() => void change(() => gatewayRequest(`settings/providers/${provider.id}`, 'DELETE'), 'Provider deleted').then(ok => { if (ok) onRemoved(); })}>{t('Delete')}</button></div></SettingsDialog>}
-    {editing && <ModelEditor provider={provider} model={editing} onClose={() => setEditing(null)} onError={message => showToast(message, 'error')} save={input => change(() => gatewayRequest('settings/models', 'PATCH', input), 'Model updated')} />}
-    {addModel && <ModelEditor onError={message => showToast(message, 'error')} provider={provider} onClose={() => setAddModel(false)} save={input => change(() => gatewayRequest(`settings/providers/${provider.id}/models`, 'POST', input), 'Model added')} />}
+    {editing && <ModelEditor provider={provider} model={editing} onClose={() => setEditing(null)} save={input => change(() => gatewayRequest('settings/models', 'PATCH', input), 'Model updated')} />}
+    {addModel && <ModelEditor provider={provider} onClose={() => setAddModel(false)} save={input => change(() => gatewayRequest(`settings/providers/${provider.id}/models`, 'POST', input), 'Model added')} />}
   </div>;
 }
 
@@ -134,20 +160,22 @@ function ModelRow({ model, provider, selected, busy, change, edit }: { model: Di
     <Menu tooltip={t('Model options')} modal={false} trigger={<button className="motion-icon-button" aria-label={t('Model options')}><RemixIcon name="more-2-line" size={16} /></button>}><MenuItem onClick={edit}>{t('Edit model')}</MenuItem>{!['media', 'agent', 'account'].includes(provider.protocol) && <><MenuSeparator /><MenuItem onClick={() => void change(() => gatewayRequest('settings/models', 'PUT', { id: model.id, enabled: !model.enabled }), 'Model updated')}>{t(model.enabled ? 'Disable model' : 'Enable model')}</MenuItem><MenuItem onClick={() => void change(() => gatewayRequest('settings/models', 'PUT', { id: model.id, enabled: null }), 'Model removed')}>{t('Remove model')}</MenuItem></>}</Menu>
   </div>;
 }
-function TextField({ label, value, onChange, type = 'text', required, placeholder }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; placeholder?: string }) {
-  return <label className="om-label">{label}<span className="om-field"><input type={type} required={required} aria-label={label} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} autoComplete="off" spellCheck={false} /></span></label>;
+function TextField({ label, value, onChange, type = 'text', required, placeholder, error }: { label: string; value: string; onChange: (value: string) => void; type?: string; required?: boolean; placeholder?: string; error?: string }) {
+  const id = useId(), { t } = useI18n();
+  return <label className="om-label">{label}<span className="om-field"><input type={type} required={required} aria-label={label} aria-invalid={Boolean(error) || undefined} aria-describedby={error ? id : undefined} value={value} onChange={event => onChange(event.target.value)} placeholder={placeholder} autoComplete="off" spellCheck={false} /></span><small id={id} className="om-field-error" role={error ? 'alert' : undefined}>{error ? t(error) : null}</small></label>;
 }
 function AddProvider({ onClose, onAdded, showToast }: { onClose: () => void; onAdded: (id: string) => void; showToast: ReturnType<typeof useToast>['showToast'] }) {
   const { t } = useI18n();
   const [label, setLabel] = useState(''), [apiKey, setApiKey] = useState(''), [baseUrl, setBaseUrl] = useState(''), [protocol, setProtocol] = useState('openai'), [busy, setBusy] = useState(false);
-  return <SettingsDialog title={t('Add custom provider')} onClose={onClose}><form className="om-provider-form" onSubmit={event => { event.preventDefault(); setBusy(true); void gatewayRequest<{ id: string }>('settings/providers', 'POST', { label, apiKey: apiKey.trim() || undefined, baseUrl, protocol }).then(({ id }) => { tracking.reportProviderSetting({ id, custom: true }, 'add_provider', 'success'); setApiKey(''); onAdded(id); }).catch(error => { tracking.reportProviderSetting({ id: '', custom: true }, 'add_provider', 'failure'); showToast(error.message, 'error'); }).finally(() => setBusy(false)); }}>
+  const validation = useProviderValidation(label, baseUrl, apiKey);
+  return <SettingsDialog title={t('Add custom provider')} onClose={onClose}><form noValidate ref={validation.formRef} className="om-provider-form" onSubmit={event => { event.preventDefault(); if (!validation.validate()) return; setBusy(true); void gatewayRequest<{ id: string }>('settings/providers', 'POST', { label, apiKey: apiKey.trim() || undefined, baseUrl, protocol }).then(({ id }) => { tracking.reportProviderSetting({ id, custom: true }, 'add_provider', 'success'); setApiKey(''); onAdded(id); }).catch(error => { tracking.reportProviderSetting({ id: '', custom: true }, 'add_provider', 'failure'); showToast(error.message, 'error'); }).finally(() => setBusy(false)); }}>
     <div className="om-provider-avatar-preview"><ProviderAvatar name={label || 'P'} /></div>
-    <TextField label={t('Provider name')} value={label} onChange={setLabel} required placeholder={t('My provider')} />
-    <TextField label={t('API key')} value={apiKey} onChange={setApiKey} type="password" placeholder={t('Paste your API key')} />
+    <TextField label={t('Provider name')} value={label} onChange={setLabel} error={validation.errors.label} required placeholder={t('My provider')} />
+    <TextField label={t('API key')} value={apiKey} onChange={setApiKey} error={validation.errors.apiKey} type="password" placeholder={t('Paste your API key')} />
     <div className="om-label">{t('API protocol')}<Select label={t('API protocol')} value={protocol} onCommit={setProtocol} options={[{ value: 'openai', label: 'OpenAI compatible', icon: <ProviderAvatar name="OpenAI" provider={{ id: 'openai', custom: false }} /> }, { value: 'anthropic', label: 'Anthropic', icon: <ProviderAvatar name="Anthropic" provider={{ id: 'anthropic', custom: false }} /> }, { value: 'google', label: 'Google Gemini', icon: <ProviderAvatar name="Gemini" provider={{ id: 'gemini', custom: false }} /> }]} /></div>
-    <TextField label={t('API base URL')} value={baseUrl} onChange={setBaseUrl} type="url" required placeholder="https://api.example.com/v1" />
+    <TextField label={t('API base URL')} value={baseUrl} onChange={setBaseUrl} error={validation.errors.baseUrl} type="url" required placeholder="https://api.example.com/v1" />
     <small className="om-muted">{t('Include the API version or path prefix used by your provider.')}</small>
     {baseUrl && <p className="om-inset om-muted om-endpoint-preview">{t('Model catalogue')}: {baseUrl.replace(/\/+$/, '')}/models</p>}
-    <div className="om-dialog-actions"><button type="button" className="om-button" disabled={busy} onClick={onClose}>{t('Cancel')}</button><button className="om-button" data-primary disabled={busy || !label.trim() || !baseUrl.trim()}>{t(busy ? 'Adding…' : 'Add provider')}</button></div>
+    <div className="om-dialog-actions"><button type="button" className="om-button" disabled={busy} onClick={onClose}>{t('Cancel')}</button><button className="om-button" data-primary disabled={busy}>{t(busy ? 'Adding…' : 'Add provider')}</button></div>
   </form></SettingsDialog>;
 }

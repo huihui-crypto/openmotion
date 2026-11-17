@@ -35,11 +35,7 @@ export function TimelineBehaviorToggles() {
             </button>
           </Tooltip>
 <Tooltip
-            label={
-              rippleEditEnabled
-                ? t("Main track magnet")
-                : t("Main track magnet")
-            }
+            label={t("Main track magnet: closes gaps after deletion. Undo ({shortcut}) restores the edit; turn this off to keep gaps.", { shortcut: keyHint("undo", keys) })}
           >
             <button
               type="button"

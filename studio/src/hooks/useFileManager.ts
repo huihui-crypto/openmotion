@@ -13,7 +13,9 @@ import { useProjectFileWriter } from "./useProjectFileWriter";
 import { studioApiFetch } from "../utils/studioApiFetch";
 import { importErrorCategory, reportAssetImport, reportEdit, setProjectInventory, type ImportEntryPoint, type ImportErrorCategory } from "../motion/editorTracking";
 import { encodeUrlPath } from "@hyperframes/parsers";
+import { beginStudioIo } from "../telemetry/ioRecovery";
 import { prepareFontImport } from "../components/editor/fontImport";
+import { manualImportResults, UNKNOWN_IMPORT_REASON, type ManualImportBatch, type ManualImportItem, type ManualImportAttempt, type UploadResponse } from './manualImportResults';
 
 // ── Types ──
 
@@ -41,7 +43,17 @@ export function useFileManager({
   const { t } = useI18n();
   // ── Shared refs ──
 
-  const [pendingImport, setPendingImport] = useState<{ projectId: string; files: File[]; dir?: string } | null>(null);
+  const [pendingImport, setPendingImport] = useState<{ projectId: string; files: File[]; dir?: string; entryPoint?: ImportEntryPoint; attempt?: ManualImportAttempt } | null>(null);
+  const [importBatch, setImportBatch] = useState<ManualImportBatch | null>(null);
+  const importBatchRef = useRef(importBatch);
+  importBatchRef.current = importBatch;
+  const importSequence = useRef(0);
+  const manualImportsInFlight = useRef(new Set<string>());
+  const importBatchEntry = useRef<{ id: string; entryPoint?: ImportEntryPoint } | null>(null);
+  const manualRefreshesInFlight = useRef(new Set<string>());
+  const updateImportBatch = useCallback((pid: string, id: string, update: (batch: ManualImportBatch) => ManualImportBatch) => {
+    setImportBatch(previous => previous?.projectId === pid && previous.id === id ? update(previous) : previous);
+  }, []);
   const [editingFile, setEditingFile] = useState<EditingFile | null>(null);
   const [revealSourceOffset, setRevealSourceOffset] = useState<number | null>(null);
 
@@ -206,71 +218,139 @@ export function useFileManager({
   // ── Upload ──
 
   const uploadProjectFiles = useCallback(
-    async (files: Iterable<File>, dir?: string, entryPoint?: ImportEntryPoint): Promise<string[]> => {
+    async (files: Iterable<File>, dir?: string, entryPoint?: ImportEntryPoint, attempt?: ManualImportAttempt): Promise<string[]> => {
       const pid = projectIdRef.current;
-      const fileList = Array.from(files);
-      if (!pid || fileList.length === 0) return [];
-      // One result per upload request, after the server has answered (or could not).
-      const report = (added: number, category?: ImportErrorCategory) =>
-        reportAssetImport({ projectId: pid, entryPoint, requested: fileList.length, added, category });
-
-      const formData = new FormData();
-      for (const file of fileList) {
-        formData.append("file", file);
-      }
-
-      const qs = dir ? `?dir=${encodeURIComponent(dir)}` : "";
+      let fileList = Array.from(files);
+      if (!pid || fileList.length === 0 || (attempt && manualImportsInFlight.current.has(pid))) return [];
+      let itemIds = attempt?.itemIds ?? fileList.map((_, index) => String(index));
+      const requestedCount = fileList.length;
+      const finish = attempt ? beginStudioIo(attempt.action ?? 'import_files', { requested_count: requestedCount }) : undefined;
+      const results = new Map<string, ManualImportItem['status']>(itemIds.map(id => [id, 'pending']));
+      const addedPaths = new Set<string>();
+      let listingStatus: ManualImportBatch['listing'] = attempt && importBatchRef.current?.id === attempt.batchId ? importBatchRef.current.listing : 'ready';
+      let cancelledBeforeUpload = false;
+      let failureCategory: ImportErrorCategory | undefined;
+      const update = (change: (batch: ManualImportBatch) => ManualImportBatch) => {
+        if (attempt) updateImportBatch(pid, attempt.batchId, change);
+      };
+      const markResults = (items: ManualImportItem[], paths: string[] = []) => {
+        for (const item of items) results.set(item.id, item.status);
+        for (const path of paths) addedPaths.add(path);
+        update(batch => ({ ...batch,
+          items: batch.items.map(item => items.find(result => result.id === item.id) ?? item),
+          paths: [...new Set([...batch.paths, ...paths])],
+        }));
+      };
+      if (attempt) manualImportsInFlight.current.add(pid);
+      update(batch => ({ ...batch, busy: true }));
       try {
-        const res = await studioApiFetch(`/api/projects/${encodeURIComponent(pid)}/upload${qs}`, {
-          method: "POST",
-          body: formData,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.skipped?.length) {
-            showToast(`Skipped (too large): ${data.skipped.join(", ")}`);
+        // Access failures discovered before transmission are safe to reselect.
+        // A transport failure after POST is unknown, never proof of rejection.
+        if (attempt) {
+          const readable: File[] = [], readableIds: string[] = [];
+          for (let index = 0; index < fileList.length; index++) {
+            const file = fileList[index];
+            try {
+              await file.slice(0, 1).arrayBuffer();
+              readable.push(file); readableIds.push(itemIds[index]);
+            } catch {
+              failureCategory = 'unreadable';
+              markResults([{ id: itemIds[index], name: file.name, status: 'failed', reason: t('Cannot access this file. Choose it again.') }]);
+            }
           }
-          if (data.invalid?.length) {
-            const why = data.invalid
-              .map((entry: { name: string; reason: string }) => `${entry.name} (${importValidationMessage(entry.reason, t)})`)
-              .join(", ");
-            showToast(t("Not added: {message}", { message: why }));
+          fileList = readable; itemIds = readableIds;
+          if (!fileList.length) return [];
+          if (projectIdRef.current !== pid) {
+            cancelledBeforeUpload = true;
+            markResults(fileList.map((file, index) => ({ id: itemIds[index], name: file.name, status: 'failed', reason: t('Import did not start because the active project changed. Choose the file again.') })));
+            return [];
           }
-          if (data.unchecked?.length) {
-            const names = data.unchecked.map((entry: { name: string }) => entry.name).join(", ");
-            showToast(t("Added {name}, {message}", { name: names, message: importValidationMessage(data.unchecked[0].reason, t) }), "info");
-          }
-          const added: string[] = Array.isArray(data.files) ? data.files : [];
-          report(
-            added.length,
-            data.skipped?.length
-              ? "too_large"
-              : data.invalid?.length
-                ? importErrorCategory(String(data.invalid[0].reason))
-                : "other",
-          );
-          setPendingImport(previous => previous?.projectId === pid && previous.dir === dir && previous.files.length === fileList.length && previous.files.every((file, index) => file === fileList[index]) ? null : previous);
-          await refreshFileTree();
-          setRefreshKey((k) => k + 1);
-          return added;
-        } else if (res.status === 409 && (await res.clone().json().catch(() => null))?.code === 'NATIVE_RUNTIME_NOT_READY') {
-          if (projectIdRef.current === pid) setPendingImport({ projectId: pid, files: fileList, dir });
-          report(0, "runtime_not_ready");
-          showToast(t('Media components are preparing. Selected files are kept for retry.'), 'info');
-        } else if (res.status === 413) {
-          report(0, "too_large");
-          showToast("Upload rejected: payload too large");
-        } else {
-          report(0, "other");
-          showToast(`Upload failed (${res.status})`);
         }
-      } catch {
-        report(0, "other");
-        showToast("Upload failed: network error");
+        const formData = new FormData();
+        for (const file of fileList) formData.append('file', file);
+        const qs = dir ? `?dir=${encodeURIComponent(dir)}` : '';
+        const res = await studioApiFetch(`/api/projects/${encodeURIComponent(pid)}/upload${qs}`, { method: 'POST', body: formData });
+        if (res.ok) {
+          const data: UploadResponse = await res.json();
+          const paths = Array.isArray(data.files) ? data.files : [];
+          const fileResults = manualImportResults(fileList, itemIds, data, t);
+          markResults(fileResults, paths);
+          update(batch => ({ ...batch, diagnostic: fileResults.some(item => item.status === 'unknown') ? 'The response could not be matched to every selected file.' : undefined }));
+          failureCategory = data.skipped?.length ? 'too_large'
+            : data.invalid?.length ? importErrorCategory(String(data.invalid[0].reason)) : failureCategory;
+          // Manual batches already show each result and its reason. Repeating
+          // legacy notices can imply that the entire batch failed.
+          if (!attempt) {
+            if (data.skipped?.length) showToast(`"${data.skipped.join(', ')}" exceeds the size limit. Compress or replace the file.`, 'error');
+            if (data.invalid?.length) {
+              const names = data.invalid.map(entry => entry.name).join(', ');
+              showToast(`Cannot add "${names}". Re-export or replace the file.`, 'error');
+            }
+            if (data.unchecked?.length) {
+              const names = data.unchecked.map(entry => entry.name).join(', ');
+              showToast(t('Added {name}, {message}', { name: names, message: importValidationMessage(data.unchecked[0].reason, t) }), 'info');
+            }
+          }
+          setPendingImport(previous => previous?.projectId === pid && previous.dir === dir && previous.files.length === fileList.length && previous.files.every((file, index) => file === fileList[index]) ? null : previous);
+          // Bind the strict refresh to the upload owner; failures do not undo a
+          // confirmed import or turn the upload into a retryable failure.
+          listingStatus = 'loading';
+          update(batch => ({ ...batch, listing: 'loading' }));
+          try {
+            await refreshFileTree({ projectId: pid, requiredPaths: paths });
+            listingStatus = 'ready';
+            update(batch => ({ ...batch, listing: 'ready' }));
+            if (projectIdRef.current === pid) setRefreshKey(k => k + 1);
+          } catch {
+            listingStatus = 'failed';
+            update(batch => ({ ...batch, listing: 'failed' }));
+            if (projectIdRef.current === pid) showToast(t(paths.length ? 'Files were imported, but the asset list could not reload.' : 'The asset list could not reload. Check the connection and try again.'), 'error');
+          }
+          return paths;
+        }
+        const body = await res.clone().json().catch(() => null);
+        if (res.status === 409 && body?.code === 'NATIVE_RUNTIME_NOT_READY') {
+          if (projectIdRef.current === pid) setPendingImport({ projectId: pid, files: fileList, dir, entryPoint, attempt: attempt ? { ...attempt, itemIds } : undefined });
+          failureCategory = 'runtime_not_ready';
+          markResults(fileList.map((file, index) => ({ id: itemIds[index], name: file.name, status: 'pending', reason: t('Media components are preparing. Selected files are kept for retry.') })));
+          showToast(t('Media components are preparing. Selected files are kept for retry.'), 'info');
+        } else {
+          update(batch => ({ ...batch, diagnostic: `HTTP ${res.status}${typeof body?.error === 'string' ? `: ${body.error}` : ''}` }));
+          const knownRejection = res.status === 413 || body?.applied === false;
+          if (knownRejection) failureCategory = res.status === 413 ? 'too_large' : 'other';
+          const reason = res.status === 413 ? t('Upload rejected: payload too large. Choose smaller files.') : knownRejection ? t('The server rejected this upload before adding files. Choose the files again.') : t(UNKNOWN_IMPORT_REASON);
+          markResults(fileList.map((file, index) => ({ id: itemIds[index], name: file.name, status: knownRejection ? 'failed' : 'unknown', reason })));
+          if (attempt) setPendingImport(previous => previous?.attempt?.batchId === attempt.batchId ? null : previous);
+          showToast(reason, 'error');
+        }
+      } catch (error) {
+        update(batch => ({ ...batch, diagnostic: error instanceof Error ? `${error.name}: ${error.message}` : 'Upload response unavailable' }));
+        markResults(fileList.map((file, index) => ({ id: itemIds[index], name: file.name, status: 'unknown', reason: t(UNKNOWN_IMPORT_REASON) })));
+        if (attempt) setPendingImport(previous => previous?.attempt?.batchId === attempt.batchId ? null : previous);
+        showToast(t(UNKNOWN_IMPORT_REASON), 'error');
+      } finally {
+        // Both event families describe this selection, never the accumulated
+        // batch. Unknown receipts and pending preparation are not failures.
+        const statuses = [...results.values()];
+        const added = Math.min(requestedCount, addedPaths.size);
+        const failed = statuses.filter(status => status === 'failed').length;
+        const pending = statuses.filter(status => status === 'pending').length;
+        const unknown = Math.max(0, requestedCount - added - failed - pending);
+        reportAssetImport({ projectId: pid, entryPoint, requested: requestedCount, added,
+          failed, unknown, pending, category: failureCategory });
+        if (finish) {
+          const outcome = cancelledBeforeUpload ? 'cancelled' : unknown || pending
+            ? added || failed ? 'partial' : 'unknown'
+            : added ? failed ? 'partial' : 'success' : failed ? 'failure' : 'unknown';
+          finish({ outcome, requested_count: requestedCount, added_count: added, failed_count: failed,
+            unknown_count: unknown, pending_count: pending, listing_status: listingStatus });
+        }
+        if (attempt) manualImportsInFlight.current.delete(pid);
+        update(batch => ({ ...batch, busy: false }));
       }
       return [];
     },
-    [refreshFileTree, setRefreshKey, showToast, t],
+    [refreshFileTree, setRefreshKey, showToast, t, updateImportBatch],
   );
 
   // ── File CRUD ──
@@ -403,14 +483,53 @@ export function useFileManager({
   const handleMoveFile = handleRenameFile;
 
   const retryPendingImport = useCallback(() => pendingImport?.projectId === projectIdRef.current
-    ? uploadProjectFiles(pendingImport.files, pendingImport.dir) : Promise.resolve([]), [pendingImport, uploadProjectFiles]);
+    ? uploadProjectFiles(pendingImport.files, pendingImport.dir, pendingImport.entryPoint, pendingImport.attempt) : Promise.resolve([]), [pendingImport, uploadProjectFiles]);
 
   const handleImportFiles = useCallback(
     async (files: FileList | File[], dir?: string, entryPoint?: ImportEntryPoint) => {
-      return uploadProjectFiles(Array.from(files), dir, entryPoint);
+      const pid = projectIdRef.current, selected = Array.from(files);
+      if (!pid || !selected.length || manualImportsInFlight.current.has(pid)) return [];
+      const id = `manual-import-${++importSequence.current}`;
+      const items: ManualImportItem[] = selected.map((file, index) => ({ id: `${id}-${index}`, name: file.name, status: 'pending' }));
+      importBatchEntry.current = { id, entryPoint };
+      setImportBatch({ id, projectId: pid, dir, items, paths: [], busy: true, listing: 'ready' });
+      return uploadProjectFiles(selected, dir, entryPoint, { batchId: id, itemIds: items.map(item => item.id), action: 'import_files' });
     },
     [uploadProjectFiles],
   );
+
+  const importFailedReplacements = useCallback(async (batchId: string, replacements: { itemId: string; file: File }[]) => {
+    const batch = importBatchRef.current;
+    if (!batch || batch.id !== batchId || batch.projectId !== projectIdRef.current || manualImportsInFlight.current.has(batch.projectId)) return [];
+    // Item identities, rather than names or old File references, constrain retry
+    // to confirmed failures. Unknown and imported rows are never resubmitted.
+    const selected = replacements.filter((replacement, index) => replacements.findIndex(item => item.itemId === replacement.itemId) === index && batch.items.some(item => item.id === replacement.itemId && item.status === 'failed'));
+    if (!selected.length) return [];
+    updateImportBatch(batch.projectId, batch.id, previous => ({ ...previous, items: previous.items.map(item => {
+      const replacement = selected.find(entry => entry.itemId === item.id);
+      return replacement ? { id: item.id, name: replacement.file.name, status: 'pending' } : item;
+    }) }));
+    return uploadProjectFiles(selected.map(entry => entry.file), batch.dir, importBatchEntry.current?.id === batchId ? importBatchEntry.current.entryPoint : undefined, { batchId, itemIds: selected.map(entry => entry.itemId), action: 'replace_failed_import' });
+  }, [updateImportBatch, uploadProjectFiles]);
+
+  const reloadImportAssets = useCallback(async (batchId: string) => {
+    const batch = importBatchRef.current;
+    if (!batch || batch.id !== batchId || batch.projectId !== projectIdRef.current || batch.busy || batch.listing === 'loading' || manualRefreshesInFlight.current.has(batchId)) return;
+    manualRefreshesInFlight.current.add(batchId);
+    const finish = beginStudioIo('refresh_import_list');
+    updateImportBatch(batch.projectId, batch.id, previous => ({ ...previous, listing: 'loading' }));
+    try {
+      await refreshFileTree({ projectId: batch.projectId, requiredPaths: batch.paths });
+      finish({ outcome: 'success', listing_status: 'ready' });
+      updateImportBatch(batch.projectId, batch.id, previous => ({ ...previous, listing: 'ready' }));
+    } catch {
+      finish({ outcome: 'failure', listing_status: 'failed' });
+      updateImportBatch(batch.projectId, batch.id, previous => ({ ...previous, listing: 'failed' }));
+      if (projectIdRef.current === batch.projectId) showToast(t('The asset list could not reload. Check the connection and try again.'), 'error');
+    } finally {
+      manualRefreshesInFlight.current.delete(batchId);
+    }
+  }, [refreshFileTree, showToast, t, updateImportBatch]);
 
   const handleImportFonts = useCallback(
     async (files: FontImportInput): Promise<ImportedFontAsset[]> => {
@@ -486,6 +605,9 @@ export function useFileManager({
     uploadProjectFiles,
     pendingImport: pendingImport?.projectId === projectId ? pendingImport : null,
     retryPendingImport,
+    importBatch: importBatch?.projectId === projectId ? importBatch : null,
+    importFailedReplacements,
+    reloadImportAssets,
     handleCreateFile,
     handleCreateFolder,
     handleDeleteFile,

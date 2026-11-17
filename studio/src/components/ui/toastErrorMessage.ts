@@ -1,8 +1,14 @@
 import { isKnownMessage, sourceMessage } from '../../i18n/messages';
+import { parseAssetUploadMessage } from '../../i18n/assetUploadMessages';
 
 /** Toasts show recognized causes, never raw diagnostics or a details affordance. */
 export function toastErrorMessage(raw: string): string {
   const message = sourceMessage(raw);
+  if (parseAssetUploadMessage(message)) return message;
+  // These authored templates contain filenames, not server diagnostics. Match
+  // before cause detection so words in a filename cannot change the feedback.
+  if (/^"[\s\S]+" exceeds the size limit\. Compress or replace the file\.$/.test(message)
+    || /^Cannot add "[\s\S]+"\. Re-export or replace the file\.$/.test(message)) return message;
   if (/^Provider HTTP (401|403)\b/.test(message)) return 'Provider rejected the API key or permissions.';
   if (/^Provider HTTP 429\b/.test(message)) return 'Provider rate limit reached. Try again later.';
   if (/^VERSION_NOT_RESTORABLE:/.test(message)) return 'Historical files are unavailable. Version not restored.';

@@ -51,7 +51,7 @@ const workspacePages = { asset_kind: assetKind, modality, task_mode: ['direct', 
   manager_tab: ['projects', 'trash'], selection_count: 'integer' } as const;
 // MCP connection page: which Agent client tab is shown, how the user reached the page and how they set it up.
 const mcpClient = ['codex', 'claude', 'cursor', 'deepseek', 'desktop', 'chatgpt', 'mcp'] as const;
-const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'asset_chat', 'direct_link'] as const;
+const mcpEntry = ['app_rail', 'settings_general', 'settings_resources', 'home_composer', 'project_composer', 'project_agent', 'platform_export', 'asset_chat', 'direct_link'] as const;
 const mcp = { mcp_client: mcpClient, setup_method: ['agent', 'manual'], capability_id: 'slug' } as const;
 // A Skill is identified by its catalogue id and group only; the brief text never leaves the browser.
 const skill = { skill_id: 'slug', skill_category: ['product_promos', 'explainers', 'brand_covers', 'motion_techniques'] } as const;
@@ -162,7 +162,7 @@ export const omEvents = {
     doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer', ...workspacePages },
     required: ['page_name', 'area', 'element'] },
   // Studio UI exports run in the editor's own render pipeline, not the worker that owns export_result.
-  studio_export_request_result: { producers: ['studio'], fields: { export_id: 'uuid', outcome: ['accepted', 'rejected'], ...exportSettings,
+  studio_export_request_result: { producers: ['studio'], fields: { export_id: 'uuid', outcome: ['accepted', 'rejected', 'unknown'], ...exportSettings,
     error_code: ['FFMPEG_MISSING', 'SERVER_UNREACHABLE', 'SERVICE_UNAVAILABLE', 'REQUEST_REJECTED', 'SERVER_ERROR', 'INVALID_RESPONSE', 'RUNTIME_NOT_READY'], ...videoDuration, ...projectScale, ...project, ...template },
     required: ['export_id', 'outcome', 'origin', 'format', 'quality', 'resolution', 'fps'] },
   studio_export_result: { producers: ['studio'], fields: { export_id: 'uuid', job_state: ['completed', 'failed', 'cancelled'], duration_ms: 'integer',
@@ -180,9 +180,9 @@ export const omEvents = {
     required: ['outcome', 'edit_kind', 'surface'] },
   studio_history_step_result: { producers: ['studio'], fields: { action: ['undo', 'redo'], outcome: ['success', 'unavailable', 'failure'],
     interaction_method: ['pointer', 'keyboard'], ...project }, required: ['action', 'outcome'] },
-  studio_asset_import_result: { producers: ['studio'], fields: { outcome: ['success', 'partial', 'failure'],
+  studio_asset_import_result: { producers: ['studio'], fields: { outcome: ['success', 'partial', 'failure', 'unknown'],
     entry_point: ['assets_button', 'assets_drop', 'timeline_button', 'timeline_drop', 'properties', 'library_button', 'library_drop', 'library_new_version', 'other'],
-    requested_count: 'integer', added_count: 'integer', failed_count: 'integer',
+    requested_count: 'integer', added_count: 'integer', failed_count: 'integer', unknown_count: 'integer', pending_count: 'integer',
     error_category: ['too_large', 'unsupported_format', 'unreadable', 'runtime_not_ready', 'other'], ...project },
     required: ['outcome', 'entry_point', 'requested_count', 'added_count', 'failed_count'] },
   // A surface that became visible: the library, a template card, one template's detail, or the instruction to copy.

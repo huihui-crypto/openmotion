@@ -150,7 +150,8 @@ describe("useTimelineDeleteOps: ripple undo label", () => {
   // folded ripple move must carry the delete's label, not its own.
   it("passes the delete's own label to the folded ripple move, not 'Move timeline clips'", async () => {
     const handleTimelineGroupMove = vi.fn().mockResolvedValue(undefined);
-    const { b, getHook } = mountDeleteHarness({ handleTimelineGroupMove });
+    const showToast = vi.fn();
+    const { b, getHook } = mountDeleteHarness({ handleTimelineGroupMove, showToast });
 
     await act(async () => {
       await getHook().handleTimelineElementDelete(b);
@@ -160,6 +161,7 @@ describe("useTimelineDeleteOps: ripple undo label", () => {
       expect.anything(),
       expect.objectContaining({ label: "Delete timeline clip" }),
     );
+    expect(showToast).toHaveBeenCalledWith("Gap closed on the main track.", "info");
   });
 
   it("holds the delete's undo step open under the key its ripple joins, however late the ripple lands", async () => {

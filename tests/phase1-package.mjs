@@ -19,7 +19,7 @@ const expected=JSON.parse(await readFile(path.join(root,'shared/mcp-profiles.jso
 const {packagedSkills}=await import(pathToFileURL(path.join(root,'shared/workflow.ts')).href);
 assert.deepEqual((await readdir(path.join(root,'skills'))).sort(),[...packagedSkills].sort());
 const standaloneLibrary=path.join(work,'standalone-library');
-const librarySkills=['openmotion-brandkit','openmotion-presenter-story','openmotion-design-remix','openmotion-bold-type-poster','openmotion-glitch-logo-sting','openmotion-highlighter-notes','openmotion-paper-collage-explainer','openmotion-paper-map-journey','openmotion-red-pen-archive','openmotion-shortlist-shorts','openmotion-spec-sheet','openmotion-website-launch','openmotion-whiteboard-doodle','openmotion-whiteboard-marker'];
+const librarySkills=['openmotion-brandkit','openmotion-presenter-story','openmotion-design-remix','openmotion-growth-teardown','openmotion-bold-type-poster','openmotion-glitch-logo-sting','openmotion-highlighter-notes','openmotion-paper-collage-explainer','openmotion-paper-map-journey','openmotion-red-pen-archive','openmotion-shortlist-shorts','openmotion-spec-sheet','openmotion-website-launch','openmotion-whiteboard-doodle','openmotion-whiteboard-marker'];
 assert.deepEqual((await readdir(path.join(root,'library/skills'))).sort(),[...librarySkills].sort());
 for(const canonical of librarySkills){
  const installed=spawnSync(process.execPath,[path.join(root,'scripts/install-library-skill.mjs'),canonical,standaloneLibrary],{encoding:'utf8',cwd:tmpdir()});
@@ -49,7 +49,7 @@ try{
  await tool('openmotion_media_use',{action:'inspect'});
  // Capture startup ownership before later Tool calls reuse the service.
  owned=JSON.parse(await readFile(path.join(data,'preview.json')));assert.ok(owned.pid>0);
- const inline=await rpc('resources/read',{uri:'ui://openmotion/inline-video/v1/player.html'});assert.deepEqual(inline.contents[0]._meta.ui.csp.resourceDomains,['data:','blob:']);assert.ok(inline.contents[0].text.includes('openmotion_get_project'));
+ const inline=await rpc('resources/read',{uri:'ui://openmotion/inline-video/v2/player.html'});assert.deepEqual(inline.contents[0]._meta.ui.csp.resourceDomains,['data:','blob:']);assert.ok(inline.contents[0].text.includes('openmotion_get_project'));
  const hidden=await rpc('tools/call',{name:'openmotion_write_files',arguments:{}});assert.equal(hidden.isError,true);assert.equal(hidden.structuredContent.error.code,'MCP_TOOL_NOT_EXPOSED');
  const prototype=await rpc('tools/call',{name:'openmotion_get_project',arguments:JSON.parse('{"__proto__":true}')});assert.equal(prototype.isError,true);assert.equal(prototype.structuredContent.error.code,'INVALID_ARGUMENT');
  const guidance=await rpc('resources/read',{uri:'openmotion://workflow/production/start'});assert.ok(guidance.contents[0].text.includes('openmotion-production'));

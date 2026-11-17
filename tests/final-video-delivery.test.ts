@@ -15,6 +15,11 @@ test('only final video presentation mounts a chat component, never production or
   const final = tools.find((t: any) => t.name === 'openmotion_show_video');
   assert.ok(final, 'A final-only presentation entry must be discoverable');
   assert.ok(final._meta.ui.resourceUri);
+  assert.equal(final._meta.ui.resourceUri, 'ui://openmotion/inline-video/v2/player.html');
+  const current = (await call('resources/read', { uri: final._meta.ui.resourceUri })).result.contents[0];
+  const legacy = (await call('resources/read', { uri: 'ui://openmotion/inline-video/v1/player.html' })).result.contents[0];
+  assert.equal(legacy.text, current.text, 'Existing chats retain a readable player resource');
+  assert.equal(legacy.uri, 'ui://openmotion/inline-video/v1/player.html');
   for (const tool of tools.filter((t: any) => !['openmotion_show_video', 'openmotion_show_template_recommendations'].includes(t.name)))
     assert.equal(tool._meta?.ui?.resourceUri, undefined, tool.name + ' must not mount a chat preview');
   const plain = (await rpc({ jsonrpc: '2.0', id: 'plain', method: 'tools/list' }, store) as any).result.tools;

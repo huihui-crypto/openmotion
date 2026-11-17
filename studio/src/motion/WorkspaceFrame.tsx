@@ -1,7 +1,6 @@
 import { useProjectArchives, ProjectArchiveMenu, type ProjectArchiveActions } from './ProjectArchives';
 import { AssetsPage } from './AssetsPage';
 import { SkillsPage } from './SkillsPage';
-import { FeedbackLayer } from "../components/FeedbackLayer";
 import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { ConnectionDialog } from './ConnectionDialog';
@@ -10,7 +9,7 @@ import { RemixIcon } from '../icons/RemixIcons';
 import { navigateWorkspace, useWorkspace } from './useWorkspace';
 import { Tooltip } from '../components/ui/Tooltip';
 import { Dialog } from '@base-ui/react/dialog';
-import { StudioToast } from '../components/StudioToast';
+import { StudioConnectionToast } from '../components/StudioConnectionToast';
 import { ErrorNotice } from '../components/ui/ErrorNotice';
 import { isConnectionFailure } from '../components/ui/errorNoticeMessage';
 import { preservePresentation, workspacePresentation } from '../../../shared/workspace-url';
@@ -141,9 +140,11 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
   const libraryBusy = workspace.busy || blocked || Boolean(editorState?.blocked);
   const switchingDisabled = libraryBusy || !workspace.status;
   const archives = useProjectArchives(workspace, beforeViewChange, switchingDisabled, () => { if (narrow) setSidebarOpen(false); });
-  const notice = workspace.error || message || editorState?.message || "";
+  const reconnecting = Boolean(workspace.connectionError && isConnectionFailure(workspace.connectionError));
+  const workspaceNotice = workspace.errorSource === 'connection' && reconnecting ? '' : workspace.error;
+  const notice = workspaceNotice || message || editorState?.message || "";
   const [dismissedNotice, setDismissedNotice] = useState<string | null>(null);
-  const noticeKey = `${workspace.error ? workspace.errorSource : 'editor'}:${notice || ''}`;
+  const noticeKey = `${workspaceNotice ? workspace.errorSource : 'editor'}:${notice || ''}`;
   // Hiding a notice never clears an editor's write guard. New errors reset the dismissal.
   const visibleNotice = notice && dismissedNotice !== noticeKey;
   if (!notice && dismissedNotice !== null) setDismissedNotice(null);
@@ -155,6 +156,7 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
     toggleNavigation: () => setNavigationCollapsed(collapsed => !collapsed), settingsOpen: Boolean(settings) || pageOpen };
   return <WorkspaceChromeContext.Provider value={value}>
     <StudioToastViewport {...navigationToast} />
+    <StudioConnectionToast reconnecting={reconnecting} />
     {archives.manager}
     <Dialog.Root open={sidebarOpen && narrow && !settings && !pageOpen && !navigationCollapsed} onOpenChange={setSidebarOpen}>
     <div ref={homeRef} className="om-application" data-embedded={presentation.embedded} data-navigation-collapsed={navigationCollapsed}>
@@ -177,13 +179,8 @@ export function WorkspaceFrame({ children, waitForSaves, projectId, sessionId, b
         <WorkspaceSidebar archives={archives} currentId={projectId} close={() => setSidebarOpen(false)} query={projectQuery} setQuery={setProjectQuery} />
       </div>}
       <div className="motion-workspace-content" hidden={Boolean(settings) || pageOpen} inert={Boolean(settings) || pageOpen}>
-        {visibleNotice && (workspace.error && workspace.errorSource === 'connection' && isConnectionFailure(notice)
-          ? <FeedbackLayer><div data-testid="motion-connection-toast" className="pointer-events-none absolute top-16 left-1/2 z-91 flex max-w-[calc(100%-32px)] -translate-x-1/2 justify-center">
-              <StudioToast message="Connection lost." tone="error" presentation="feedback" singleLine
-                status="Reconnecting…" />
-            </div></FeedbackLayer>
-          : <ErrorNotice key={noticeKey} message={notice}
-              onDismiss={() => { setDismissedNotice(noticeKey); if (workspace.error) workspace.clearError(); }} />)}
+        {visibleNotice && <ErrorNotice key={noticeKey} message={notice}
+          onDismiss={() => { setDismissedNotice(noticeKey); if (workspaceNotice) workspace.clearError(); }} />}
         {children}
       </div>
       {(assetsVisited || assetsOpen) && <div className="om-assets-host" hidden={!assetsOpen || Boolean(settings)} inert={!assetsOpen || Boolean(settings)}><AssetsPage hasProject={Boolean(projectId)} active={assetsOpen && !settings} /></div>}

@@ -8,9 +8,9 @@ Check requested content, recognizable geometry, crop/occlusion, event phase and 
 
 When preview capture is unavailable, report that limitation and proceed through the available technical delivery path. Detailed review follows the requested scope in §§2–3.
 
-After implementing the requested film, complete the [editable preview handoff](../../openmotion-production/references/native.md#editable-preview-handoff). Read `openmotion_get_project({projectId})` for the current revision and version. Request `openmotion_export_request({projectId,requestId,versionId,expectedRevision,audio})` with `audio: "required"`, or `"silent"` for a silent reference or requested silent film. Reuse an applicable export job before submitting another. Poll `openmotion_get_project({projectId,exportJobId})` to completion or failure.
+After implementing the requested film, complete the [editable preview handoff](../../openmotion-production/references/native.md#editable-preview-handoff). Read `openmotion_get_project({projectId,workId})` for the current revision and version, retaining this turn's workId from the shared production workflow. Request `openmotion_export_request({projectId,workId,requestId,versionId,expectedRevision,audio})` with `audio: "required"`, or `"silent"` for a silent reference or requested silent film. Reuse an applicable export job before submitting another. Poll `openmotion_get_project({projectId,workId,exportJobId})` to completion or failure.
 
-Use the completed job's automatic technical verification for that exact file. Recover render, missing-asset or technical verification failures from the reported cause and retry the affected operation. Once technical verification passes, hand over the current editable project and any requested MP4. State known limitations and any unconfirmed editor display truthfully.
+Use the completed job's automatic technical verification for that exact file. Recover render, missing-asset or technical verification failures from the reported cause and retry the affected operation. Once technical verification passes, complete the [shared final-video delivery](../../openmotion-production/references/production.md#final-video-delivery) for the same editor version and workId, presenting the final chat video once. File supplementation follows that workflow's explicit download request or presentation timeout. State known limitations and any unconfirmed editor display truthfully.
 
 Default creation finishes here. Numeric comparisons, full playback-review sessions, review documents and further visual repair/re-export cycles follow an explicitly requested review, evaluation or revision. The technical receipt establishes export integrity. Describe visual fidelity according to the evidence actually available.
 
@@ -22,7 +22,7 @@ Use this section for an explicit review, evaluation or visual revision request. 
 node <skill directory>/scripts/measure_frame.mjs reference.mp4 output.mp4 --t <output seconds> --ref-t <reference seconds> [--region x,y,w,h --ref-region x,y,w,h]
 ```
 
-For brief events, use zero-based decoded indices with `--frame <output index> --ref-frame <source index>`. A preview PNG uses `--frame 0` with its actual source time or `--ref-frame`. Keep resolution, capture time and source revision explicit. The helper needs Node and ffmpeg/ffprobe from the [runtime setup](../SKILL.md#4-create-the-project). Batch independent measurements when useful.
+For brief events, use zero-based decoded indices with `--frame <output index> --ref-frame <source index>`. A preview PNG uses `--frame 0` with its actual source time or `--ref-frame`. Keep resolution, capture time and source revision explicit. The helper needs Node and ffmpeg/ffprobe from the shared [runtime paths](../../openmotion-production/references/reference-video.md#locate-the-pinned-cli-and-media-tools). Batch independent measurements when useful.
 
 For shots produced as generated media, whole-frame brightness, detail and accent values are diagnostic, not pass/fail gates or reasons to regenerate; keep the numeric checks for native text, logos, UI and other regions meant to match the reference.
 

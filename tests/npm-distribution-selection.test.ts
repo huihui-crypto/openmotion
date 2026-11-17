@@ -6,6 +6,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { distributionFiles } from '../scripts/distribution.ts';
+
+test('platform export ships its shared prompt and user guide in both profiles', async () => {
+  const expected = ['docs/product/platform-export.md', 'shared/platform-export.ts', 'shared/project-agent-prompt.ts'];
+  for (const profile of ['phase1', 'legacy']) {
+    assert.deepEqual(await distributionFiles(profile, file => expected.includes(file)), expected);
+  }
+});
 import { prepareInlineOnboarding, publishInlineOnboarding } from '../scripts/inline-onboarding.mjs';
 import { runFile } from '../scripts/runtime-assets.mjs';
 
@@ -45,8 +52,9 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
     }
     const prepared = await prepareInlineOnboarding({ appRoot: installedRoot,
       output: path.join(directory, profile + '.html'), language: 'zh', templateIds: onboardingTemplateIds.slice(-3) });
-    assert.equal(prepared.status, 'native_required');
-    assert.equal(prepared.path, undefined);
+    assert.equal(prepared.status, 'prepared');
+    assert.equal(prepared.previewSource, 'project');
+    assert.equal(typeof prepared.path, 'string');
     assert.deepEqual(prepared.templateIds, onboardingTemplateIds.slice(-3));
     const catalog = JSON.parse(await runFile(process.execPath, ['--experimental-strip-types',
       path.join(installedRoot, 'scripts/onboarding-catalog.ts'), '--template-ids', JSON.stringify(prepared.templateIds)], { cwd: directory }));
@@ -54,11 +62,18 @@ test('packaged onboarding prepares and publishes real cards from the allowlist w
     assert.equal(catalog.recommendedTemplateId, prepared.templateIds[0]);
     assert(catalog.templates.every((item: any) => item.kind === 'reference'));
     assert.match(catalog.selectionGuide, /yes.*named recommendation/i);
+    const projectPublished = JSON.parse(await runFile(process.execPath, [path.join(installedRoot, 'scripts/inline-onboarding.mjs'),
+      '--publish-from', prepared.path, '--sha256', prepared.sha256, '--host-directory', path.join(directory, 'host')]));
+    assert.equal(projectPublished.finalReplyMarkdown, `${prepared.welcomeMarkdown}\n\n${projectPublished.contentReference}`);
+    const projectFragment = await readFile(projectPublished.path, 'utf8');
+    assert.doesNotMatch(projectFragment, /https:\/\/r\.open-design\.ai/);
+    assert(projectPublished.bytes < 1_000_000);
     const bundled = await prepareInlineOnboarding({ appRoot: installedRoot, output: path.join(directory, profile + '-bundled.html'),
       language: 'zh', templateIds: [...builtinRecommendationIds] });
     const published = await publishInlineOnboarding({ source: bundled.path,
       expectedSHA256: bundled.sha256, hostDirectory: path.join(directory, 'host') });
     assert.equal(published.status, 'published');
+    assert.equal(published.finalReplyMarkdown, `${bundled.welcomeMarkdown}\n\n${published.contentReference}`);
     assert.equal(published.sha256, bundled.sha256);
     assert.equal(await readFile(published.path, 'utf8'), await readFile(bundled.path, 'utf8'));
   }
@@ -70,4 +85,11 @@ test('both distribution profiles include the complete project archive entry poin
   for (const profile of ['phase1', 'legacy']) {
     assert.deepEqual(await distributionFiles(profile, file => required.includes(file)), [...required].sort());
   }
+});
+
+
+test('platform artwork and its licenses ship with both runtime profiles', async () => {
+  const { platformIconFiles } = await import('../packages/design-system/platform-icons.js');
+  const required = ['platform-icons.js', ...platformIconFiles, 'platforms/sources.json', 'platforms/NOTICE.md', 'platforms/CC0-LICENSE.txt', 'platforms/remix-icon-LICENSE.txt'].map(file => 'packages/design-system/' + file);
+  for (const profile of ['phase1', 'legacy']) assert.deepEqual(await distributionFiles(profile, file => required.includes(file)), [...required].sort());
 });

@@ -27,7 +27,7 @@ async function mount(locale: Locale = 'en') {
   return { openLibrary, openProviders };
 }
 
-it.each(['en', 'zh-CN'] as const)('explains native reference cards and a separately streamed welcome in %s', async locale => {
+it.each(['en', 'zh-CN'] as const)('explains bundled project-preview delivery independently of MCP activation in %s', async locale => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
   await mount(locale);
   const faq = [...document.querySelectorAll<HTMLDetailsElement>('.om-mcp-faq details')]
@@ -35,9 +35,11 @@ it.each(['en', 'zh-CN'] as const)('explains native reference cards and a separat
   expect(faq).toBeDefined();
   await act(async () => faq.querySelector('summary')!.click());
   expect(faq.open).toBe(true);
-  expect(faq.textContent).toContain(locale === 'en' ? 'native MCP Apps' : '原生 MCP Apps');
-  expect(faq.textContent).toContain(locale === 'en' ? 'streams the welcome separately' : '单独流式输出欢迎文案');
-  expect(faq.textContent).toContain(locale === 'en' ? 'Builtin examples' : '内置示例');
+  expect(faq.textContent).toContain(locale === 'en' ? 'self-contained HTML document' : '独立 HTML 文档');
+  expect(faq.textContent).toContain(locale === 'en' ? 'project-preview cards' : '九选三的工程预览卡片');
+  expect(faq.textContent).toContain(locale === 'en' ? 'separate acceptance' : '分别验收');
+  expect(faq.textContent).toContain(locale === 'en' ? 'does not wait for native MCP reload' : '无需等待原生 MCP 重载');
+  expect(faq.textContent).toContain(locale === 'en' ? 'Native original-reference playback' : '原生卡片仍可另行播放原参考片');
 });
 
 it.each(['zh-CN', 'en', 'ja'] as const)('links the FAQ and footer to the README community for %s', async locale => {
@@ -171,4 +173,20 @@ it.each(['en', 'zh-CN'] as const)('copies the complete media onboarding flow in 
   expect(instruction).toContain(locale === 'en' ? 'inspect again' : '再次检查配置');
   expect(instruction).toContain(locale === 'en' ? 'original request' : '原来的需求');
   expect(document.querySelector('.motion-feedback-layer [role=status]')?.textContent).toContain(locale === 'en' ? 'Copied to clipboard' : '已复制');
+});
+
+it.each(['en', 'zh-CN'] as const)('copies the maintained platform workflow with explicit source selection in %s', async locale => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [] } : info)));
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  await mount(locale);
+  const card = [...document.querySelectorAll<HTMLElement>('.om-mcp-feature')].find(node => node.textContent?.includes(locale === 'en' ? 'Prepare a platform version' : '制作平台适配版本'))!;
+  await act(async () => card.querySelector('button')!.click());
+  const { platformExportExample } = await import('./mcpCapabilities');
+  expect(copy.mock.calls[0][0]).toBe(platformExportExample(locale, info));
+  expect(copy.mock.calls[0][0]).toContain('/fixture/data');
+  expect(copy.mock.calls[0][0]).not.toContain('Project ID:');
+  copy.mockRejectedValue(new Error('Denied'));
+  await act(async () => card.querySelector('button')!.click());
+  expect(card.querySelector('textarea')?.value).toBe(copy.mock.calls[1][0]);
+  expect(document.querySelector('.motion-feedback-layer')).not.toBeNull();
 });

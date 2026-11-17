@@ -241,6 +241,7 @@ export function useDomEditAttributeCommits({
         prepareContent?: (html: string) => string;
         validateContent?: (html: string) => void;
         syncAutomation?: boolean;
+        onError?: (error: unknown) => void;
       },
     ): Promise<boolean> => {
       const iframe = previewIframeRef.current;
@@ -294,7 +295,10 @@ export function useDomEditAttributeCommits({
             );
           }
         },
-        onError: (error) => reportDomEditPersistFailure(selection, ops, error, showToast),
+        onError: (error) => {
+          reportDomEditPersistFailure(selection, ops, error, options.onError ? () => {} : showToast);
+          options.onError?.(error);
+        },
         shouldResync: () => isLatestCommit() && !!options.refreshAfter,
         resync: () => {
           refreshDomEditSelectionFromPreview(selection);
@@ -343,6 +347,7 @@ export function useDomEditAttributeCommits({
     (selection, ops, options) =>
       commitAttributeOps(selection, ops, {
         label: options.label,
+        onError: options.onError,
         coalescePrefix: "attr-batch",
         skipRefresh: false,
         refreshAfter: true,

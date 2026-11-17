@@ -23,8 +23,8 @@ const retired = {
     [path.join('agents', 'openai.yaml')]: '53ba8d5b90b65f9b163607acb68367c7f0355e7315175bb6ff2aad864c3cfe1e',
   } },
 };
-// Library Skills without a retired forwarding folder install the same way.
-const canonicalSkills = new Set([...Object.keys(retired), 'openmotion-bold-type-poster', 'openmotion-glitch-logo-sting', 'openmotion-highlighter-notes', 'openmotion-paper-collage-explainer', 'openmotion-paper-map-journey', 'openmotion-red-pen-archive', 'openmotion-shortlist-shorts', 'openmotion-spec-sheet', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker']);
+// Library Skills that never shipped a retired forwarding folder.
+const current = ['openmotion-growth-teardown', 'openmotion-bold-type-poster', 'openmotion-glitch-logo-sting', 'openmotion-highlighter-notes', 'openmotion-paper-collage-explainer', 'openmotion-paper-map-journey', 'openmotion-red-pen-archive', 'openmotion-shortlist-shorts', 'openmotion-spec-sheet', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker'];
 async function snapshot(directory, relative = '') {
   const files = {};
   for (const item of await readdir(path.join(directory, relative), { withFileTypes: true })) {
@@ -44,7 +44,7 @@ async function snapshot(directory, relative = '') {
 
 // The destination is explicit; user-owned or different-version content is never overwritten.
 export async function installLibrarySkill(name, destination) {
-  assert(canonicalSkills.has(name), 'Unknown Library Skill: ' + name + '. Use an openmotion-* Library Skill name.');
+  assert(Object.hasOwn(retired, name) || current.includes(name), 'Unknown Library Skill: ' + name + '. Use an openmotion-* Library Skill name.');
   const canonical = name;
   assert(destination, 'An explicit destination skills directory is required');
   const media = validateMediaManifest(JSON.parse(await readFile(new URL('../repository-media.json', import.meta.url), 'utf8')));
@@ -65,7 +65,7 @@ export async function installLibrarySkill(name, destination) {
       assert.deepEqual(await snapshot(target), expected, 'Existing Skill differs; preserve it and choose another destination: ' + target);
     } else missing.push(skill);
   }
-  const legacy = retired[canonical], legacyTarget = legacy && path.join(directory, legacy.name);
+  const legacy = retired[canonical] ?? null, legacyTarget = legacy && path.join(directory, legacy.name);
   const present = legacy && await lstat(legacyTarget).catch(error => { if (error.code !== 'ENOENT') throw error; });
   let removeLegacy = false;
   if (present?.isDirectory() && !present.isSymbolicLink()) {

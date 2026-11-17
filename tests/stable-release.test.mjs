@@ -4,11 +4,12 @@ import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { candidateFixture } from './release-fixture.mjs';
 import { releaseInputs, resolveCandidate, sealCandidate, publishNpm, promoteStable, promoteTest, archiveRelease } from '../.github/scripts/motion-release.mjs';
+import { compareReleaseVersions, comparePublicationVersions } from '../scripts/release-version.mjs';
 
 const config = { endpoint: 'https://example.r2.cloudflarestorage.com', bucket: 'example-releases', publicOrigin: 'https://download.example.invalid' };
 
 function services(f) {
-  let published = false, latest = '0.5.0';
+  let published = false, latest = '0.6.3';
   const writes = [], objects = new Map();
   const registry = () => Response.json({ versions: published ? { [f.candidate.version]: { dist: { integrity: f.candidate.integrity } } } : {},
     'dist-tags': { test: '0.6.4-test.8', latest } });
@@ -32,6 +33,61 @@ function services(f) {
   return { run, fetcher, env: f.env, writes, objects, setLatest: value => { latest = value; }, getLatest: () => latest };
 }
 
+test('publication order reserves the historical 0.6.x line without changing standard version comparison', () => {
+  assert(compareReleaseVersions('0.0.1', '0.6.7') < 0);
+  for (const old of ['0.6.3', '0.6.7', '0.6.8-test.21', '0.6.999']) {
+    assert(comparePublicationVersions('0.0.1', old) > 0);
+    assert(comparePublicationVersions(old, '0.0.1') < 0);
+  }
+  for (const [newer, older] of [['0.0.2', '0.0.1'], ['0.0.2-test.2', '0.0.2-test.1'], ['0.0.2', '0.0.2-test.9'], ['0.7.0', '0.5.0'], ['0.6.8', '0.6.7']]) {
+    assert(comparePublicationVersions(newer, older) > 0);
+    assert(comparePublicationVersions(older, newer) < 0);
+  }
+  assert.throws(() => comparePublicationVersions('latest', '0.6.7'));
+});
+
+test('0.0.1 stages before native checks, then replaces historical latest and guide without changing old snapshots', async t => {
+  const f = await candidateFixture(t, 'main', { version: '0.0.1' }), store = services(f);
+  store.setLatest('0.6.7');
+  const previous = Buffer.from('# Install OpenMotion 0.6.7\nHistorical guide\n');
+  store.objects.set('open-motion/install.md', previous);
+  store.objects.set('open-motion/0.6.7/install.md', previous);
+  await publishNpm(f.directory, f.inputs, store);
+  assert.equal(store.getLatest(), '0.6.7');
+  const native = path.join(f.directory, 'registry-win32-x64.json'), report = await readFile(native, 'utf8');
+  await writeFile(native, JSON.stringify({ ...JSON.parse(report), status: 'failed' }));
+  await assert.rejects(promoteStable(f.directory, f.inputs, store));
+  assert.equal(store.getLatest(), '0.6.7'); assert(store.objects.get('open-motion/install.md').equals(previous));
+  await writeFile(native, report);
+  assert.equal((await promoteStable(f.directory, f.inputs, store)).status, 'promoted');
+  assert.equal(store.getLatest(), '0.0.1');
+  await archiveRelease(f.directory, f.inputs, config, store);
+  assert(store.objects.get('open-motion/install.md').toString().startsWith('# Install OpenMotion 0.0.1\n'));
+  assert(store.objects.get('open-motion/install.md').toString().includes('@openmotion/app@latest'));
+  assert(store.objects.get('open-motion/0.0.1/install.md').toString().includes('@openmotion/app@0.0.1'));
+  assert(store.objects.get('open-motion/0.6.7/install.md').equals(previous));
+  assert.equal((JSON.parse(await readFile(path.join(f.directory, 'npm-publication.json')))).previousTest, '0.6.4-test.8');
+  const writes = store.writes.length;
+  await publishNpm(f.directory, f.inputs, store); await promoteStable(f.directory, f.inputs, store); await archiveRelease(f.directory, f.inputs, config, store);
+  assert.equal(store.writes.length, writes, 'A retry neither republishes nor retags');
+});
+
+test('the new series still rejects a normal downgrade and stale historical candidates', async t => {
+  for (const version of ['0.0.1', '0.6.8']) {
+    const f = await candidateFixture(t, 'main', { version }), store = services(f);
+    store.setLatest('0.0.2');
+    await assert.rejects(publishNpm(f.directory, f.inputs, store), /newer stable version/);
+    assert.equal(store.writes.length, 0);
+  }
+  const f = await candidateFixture(t, 'main', { version: '0.0.1' }), store = services(f);
+  store.setLatest('0.6.7'); await publishNpm(f.directory, f.inputs, store);
+  store.setLatest('0.0.2');
+  assert.equal((await promoteStable(f.directory, f.inputs, store)).status, 'superseded');
+  await archiveRelease(f.directory, f.inputs, config, store);
+  assert(!store.objects.has('open-motion/install.md')); assert(store.objects.has('open-motion/0.0.1/install.md'));
+  assert.equal(store.getLatest(), '0.0.2');
+});
+
 test('stable selection is explicit and rejects prerelease/prod or stable/DEV channel mismatches', async t => {
   const f = await candidateFixture(t, 'main', { version: '0.6.4' });
   assert.equal(releaseInputs(f.env).channel, 'stable');
@@ -52,11 +108,11 @@ test('stable stage, native acceptance, latest and exact/prod guides use the same
   const f = await candidateFixture(t, 'main', { version: '0.6.4' }), store = services(f);
 
   await publishNpm(f.directory, f.inputs, store);
-  assert.equal(store.getLatest(), '0.5.0');
+  assert.equal(store.getLatest(), '0.6.3');
   const native = path.join(f.directory, 'registry-win32-x64.json'), original = await readFile(native, 'utf8');
   for (const patch of [{ status: 'failed' }, { templateEnvironment: 'dev' }, { tgzSHA256: '0'.repeat(64) }, { nativePreparation: 'failed' }, { resources: 'failed' }]) {
     await writeFile(native, JSON.stringify({ ...JSON.parse(original), ...patch }));
-    await assert.rejects(promoteStable(f.directory, f.inputs, store)); assert.equal(store.getLatest(), '0.5.0');
+    await assert.rejects(promoteStable(f.directory, f.inputs, store)); assert.equal(store.getLatest(), '0.6.3');
     assert.equal(store.writes.length, 1, 'Only stage publication has occurred');
   }
   await writeFile(native, original);

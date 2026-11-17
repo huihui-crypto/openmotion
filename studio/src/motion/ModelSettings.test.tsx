@@ -94,3 +94,75 @@ it('marks only runnable providers with a dot and configured-but-switched-off pro
   expect(row('Off').querySelector('.om-status-dot')).toBeNull();
   expect(row('Empty').querySelector('.om-status-dot, .om-badge, .ri-check-line')).toBeNull();
 });
+
+it('validates a custom provider at its fields and only writes corrected values', async () => {
+  const writes: unknown[] = [];
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') { writes.push(JSON.parse(String(init.body))); return Response.json({ id: 'custom-new' }); }
+    return Response.json({ providers: [account], models: [], defaults: {} });
+  }));
+  await mount(); await act(async () => click('Add provider'));
+  const submit = async () => act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  await submit();
+  expect(document.querySelectorAll('[role="alert"]')).toHaveLength(2);
+  expect(document.activeElement?.getAttribute('aria-label')).toBe('Provider name');
+  await act(async () => { type('Provider name', 'x'.repeat(81)); type('API base URL', 'http://api.example.com/v1'); });
+  expect(document.body.textContent).toContain('Provider name cannot exceed 80 characters.');
+  expect(document.body.textContent).toContain('Use an HTTPS API URL.');
+  await act(async () => { type('Provider name', 'Test'); type('API base URL', 'https://api.example.com/v1?key=x'); });
+  await submit();
+  expect(document.activeElement?.getAttribute('aria-label')).toBe('API base URL');
+  expect(document.body.textContent).toContain('Remove credentials, query parameters and fragments');
+  expect(writes).toHaveLength(0);
+  await act(async () => type('API base URL', 'https://api.example.com/v1'));
+  expect(document.querySelectorAll('[role="alert"]')).toHaveLength(0);
+  await submit(); expect(writes).toEqual([{ label: 'Test', baseUrl: 'https://api.example.com/v1', protocol: 'openai' }]);
+});
+it.each(['', 'not-a-url', 'https://api.example.com/v1'])('allows editing a stored-key provider with no parseable origin or an unchanged origin (%s)', async baseUrl => {
+  const writes: unknown[] = [];
+  const provider = { ...account, id: 'new-api', label: 'New API', protocol: 'openai', category: 'multimodal', baseUrl, configured: true, credentialSource: 'stored' };
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') {
+      const body = JSON.parse(String(init.body)); writes.push(body); provider.baseUrl = body.baseUrl;
+      return Response.json({});
+    }
+    return Response.json({ providers: [provider], models: [], defaults: {} });
+  }));
+  await mount('new-api');
+  await act(async () => type('API base URL', 'https://api.example.com/v2'));
+  expect(document.querySelector<HTMLInputElement>('[aria-label="API base URL"]')?.value).toBe('https://api.example.com/v2');
+  await act(async () => click('Save settings'));
+  expect(writes).toEqual([{ baseUrl: 'https://api.example.com/v2' }]);
+  expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+  expect(document.querySelector<HTMLInputElement>('[aria-label="New API API key"]')?.value).toBe('');
+  expect(document.body.textContent).toContain('Provider settings saved');
+});
+it('shows origin-change key requirements inline and keeps operational save failures in Toasts', async () => {
+  const writes: unknown[] = [];
+  const custom = { ...account, id: 'custom', label: 'Custom', custom: true, protocol: 'openai', category: 'custom', baseUrl: 'https://old.example.com/v1', configured: true, credentialSource: 'stored' };
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') { writes.push(JSON.parse(String(init.body))); return Response.json({ error: 'Service unavailable' }, { status: 503 }); }
+    return Response.json({ providers: [account, custom], models: [], defaults: {} });
+  }));
+  await mount('custom');
+  await act(async () => { type('Provider name', 'x'.repeat(81)); type('API base URL', 'https://new.example.com/v1'); });
+  await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(2);
+  expect(document.body.textContent).toContain('Enter the API key again when changing the API origin.');
+  expect(writes).toHaveLength(0);
+  await act(async () => { type('Provider name', 'Custom'); type('Custom API key', 'synthetic-key'); });
+  expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+  await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(writes).toHaveLength(1);
+  expect(document.querySelector('.studio-toast')?.textContent ?? document.body.textContent).toContain('Action not completed. Please try again.');
+  expect(document.querySelector<HTMLInputElement>('[aria-label="Custom API key"]')!.value).toBe('synthetic-key');
+});
+it('clears validated field errors after a successful origin change while the directory refreshes', async () => {
+  const custom = { ...account, id: 'custom', label: 'Custom', custom: true, protocol: 'openai', baseUrl: 'https://old.example.com', configured: true, credentialSource: 'stored' };
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'PUT' ? Response.json({}) : Response.json({ providers: [custom], models: [], defaults: {} })));
+  await mount('custom');
+  await act(async () => { type('API base URL', 'https://new.example.com'); type('Custom API key', 'synthetic-key'); });
+  await act(async () => document.querySelector('form')!.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+  expect(document.querySelector<HTMLInputElement>('[aria-label="Custom API key"]')!.value).toBe('');
+  expect(document.querySelectorAll('[aria-invalid="true"]')).toHaveLength(0);
+});

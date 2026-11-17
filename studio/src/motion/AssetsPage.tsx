@@ -13,6 +13,8 @@ import { assetTasks, mergeAssetJobs, type AssetChatSummary, type AssetTask, type
 import { gatewayRequest } from './gatewayClient';
 import { AssetComposer, type AssetDraft } from './AssetComposer';
 import { assetRequest, uploadLibraryAsset } from './assetClient';
+import { AssetUploadError } from './assetUploadError';
+import { assetUploadMessage, type AssetUploadSummary } from '../i18n/assetUploadMessages';
 import { AssetDetailWorkspace } from './AssetDetailWorkspace';
 import { ResizablePane } from './ResizablePane';
 import './assets.css';
@@ -91,14 +93,20 @@ export function AssetsPage({ active, hasProject = false }: { active: boolean; ha
   const importFiles = async (files: File[], newVersion = false, entry: 'library_button' | 'library_drop' | 'library_new_version' = newVersion ? 'library_new_version' : 'library_button') => {
     const targetId = newVersion ? selected?.id : undefined, parentVersionId = newVersion ? versionId : undefined, request = selectionRequest.current;
     if (newVersion && !targetId) return;
-    if (uploading) return; setUploading(true); let count = 0;
+    if (uploading || !files.length) return; setUploading(true);
+    const summary: AssetUploadSummary = { uploaded: 0, failed: 0, unknown: 0, reasons: new Set() };
     try {
       for (const file of files) {
-        try { const asset = await uploadLibraryAsset(file, targetId, parentVersionId); count++; if (newVersion && request === selectionRequest.current && selectedAsset.current?.id === targetId) open(asset); }
-        catch (error) { onError(`${file.name}: ${(error as Error).message}`); }
+        try { const asset = await uploadLibraryAsset(file, targetId, parentVersionId); summary.uploaded++; if (newVersion && request === selectionRequest.current && selectedAsset.current?.id === targetId) open(asset); }
+        catch (error) {
+          if (error instanceof AssetUploadError && error.outcome === 'rejected') {
+            summary.failed++; if (error.reason) summary.reasons.add(error.reason);
+          } else summary.unknown++;
+        }
       }
-      if (count) { refresh(); toast.showToast(t('Upload successful'), 'info'); }
-      if (files.length) tracking.reportLibraryImport(entry, files.length, count);
+      if (summary.uploaded || summary.unknown) refresh();
+      toast.showToast(assetUploadMessage(summary), summary.failed || summary.unknown ? 'error' : 'info');
+      tracking.reportLibraryImport(entry, files.length, summary.uploaded);
     } finally { setUploading(false); }
   };
   const persistUpdate = async (assetId: string, changes: Record<string, unknown>) => {

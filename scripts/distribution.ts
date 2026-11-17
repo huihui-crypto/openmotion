@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packagedSkills } from '../shared/workflow.ts';
 import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/design-system/index.js';
-import { onboardingSourceFiles } from '../shared/onboarding-templates.ts';
+import { onboardingSourceFiles, onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -131,6 +131,19 @@ const presenterStoryFiles = [
   'library/skills/openmotion-website-launch/SKILL.md',
   'library/skills/openmotion-whiteboard-doodle/SKILL.md',
   'library/skills/openmotion-whiteboard-marker/SKILL.md',
+];
+
+const growthTeardownFiles = [
+  'library/skills/openmotion-growth-teardown/SKILL.md',
+  'library/skills/openmotion-growth-teardown/assets/brand/README.md',
+  'library/skills/openmotion-growth-teardown/assets/brand/loading-mark.svg',
+  'library/skills/openmotion-growth-teardown/assets/brand/openmotion-logo.svg',
+  'library/skills/openmotion-growth-teardown/references/research.md',
+  'library/skills/openmotion-growth-teardown/references/review.md',
+  'library/skills/openmotion-growth-teardown/references/schema.md',
+  'library/skills/openmotion-growth-teardown/scripts/build.mjs',
+  'library/skills/openmotion-growth-teardown/scripts/evidence.mjs',
+  'library/skills/openmotion-growth-teardown/scripts/score.mjs',
 ];
 
 const presenterTechFiles = [
@@ -522,10 +535,10 @@ export const distributionDocuments = [
   ...motionPackageFiles,
   ...designSystemDocuments,
   'docs/fonts.md',
-  ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix', 'openmotion-bold-type-poster', 'openmotion-glitch-logo-sting', 'openmotion-highlighter-notes', 'openmotion-paper-collage-explainer', 'openmotion-paper-map-journey', 'openmotion-red-pen-archive', 'openmotion-shortlist-shorts', 'openmotion-spec-sheet', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
+  ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix', 'openmotion-growth-teardown', 'openmotion-bold-type-poster', 'openmotion-glitch-logo-sting', 'openmotion-highlighter-notes', 'openmotion-paper-collage-explainer', 'openmotion-paper-map-journey', 'openmotion-red-pen-archive', 'openmotion-shortlist-shorts', 'openmotion-spec-sheet', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
   ...localReadmeResourceFiles,
   'README.md', 'README.zh-CN.md', 'CONTRIBUTING.md', 'CONTRIBUTING.zh-CN.md', 'AGENTS.md', 'CLAUDE.md', 'docs/README.md', 'repository-media.json',
-  'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md',
+  'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md', 'docs/product/platform-export.md',
   'tracking/README.md', 'tracking/INTEGRATION.md', 'tracking/posthog-geoip.hog',
   'docs/agent-adapters.md', 'docs/browser-runtime.md', 'docs/design-system.md', 'docs/editor-fork.md',
   'docs/hyperframes.md', 'docs/mcp-phase1-tools.md', 'docs/model-gateway.md', 'docs/assets.md', 'docs/project-archives.md', 'docs/generation-options.md', 'docs/provider-settings.md', 'docs/local-agents.md', 'docs/openmotion-director.md', 'docs/motion-director.md',
@@ -574,7 +587,7 @@ export const distributionDocuments = [
   'library/skills/openmotion-brandkit/SKILL.md', 'library/templates/README.md',
   'library/components/README.md', 'library/components/title-reveal/README.md',
   'library/design-systems/ink-water/MOTION_DESIGN.md', 'library/brandkits/openmotion/BRANDKIT.md',
-  'docs/motion-design-examples.md', 'docs/motion-design-examples.zh-CN.md', ...motionDesignRemixFiles, ...presenterStoryFiles, ...presenterTechFiles,
+  'docs/motion-design-examples.md', 'docs/motion-design-examples.zh-CN.md', ...motionDesignRemixFiles, ...presenterStoryFiles, ...growthTeardownFiles, ...presenterTechFiles,
   'docs/skills.md', 'docs/template-catalog.md', 'docs/template-repository.md', 'docs/repository-storage.md', 'docs/test-packages.md', 'docs/templates/requirement.md',
 ];
 
@@ -600,10 +613,14 @@ export async function distributionFiles(profile: string, include: (file: string)
     'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts', 'tracking/task-ledger.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
+    'mcp-ui/template-recommendations/project-previews/manifest.json',
+    ...onboardingTemplateIds.flatMap(id => ['webm', 'jpg'].map(extension =>
+      `mcp-ui/template-recommendations/project-previews/${id}.${extension}`)),
     // The inline Node renderer streams the welcome from this shared translation source.
     'mcp-ui/template-recommendations/i18n.ts', 'mcp-ui/template-recommendations/types.ts',
     'mcp-ui/template-recommendations/LICENSE', 'mcp-ui/template-recommendations/NOTICE.md',
     'mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/app.css',
+    'mcp-ui/template-recommendations/build/inline.js',
     'mcp-ui/template-recommendations/build/identity.json',
     'mcp-ui/template-recommendations/assets/product-promo.mp4',
     'mcp-ui/template-recommendations/assets/product-promo.jpg',

@@ -7,7 +7,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { candidateFixture } from './release-fixture.mjs';
 import { waitForRegistry, releaseInputs, resolveCandidate, validateSource, validateRun, verifyDownloaded, downloadCandidate, publishNpm, promoteTest, archiveRelease, repository, candidateWorkflow, recoveryWorkflow, publicationWorkflow, candidateJobName, findCandidate, authorizationReceipt, recordAuthorization } from '../.github/scripts/motion-release.mjs';
-import { compareReleaseVersions } from '../scripts/release-version.mjs';
+import { compareReleaseVersions, comparePublicationVersions } from '../scripts/release-version.mjs';
 import { consumerEnvironment } from '../.github/scripts/motion-registry-smoke.mjs';
 import { runFile } from '../scripts/runtime-assets.mjs';
 
@@ -76,25 +76,26 @@ test('candidate CLI numbers the frozen Motion source, not the legacy control che
   assert.equal(JSON.parse(await readFile(path.join(directory, 'package.json'))).version, '0.1.0');
 });
 
-test('automatic candidates continue beyond published npm versions after a source version reset', async () => {
+test('automatic candidates follow the active release series and ignore historical 0.6.x tags', async () => {
   const env = { ...valid, GITHUB_SHA: 'a'.repeat(40), GITHUB_WORKFLOW_REF: `${repository}/${candidateWorkflow}@refs/heads/main`,
     GITHUB_RUN_NUMBER: '9', GITHUB_RUN_ATTEMPT: '1' };
   const run = async (_, args) => args[0] === 'show' ? JSON.stringify({ version: '0.0.1' }) : '';
   const resolve = (tags, patch = {}) => resolveCandidate('.', '', '', { ...env, ...patch }, run, async () => Response.json({ 'dist-tags': tags }));
-  assert.equal((await resolve({ latest: '0.6.7', test: '0.6.4-test.13' })).version, '0.6.8-test.14');
-  assert.equal((await resolve({ latest: '0.6.7', test: '0.6.8-test.99', candidate: '0.6.8-test.100' })).version, '0.6.9-test.14');
-  assert.equal((await resolve({ latest: '0.6.7' }, { GITHUB_RUN_ATTEMPT: '2' })).version, '0.6.8-test.14.2');
+  assert.equal((await resolve({ latest: '0.6.7', test: '0.6.4-test.13' })).version, '0.0.2-test.14');
+  assert.equal((await resolve({ latest: '0.6.7', test: '0.6.8-test.99', candidate: '0.6.8-test.100' })).version, '0.0.2-test.14');
+  assert.equal((await resolve({ latest: '0.6.7' }, { GITHUB_RUN_ATTEMPT: '2' })).version, '0.0.2-test.14.2');
   const ahead = { latest: '0.6.7', test: '0.6.8-test.20' };
   const first = await resolve(ahead, { GITHUB_RUN_NUMBER: '15' });
   const second = await resolve(ahead, { GITHUB_RUN_NUMBER: '16' });
-  assert.equal(first.version, '0.6.9-test.20'); assert.equal(second.version, '0.6.8-test.21');
+  assert.equal(first.version, '0.0.2-test.20'); assert.equal(second.version, '0.0.2-test.21');
   assert.notEqual(first.version, second.version, 'Concurrent candidates must keep distinct versions');
   for (const version of [first.version, second.version]) {
-    assert(compareReleaseVersions(version, ahead.test) > 0, `${version} must stay newer than the published test tag`);
+    assert(comparePublicationVersions(version, ahead.test) > 0, `${version} must stay newer than the published test tag`);
   }
   await assert.rejects(resolveCandidate('.', '', '', env, run, async () => new Response('', { status: 503 })), /baseline/);
   await assert.rejects(resolve({ latest: 'bad' }), /MAJOR/);
   await assert.rejects(resolveCandidate('.', '', '', env, run, async () => Response.json({})), /Missing npm/);
+  assert.equal((await resolve({ latest: '0.0.1', test: '0.0.2-test.20', candidate: '0.0.2-test.21' })).version, '0.0.3-test.14');
   const explicit = await resolveCandidate('.', '', '0.7.0-test.1', env, run, async () => { throw Error('Explicit versions need no registry lookup'); });
   assert.equal(explicit.version, '0.7.0-test.1');
 });
@@ -218,7 +219,7 @@ test('old main receipts remain readable but unregistered candidate branches cann
 });
 
 
-function registry(candidate, exists = true, tag = candidate.version, latest = '0.5.0') {
+function registry(candidate, exists = true, tag = candidate.version, latest = '0.6.3') {
   return () => Response.json({ versions: exists ? { [candidate.version]: { dist: { integrity: candidate.integrity } } } : {}, 'dist-tags': { test: tag, latest } });
 }
 
@@ -259,6 +260,18 @@ test('test promotion does not wait for native reports and still protects the cha
   assert.equal(writes, 1); assert.equal(tag, f.candidate.version);
   assert.equal((await promoteTest(f.directory, f.inputs, options)).status, 'already-promoted');
   assert.equal(writes, 1);
+});
+
+test('active test publication replaces historical test tags but preserves npm latest', async t => {
+  const f = await candidateFixture(t, 'main', { version: '0.0.2-test.22' });
+  let tag = '0.6.8-test.21', writes = 0;
+  await publishNpm(f.directory, f.inputs, { env: f.env, fetcher: registry(f.candidate, false, tag), run: async () => { writes++; } });
+  const options = { env: f.env, fetcher: () => registry(f.candidate, true, tag)(), run: async (command, args) => {
+    assert.equal(command, 'npm'); assert.equal(args[3], 'test'); writes++; tag = f.candidate.version;
+  } };
+  assert.equal((await promoteTest(f.directory, f.inputs, options)).status, 'promoted');
+  assert.equal(tag, f.candidate.version); assert.equal(writes, 2);
+  await assert.rejects(publishNpm(f.directory, f.inputs, { ...options, fetcher: registry(f.candidate, true, '0.0.3-test.1') }), /newer npm test/);
 });
 
 test('promotion never regresses a newer test tag and archive-only has no npm write', async t => {
@@ -488,7 +501,7 @@ test('a missing or regressed npm test tag cannot be misreported as a newer super
   const f = await candidateFixture(t), store = storage(f.candidate);
   for (const tag of [undefined, '0.6.4-test.1']) {
     await assert.rejects(archiveRelease(f.directory, f.inputs, config, { ...store,
-      fetcher: () => Response.json({ versions: { [f.candidate.version]: { dist: { integrity: f.candidate.integrity } } }, 'dist-tags': { test: tag, latest: '0.5.0' } }) }), /explicit channel recovery/);
+      fetcher: () => Response.json({ versions: { [f.candidate.version]: { dist: { integrity: f.candidate.integrity } } }, 'dist-tags': { test: tag, latest: '0.6.3' } }) }), /explicit channel recovery/);
   }
   assert.equal(store.writes.length, 0);
 });

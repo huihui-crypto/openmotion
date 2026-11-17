@@ -4,6 +4,7 @@ const app = new App({ name: 'OpenMotion final video', version: '1.0.0' }, {});
 document.documentElement.dataset.motionUi = '';
 const root = document.createElement('main'); document.body.append(root);
 const ui = mountFinalVideo(root, app);
+app.ontoolinput = ui.setInput;
 app.ontoolresult = ui.update;
 app.onteardown = async () => { ui.destroy(); return {}; };
 app.onhostcontextchanged = context => { if (context.theme) document.documentElement.dataset.theme = context.theme; };

@@ -6,6 +6,26 @@ const work = { projectId: 'project-a', inlineWork: { id: 'work-a', projectId: 'p
 const media = { video: 'data:video/mp4;base64,QUFBQQ==', poster: 'data:image/jpeg;base64,QkJCQg==' };
 const canonical = () => ({ structuredContent: work, _meta: { inlineVideo: media }, content: [{ type: 'text', text: JSON.stringify(work) }] });
 const wrap = (value: any) => ({ content: [{ type: 'text', text: JSON.stringify(value) }] });
+const executed = (value: any) => ({ content: [
+  { type: 'text', text: 'Script completed\nWall time 0.2 seconds\nOutput:\n' },
+  { type: 'text', text: JSON.stringify(value) },
+] });
+
+test('execution status and one result JSON retain private media across supported wrappers', () => {
+  for (const value of [executed(canonical()), wrap(executed(canonical())),
+    executed(wrap(canonical())), { ...executed(work), _meta: { inlineVideo: media } }]) {
+    const normalized = normalizeInlineResult(value);
+    assert.deepEqual(normalized.structuredContent, work);
+    assert.deepEqual(normalized._meta.inlineVideo, media);
+    assert.ok(!normalized.content[0].text.includes('base64'));
+  }
+  assert.throws(() => normalizeInlineResult({ content: [
+    ...executed(canonical()).content, ...wrap(canonical()).content,
+  ] }), /INLINE_RESULT_INVALID/, 'Multiple result candidates remain ambiguous');
+  assert.throws(() => normalizeInlineResult(executed(wrap(wrap(canonical())))), /INLINE_RESULT_INVALID/);
+  assert.equal(normalizeInlineResult({ ...executed(canonical()), isError: true }).isError, true);
+  assert.equal(normalizeInlineResult(executed({ ...work, isError: true })).isError, true);
+});
 
 test('canonical and observed one/two-layer envelopes retain media privately and produce identical visible work', () => {
   for (const value of [canonical(), wrap(canonical()), wrap(wrap(canonical())), { structuredContent: { ...work, _inlineMedia: media } }]) {

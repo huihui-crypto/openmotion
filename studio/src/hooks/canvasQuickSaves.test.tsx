@@ -239,7 +239,7 @@ describe("canvas edit commits share the file queue", () => {
 
     expect(saved).toBe(false);
     expect(toasts).toHaveLength(1);
-    expect(toasts[0]).toContain("couldn't finish updating");
+    expect(toasts[0]).toBe("Some changes were saved, but other changes remain incomplete.");
     expect(project.read()).not.toContain("data-prepared");
   });
 

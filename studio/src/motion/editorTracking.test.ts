@@ -150,6 +150,19 @@ it('reports asset import counts with a safe category only when something failed'
   ]);
 });
 
+it('keeps unknown receipts and pending preparation separate from confirmed import failures', () => {
+  reportAssetImport({ projectId: PROJECT, entryPoint: 'timeline_button', requested: 1, added: 0, failed: 0, unknown: 1, pending: 0 });
+  reportAssetImport({ projectId: PROJECT, entryPoint: 'assets_button', requested: 2, added: 0, failed: 0, unknown: 0, pending: 2, category: 'runtime_not_ready' });
+  reportAssetImport({ projectId: PROJECT, entryPoint: 'assets_drop', requested: 4, added: 1, failed: 1, unknown: 1, pending: 1, category: 'unreadable' });
+  const rows = events('studio_asset_import_result');
+  expect(rows).toEqual([
+    { outcome: 'unknown', entry_point: 'timeline_button', requested_count: 1, added_count: 0, failed_count: 0, unknown_count: 1, ...projectFields(PROJECT) },
+    { outcome: 'unknown', entry_point: 'assets_button', requested_count: 2, added_count: 0, failed_count: 0, pending_count: 2, error_category: 'runtime_not_ready', ...projectFields(PROJECT) },
+    { outcome: 'partial', entry_point: 'assets_drop', requested_count: 4, added_count: 1, failed_count: 1, unknown_count: 1, pending_count: 1, error_category: 'unreadable', ...projectFields(PROJECT) },
+  ]);
+  for (const row of rows) expect(validProperties(studioEvents, 'studio_asset_import_result', row)).toBe(true);
+});
+
 it('hands a noted trigger or entry point to exactly one consumer, and drops a stale one', () => {
   vi.useFakeTimers();
   noteHistoryTrigger('keyboard'); noteImportEntry('timeline_button');

@@ -73,7 +73,8 @@ test('guide rendering pins the exact npm package, built source and hash while re
     'Generated guides must use the renamed repository and immutable source SHA');
   assert(!text.includes('nexu-io/html-anything'), 'Do not republish retired repository links');
   assert(!text.includes('{{') && !text.includes('see `{{...}}`'));
-  assert(text.includes('public Tools') && text.includes('production Skills'));
+  assert(text.includes('Complete Tool/Skill inventory comparison belongs to development/release acceptance'));
+  assert(text.includes("reusing setup's successful same-chat read"));
   assert(text.includes('new test versions embed DEV defaults') && !text.includes('does not select DEV templates'),
     'A generated test guide must not claim test versions skip DEV templates');
   for (const host of ['codex', 'claude', 'deepseek', 'workbuddy']) assert(text.includes(`openmotion setup --host ${host}`), host);
@@ -163,12 +164,14 @@ test('archive-only guide publication never accesses the moving default', async t
 });
 
 test('late completion archives its exact version without rolling a newer default back', async t => {
-  const { directory, record } = await fixture(t), newer = '# Install OpenMotion 0.6.4-test.10\n';
-  const store = storage(directory, record, newer);
-  const result = await publishGuide(directory, config, store);
-  assert.equal(result.phase, 'superseded'); assert.equal(result.promoted, false);
-  assert.deepEqual(store.writes.map(x => x.key), [store.plan.versionKey]);
-  assert.equal(store.objects.get(store.plan.fixedKey)!.toString(), newer);
+  const { directory, record } = await fixture(t);
+  for (const version of ['0.6.4-test.10', '0.0.2-test.22']) {
+    const newer = '# Install OpenMotion ' + version + '\n', store = storage(directory, record, newer);
+    const result = await publishGuide(directory, config, store);
+    assert.equal(result.phase, 'superseded'); assert.equal(result.promoted, false);
+    assert.deepEqual(store.writes.map(x => x.key), [store.plan.versionKey]);
+    assert.equal(store.objects.get(store.plan.fixedKey)!.toString(), newer);
+  }
 });
 
 test('unrecognized or conflicting same-version defaults require inspection instead of replacement', async t => {

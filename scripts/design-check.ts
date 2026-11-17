@@ -5,6 +5,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { designTokens } from './design-tokens.ts';
 import { providerIcons, providerIconFiles } from '../packages/design-system/provider-icons.js';
+import { platformIconFiles } from '../packages/design-system/platform-icons.js';
 import { publicDesignFiles, designSystemRuntimeFiles } from '../packages/design-system/index.js';
 import { providerRegistry } from '../shared/provider-registry.ts';
 
@@ -19,7 +20,7 @@ export async function checkDesign() {
   for (const { id } of providerRegistry) {
     assert.ok(Object.hasOwn(providerIcons, id), `Built-in provider ${id} needs an explicit brand or generic icon.`);
   }
-  for (const file of providerIconFiles) {
+  for (const file of [...providerIconFiles, ...platformIconFiles]) {
     assert.ok(publicDesignFiles.includes(file) && designSystemRuntimeFiles.includes(file), `${file} must be served and distributed.`);
     const svg = await readFile(new URL('packages/design-system/' + file, root), 'utf8');
     assert.match(svg, /^<svg\b/);

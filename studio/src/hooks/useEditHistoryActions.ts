@@ -45,7 +45,7 @@ export interface UseEditHistoryActionsOptions {
   readOptionalProjectFile: (path: string) => Promise<string>;
   readProjectFile: (path: string) => Promise<string>;
   writeProjectFile: (path: string, content: string) => Promise<void>;
-  showToast: (message: string, tone?: "error" | "info") => void;
+  showToast: (message: string, tone?: "error" | "info", presentation?: "feedback") => void;
   syncHistoryPreviewAfterApply: (restore: Pick<HistoryResult, "paths" | "files">) => Promise<void>;
   showHistoryRestoreNow?: (files: RestoreFiles) => (() => void) | null;
   waitForPendingDomEditSaves: () => Promise<void>;
@@ -133,8 +133,11 @@ export function useEditHistoryActions({
       report(result.ok && result.label ? "success" : result.reason === "failed" ? "failure" : "unavailable");
       if (!result.ok && result.reason === "content-mismatch") {
         showToast(
-          `Can't ${direction}: ${result.paths?.join(", ")} changed since that edit.`,
-          "info",
+          direction === "undo"
+            ? "Content has changed. This step cannot be undone."
+            : "Content has changed. This step cannot be redone.",
+          "error",
+          "feedback",
         );
         return;
       }

@@ -94,8 +94,8 @@ export function useFrameCapture({
           setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
         } catch (fetchErr) {
           clearTimeout(timeout);
-          if (fetchErr instanceof DOMException && fetchErr.name === "AbortError") {
-            throw new Error("Capture timed out: the server took too long to respond");
+          if (controller.signal.aborted) {
+            throw new Error("Frame capture timed out. Please capture again.");
           }
           throw fetchErr;
         }

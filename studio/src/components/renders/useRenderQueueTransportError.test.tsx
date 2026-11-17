@@ -1,9 +1,8 @@
 // @vitest-environment happy-dom
 
-// The render POST's catch used to discard its error, so a dead server, a DNS
-// failure and a mid-render crash all produced one sentence. That string is also
-// what travels into the feedback report, so three field reports — one of them a
-// render that failed EVERY time — arrived with nothing to act on.
+// Losing the request response does not prove whether the server accepted it.
+// Preserve its diagnostic cause and request identity without declaring failure
+// or recommending a second render before the original result is checked.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mountRenderQueue } from "./renderQueueTestHarness";
@@ -33,7 +32,7 @@ afterEach(() => {
 });
 
 describe("useRenderQueue transport failure", () => {
-  it("names the cause instead of collapsing every failure into one sentence", async () => {
+  it("keeps an unconfirmed request unknown and preserves its diagnostic cause", async () => {
     queue = mountRenderQueue(useRenderQueue);
     const { act } = await import("react");
     await act(async () => {
@@ -41,9 +40,10 @@ describe("useRenderQueue transport failure", () => {
     });
 
     const job = queue.api().jobs.at(-1);
-    expect(job?.status).toBe("failed");
+    expect(job?.status).toBe("unknown");
     expect(job?.error).toContain("Failed to fetch");
-    // The CLI guidance still earns its place; it just no longer stands alone.
-    expect(job?.error).toContain("hyperframes render");
+    expect(job?.requestId).toEqual(expect.any(String));
+    expect(job?.error).toContain("Check the original export");
+    expect(job?.nativeJobId).toBeUndefined();
   });
 });

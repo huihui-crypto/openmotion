@@ -21,14 +21,17 @@ export async function designTokens(checkOnly = false) {
     } else await writeFile(new URL(file, directory), css);
   }
   // Stable documentation/plugin paths are generated mirrors, never editable sources.
-  const mirrors = {
-    'brand/openmotion-logo.svg': '../../docs/readme/openmotion-logo.svg',
-    'brand/favicon.svg': '../../studio/public/favicon.svg',
-    'fonts/NOTICES.txt': '../../web/design-system/fonts/NOTICES.txt',
-    'fonts/Albert-Sans-OFL.txt': '../../web/design-system/fonts/Albert-Sans-OFL.txt',
-    'fonts/IBM-Plex-Mono-OFL.txt': '../../web/design-system/fonts/IBM-Plex-Mono-OFL.txt',
-  };
-  for (const [source, target] of Object.entries(mirrors)) {
+  const mirrors: [source: string, target: string][] = [
+    ['brand/openmotion-logo.svg', '../../docs/readme/openmotion-logo.svg'],
+    ['brand/favicon.svg', '../../studio/public/favicon.svg'],
+    // The growth-teardown Skill ships these marks for standalone installs.
+    ['brand/openmotion-logo.svg', '../../library/skills/openmotion-growth-teardown/assets/brand/openmotion-logo.svg'],
+    ['brand/loading-mark.svg', '../../library/skills/openmotion-growth-teardown/assets/brand/loading-mark.svg'],
+    ['fonts/NOTICES.txt', '../../web/design-system/fonts/NOTICES.txt'],
+    ['fonts/Albert-Sans-OFL.txt', '../../web/design-system/fonts/Albert-Sans-OFL.txt'],
+    ['fonts/IBM-Plex-Mono-OFL.txt', '../../web/design-system/fonts/IBM-Plex-Mono-OFL.txt'],
+  ];
+  for (const [source, target] of mirrors) {
     const data = await readFile(new URL(source, directory));
     if (checkOnly) {
       if (!data.equals(await readFile(new URL(target, directory)))) throw new Error(`${target} is stale. Run npm run design:tokens.`);

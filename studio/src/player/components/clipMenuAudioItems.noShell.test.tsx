@@ -81,6 +81,6 @@ describe("ClipMenuAudioItems in a host without Studio's shell", () => {
     const urls = fetchSpy.mock.calls.map((call) => String(call[0]));
     expect(urls).toContain("/api/projects/p1/loudness/normalize");
     expect(setQuiet).toHaveBeenCalledWith(tour, "data-volume", "2", "Normalize loudness");
-    expect(onNotice).toHaveBeenCalledWith("Normalized to −16 LUFS (+6.0 dB)", "info");
+    expect(onNotice).toHaveBeenCalledWith("Estimated loudness: −16 LUFS (+6.0 dB).", "info");
   });
 });

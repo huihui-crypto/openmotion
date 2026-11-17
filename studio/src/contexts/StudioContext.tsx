@@ -32,6 +32,8 @@ export interface StudioShellValue {
     actionError: string | null;
     dismissActionError: () => void;
     reloadRenders: () => void;
+    recheckRender?: (jobId?: string) => void;
+    checking?: boolean;
     deleteRender: (jobId: string) => void;
     cancelRender: (jobId: string) => void;
     clearCompleted: () => void;

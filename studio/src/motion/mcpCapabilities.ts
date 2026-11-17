@@ -1,3 +1,6 @@
+import { defaultPlatformExportTarget, platformExportPrompt } from '../../../shared/platform-export.ts';
+import type { IntegrationInfo } from '../../../shared/integration.ts';
+
 /** Maintained product descriptions; coverage is checked against the public MCP contract. */
 export const mcpCapabilities = [
   { id: 'projects', icon: 'folder-open-line', title: 'Manage local projects', description: 'Rename, duplicate, locate, share, trash, restore and permanently delete projects from each project menu.', tools: ['openmotion_manage_project'], prompt: 'Duplicate this project as an independent editable copy.' },
@@ -12,6 +15,16 @@ export const mcpCapabilities = [
   { id: 'export', icon: 'download-2-line', title: 'Deliver a finished video', description: 'Export the chosen project version to MP4 and follow its progress. Keep both the finished video and the editable project.', tools: ['openmotion_export_request', 'openmotion_export_cancel'], prompt: 'Export the agreed OpenMotion project version to MP4 with its audio. Track the same export job, review playback and give me the finished video and editable project.' },
 ] as const;
 
+/** Scenarios compose existing tools; keep atomic tool discovery unique above. */
+export const mcpScenarios = [{
+  id: 'platform-export', icon: 'sparkling-line', title: 'Prepare a platform version',
+  description: 'In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.',
+  tools: ['openmotion_get_project', 'openmotion_manage_project', 'openmotion_edit_project', 'openmotion_open_preview', 'openmotion_export_request'],
+  prompt: 'Prepare a platform version',
+}] as const;
+
+export const platformExportExample = (locale: string, workspace?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'>) => platformExportPrompt({ target: defaultPlatformExportTarget(locale), goal: 'shorten', locale, workspace });
+
 export const mcpBenefits = [
   { icon: 'movie-line', title: 'The workspace behind your Agent', description: 'Your Agent creates and edits through MCP. OpenMotion keeps the project, source files and assets together so each result can become the next starting point.' },
   { icon: 'history-line', title: 'Versions you can return to', description: 'Keep saved versions, revisit an earlier cut and continue from it without losing the later history.' },
@@ -21,7 +34,7 @@ export const mcpBenefits = [
 ] as const;
 
 export const mcpFaq = [
-  ['Can I generate from a reference image?', 'Yes, with an image model that supports editing. Import the picture into the project and ask the Agent to use its project path as referenceAsset. One PNG, JPEG or WebP under 20 MB is supported; the original stays unchanged.'],
+  ['Can I generate from a reference image?', "Yes. Supported image models can edit a reference. OpenDesign Cloud models with first-frame support can animate an image from Assets; Seedance 2.5 and Wan 2.7 use the image's aspect ratio. Prepare the reference first for a fixed frame. The OpenDesign account provider does not support video references yet."],
   ['Which audio can I generate?', 'Speech, music and sound effects depend on the selected model and provider. BGM uses a music model. Use the discovered model mode and native parameters; an audio connection does not imply support for every audio operation.'],
   ['How is a Brand Kit different from a Template?', 'Open Brand Kit in Studio to extract a public website or choose the official collection, review its styles and download a Motion Package. Copy for Agent provides a local package path and style-only instructions. Reuse colors, typography, logos, component variants, materials and visual brand rules; context files travel with the package. The fixed showcase does not define your film’s pacing or story. For Agent access, use openmotion_assets_use with action=brand_kit. Brand Kits are separate from the MCP template catalogue.'],
   ['Can I continue with another Agent?', 'Yes. Connect a compatible Agent to the same workspace and ask it to read the saved project before editing. Projects and assets can be reused; provide any conversation context it needs separately.'],
@@ -31,6 +44,7 @@ export const mcpFaq = [
   ['How long does a video take?', 'It depends on the film, the Agent, the selected models and your computer. Generation queues and rendering have separate progress. Keep following the existing job instead of submitting the same request again.'],
   ['Will my Agent use another video platform?', 'Your Agent chooses material sources to fit the content: real events call for original material; original visuals may use generation. It prefers OpenMotion when its available capabilities fit the operation, and can use other tools, including video platforms, to fill capability gaps. Your existing permissions and source preferences still apply.'],
   ['Can a team work on the same project?', 'Use All projects to export one project, checked projects or all projects as ZIP files. Import projects creates independent copies with local assets and fonts. Cloud collaboration, conversation history and provider credentials are not included. Linked online resources still need the internet.'],
+  ['Does platform export publish my video?', 'Your Agent chooses edits using your media, captions or confirmed timecodes, then uses MCP to duplicate, edit, preview and export. Speech analysis needs host tools or your input. You upload the finished file yourself.'],
   ['Who makes OpenMotion?', 'OpenMotion is an independent open-source project. The supported Agent and model names identify integrations, not ownership or endorsement. Visit the repository for the source, licenses and contribution guide.'],
 
   ['Do I need an OpenMotion API key?', 'Local MCP setup does not require an OpenMotion API key. Cloud generation uses your configured provider credentials or OpenDesign account. Keep keys in Model providers, not in chat.'],
@@ -40,7 +54,8 @@ export const mcpFaq = [
   ['Can ChatGPT cloud connect to this workspace?', 'This installation exposes local stdio, not a public HTTPS MCP endpoint. Use a local Agent or compatible desktop MCP client. The editor URL is not an MCP server URL.'],
   ['Can I recreate a reference video?', 'Yes. Give your Agent the reference and your brand. The recreation Skill analyses the reference, rebuilds the film as editable source and checks representative preview moments once, corrects clear defects in one batch and hands it over after automatic technical export verification. Detailed comparisons and further visual revisions run when requested. The Skill bundles reusable complete-texture and sprite-particle rendering code for editable projects. Optional source-observation and motion-measurement tools prepare their pinned Python, NumPy and OpenCV environment automatically on supported Macs and Windows PCs. First use needs network access unless the complete package includes the assets. Access to the reference, media understanding and fidelity depend on the host and supplied material.'],
   ['Where do I find my finished work?', 'Projects, source files, assets and versions stay in your local OpenMotion workspace. Open the project in Studio or ask a connected Agent to read it and continue. Completed exports provide the MP4.'],
-  ['Can I see templates and videos inside my Agent?', 'Clients that negotiate MCP Apps can discover optional template cards and the final-video player. Codex installation presents three random reference cards through native MCP Apps, then streams the welcome separately as the final text reply. The cards contain no welcome; reference playback needs internet access. Builtin examples can use a supported inline renderer. Preparation does not verify native discovery or visible delivery. Other clients use the local library, editor and video links; host support varies. Send your brief to start recreation.'],
+  ['Can I see templates and videos inside my Agent?', 'Clients that negotiate MCP Apps can discover optional template cards and the final-video player. Codex installation shows the welcome followed by three randomly selected project-preview cards in a self-contained HTML document. Complete silent project previews and posters are bundled; this display does not wait for native MCP reload. Native original-reference playback remains available separately and needs internet access. Presentation and automatic MCP activation have separate acceptance: visible cards do not prove automatic activation. Preparation does not verify connection or visible delivery. Other clients use the local library, editor and video links; host support varies.'],
+  ['What if the final video cannot load?', 'The final video loads automatically. If loading fails, choose Reload to read the same completed export without rendering again.'],
   ['How do I disconnect an Agent?', 'Remove the OpenMotion MCP entry or plugin in that Agent. This does not delete projects. Remove provider credentials separately in Model providers if you no longer want generation access.'],
   ['Does connecting start generation or spend credits?', 'No. Copying setup instructions, browsing templates and checking a connection do not start media generation. Provider requests may incur charges; ask your Agent to confirm the model, scope and cost first.'],
 ] as const;

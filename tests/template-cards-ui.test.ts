@@ -50,6 +50,7 @@ test('the real component waits for a result and renders the frozen ordered selec
     ui.update(result());
     assert.deepEqual([...root.querySelectorAll('article')].map(card => card.getAttribute('data-template-id')), ['decision-tree', 'product-promo', 'nyt-graph']);
     assert.deepEqual([...root.querySelectorAll('[data-template-title]')].map(title => title.textContent), ['Decision Tree', 'Product Promo', 'NYT Graph']);
+    assert.equal(root.querySelectorAll('.omtc-position').length, 0);
     assert.equal(root.querySelectorAll('video').length, 4);
   } finally { ui.destroy(); window.happyDOM.abort(); }
 });

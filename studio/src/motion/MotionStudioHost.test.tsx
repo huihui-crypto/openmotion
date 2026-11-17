@@ -44,7 +44,7 @@ vi.mock('../utils/studioTelemetry', () => ({ trackStudioEvent: vi.fn() }));
 vi.mock('./MotionHistoryPanel', () => ({ MotionHistoryPanel: () => <div>History versions</div> }));
 vi.mock('./useWorkspace', () => ({ useWorkspace: () => ({
   status: state.status, projects: [{ id: 'demo', title: 'Demo' }, { id: 'second', title: 'Second' }],
-  busy: state.workspaceBusy, error: state.connectionError, errorSource: 'connection', clearError: vi.fn(), open: state.open, openSession: state.open, startSession: state.create, create: state.create, home: state.home, rename: state.rename,
+  busy: state.workspaceBusy, connectionError: state.connectionError, error: state.connectionError, errorSource: 'connection', clearError: vi.fn(), open: state.open, openSession: state.open, startSession: state.create, create: state.create, home: state.home, rename: state.rename,
 }) }));
 vi.mock('./ConnectionDialog', () => ({ ConnectionDialog: ({ open, section, busy, onOpen }: { open: boolean; section: string; busy: boolean; onOpen: (id: string) => void }) =>
   open ? <div role="dialog" aria-label="MCP connections" data-section={section}>
@@ -510,22 +510,22 @@ it.each(['zh-CN', 'en', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr']
 });
 
 
-it('shows connection failure as a one-line reconnecting toast and removes it on recovery', () => {
+it('shows connection failure as one reconnecting toast and removes it on recovery', () => {
   state.connectionError = 'Failed to fetch /private/project';
   render();
-  const toast = document.querySelector('[data-testid="motion-connection-toast"]')!;
+  const connectionToasts = () => [...document.querySelectorAll('[role=status]')].filter(node => node.textContent === '连接已断开，正在重连');
+  const toast = connectionToasts()[0];
+  expect(toast).toBeDefined();
   expect(toast.textContent).toContain('连接已断开');
-  expect(toast.querySelector('.sr-only')?.textContent).toBe('重连中…');
-  expect(toast.querySelector('[aria-hidden="true"]')?.textContent).toBe('重连中...');
-  expect(toast.querySelectorAll('.hf-toast-progress-dots > span')).toHaveLength(3);
-  expect(toast.querySelector('.truncate')).not.toBeNull();
+  expect(toast.textContent).toBe('连接已断开，正在重连');
+  expect(toast.closest('.hf-toast-viewport')).not.toBeNull();
   expect(container.querySelector('.motion-error-notice')).toBeNull();
   expect(toast.textContent).not.toMatch(/private|details|详情/);
   expect(toast.querySelector('button')).toBeNull();
   render();
-  expect(document.querySelectorAll('[data-testid="motion-connection-toast"]')).toHaveLength(1);
+  expect(connectionToasts()).toHaveLength(1);
   state.connectionError = '';
   state.workspaceBusy = false;
   render();
-  expect(document.querySelector('[data-testid="motion-connection-toast"]')).toBeNull();
+  expect(connectionToasts()).toHaveLength(0);
 });
