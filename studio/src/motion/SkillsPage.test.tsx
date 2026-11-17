@@ -219,3 +219,7 @@ it('opens the contribution guide section for submitting a skill, like the templa
   expect(section).toContain('nexu-io/openmotion');
   expect(section).toContain('draft pull request');
 });
+
+it('bundles GIF covers instead of loading them from raw GitHub', () => {
+  expect(motionSkills.filter(skill => skill.cover?.gif?.includes('raw.githubusercontent.com')).map(skill => skill.id)).toEqual([]);
+});
