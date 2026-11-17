@@ -91,7 +91,7 @@ test('ZIP stores UTF-8 names and file sizes in local and central headers', () =>
 test('source and distribution expose only canonical Skill folders', async () => {
   const { readdir } = await import('node:fs/promises');
   const core = ['openmotion-director', 'openmotion-media', 'openmotion-production', 'openmotion-recreate', 'openmotion-reference-video', 'openmotion-template-to-video', 'openmotion-video-to-template'];
-  const library = ['openmotion-brandkit', 'openmotion-design-remix', 'openmotion-presenter-story'];
+  const library = ['openmotion-brandkit', 'openmotion-design-remix', 'openmotion-growth-teardown', 'openmotion-presenter-story'];
   assert.deepEqual((await readdir(new URL('../skills/', import.meta.url))).filter(name => !name.startsWith('.')).sort(), core);
   assert.deepEqual((await readdir(new URL('../library/skills/', import.meta.url))).sort(), library);
   for (const profile of ['phase1', 'legacy']) {

@@ -52,6 +52,16 @@ for (const [old, canonical] of Object.entries(pairs)) {
   });
 }
 
+test('standalone openmotion-growth-teardown installs without a retired entry', async t => {
+  const root = await isolated(t), destination = path.join(root, 'skills');
+  const result = await installLibrarySkill('openmotion-growth-teardown', destination);
+  assert.deepEqual(await readdir(destination), ['openmotion-growth-teardown']);
+  assert.deepEqual(result.removedLegacy, []);
+  assert.deepEqual(result.preservedLegacy, []);
+  const check = spawnSync(process.execPath, [path.join(destination, 'openmotion-growth-teardown/scripts/build.mjs'), '--check', 'tests/fixtures/growth-teardown.json'], { encoding: 'utf8' });
+  assert.equal(check.status, 0, check.stderr);
+});
+
 test('standalone cleanup preserves customized, extra-file and symlink legacy folders', async t => {
   const root = await isolated(t);
   for (const kind of ['customized', 'extra-file', 'symlink']) {

@@ -23,6 +23,8 @@ const retired = {
     [path.join('agents', 'openai.yaml')]: '53ba8d5b90b65f9b163607acb68367c7f0355e7315175bb6ff2aad864c3cfe1e',
   } },
 };
+// Library Skills that never shipped a retired forwarding folder.
+const current = ['openmotion-growth-teardown'];
 async function snapshot(directory, relative = '') {
   const files = {};
   for (const item of await readdir(path.join(directory, relative), { withFileTypes: true })) {
@@ -42,7 +44,7 @@ async function snapshot(directory, relative = '') {
 
 // The destination is explicit; user-owned or different-version content is never overwritten.
 export async function installLibrarySkill(name, destination) {
-  assert(Object.hasOwn(retired, name), 'Unknown Library Skill: ' + name + '. Use an openmotion-* Library Skill name.');
+  assert(Object.hasOwn(retired, name) || current.includes(name), 'Unknown Library Skill: ' + name + '. Use an openmotion-* Library Skill name.');
   const canonical = name;
   assert(destination, 'An explicit destination skills directory is required');
   const media = validateMediaManifest(JSON.parse(await readFile(new URL('../repository-media.json', import.meta.url), 'utf8')));
@@ -63,8 +65,8 @@ export async function installLibrarySkill(name, destination) {
       assert.deepEqual(await snapshot(target), expected, 'Existing Skill differs; preserve it and choose another destination: ' + target);
     } else missing.push(skill);
   }
-  const legacy = retired[canonical], legacyTarget = path.join(directory, legacy.name);
-  const present = await lstat(legacyTarget).catch(error => { if (error.code !== 'ENOENT') throw error; });
+  const legacy = retired[canonical] ?? null, legacyTarget = legacy && path.join(directory, legacy.name);
+  const present = legacy && await lstat(legacyTarget).catch(error => { if (error.code !== 'ENOENT') throw error; });
   let removeLegacy = false;
   if (present?.isDirectory() && !present.isSymbolicLink()) {
     try { removeLegacy = isDeepStrictEqual(await snapshot(legacyTarget), legacy.files); }

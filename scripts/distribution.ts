@@ -122,6 +122,16 @@ const presenterStoryFiles = [
   'library/skills/openmotion-presenter-story/references/workflow-demo/MOTION_DESIGN.md',
 ];
 
+const growthTeardownFiles = [
+  'library/skills/openmotion-growth-teardown/SKILL.md',
+  'library/skills/openmotion-growth-teardown/references/research.md',
+  'library/skills/openmotion-growth-teardown/references/review.md',
+  'library/skills/openmotion-growth-teardown/references/schema.md',
+  'library/skills/openmotion-growth-teardown/scripts/build.mjs',
+  'library/skills/openmotion-growth-teardown/scripts/evidence.mjs',
+  'library/skills/openmotion-growth-teardown/scripts/score.mjs',
+];
+
 const presenterTechFiles = [
   'library/templates/presenter-tech/LICENSE',
   'library/templates/presenter-tech/MOTION_DESIGN.md',
@@ -511,7 +521,7 @@ export const distributionDocuments = [
   ...motionPackageFiles,
   ...designSystemDocuments,
   'docs/fonts.md',
-  ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
+  ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix', 'openmotion-growth-teardown'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
   ...localReadmeResourceFiles,
   'README.md', 'README.zh-CN.md', 'CONTRIBUTING.md', 'CONTRIBUTING.zh-CN.md', 'AGENTS.md', 'CLAUDE.md', 'docs/README.md', 'repository-media.json',
   'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md',
@@ -563,7 +573,7 @@ export const distributionDocuments = [
   'library/skills/openmotion-brandkit/SKILL.md', 'library/templates/README.md',
   'library/components/README.md', 'library/components/title-reveal/README.md',
   'library/design-systems/ink-water/MOTION_DESIGN.md', 'library/brandkits/openmotion/BRANDKIT.md',
-  'docs/motion-design-examples.md', 'docs/motion-design-examples.zh-CN.md', ...motionDesignRemixFiles, ...presenterStoryFiles, ...presenterTechFiles,
+  'docs/motion-design-examples.md', 'docs/motion-design-examples.zh-CN.md', ...motionDesignRemixFiles, ...presenterStoryFiles, ...growthTeardownFiles, ...presenterTechFiles,
   'docs/skills.md', 'docs/template-catalog.md', 'docs/template-repository.md', 'docs/repository-storage.md', 'docs/test-packages.md', 'docs/templates/requirement.md',
 ];
 
