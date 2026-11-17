@@ -72,6 +72,8 @@ Build from `evidence/growth.json`: it is the copy with every collected image, wa
 
 Copy, colours and timings come from `growth.json`; scene files stay hand-editable. `--lang zh` writes Chinese headlines (or set `"lang": "zh"`). A license-free score is synthesized from the film's own cues (typing, pops, whooshes, hits) into `assets/score.wav`; `--music <file>` uses a licensed track instead and `--no-score` leaves it silent.
 
+The generator uses the GSAP installed with OpenMotion; when this Skill is installed on its own, set `OPENMOTION_HOME` to the OpenMotion checkout or run `npm install gsap` in the working directory.
+
 In OpenMotion, import or open `out/` as a project and continue through the usual editor preview and export. Updating an existing managed project uses the shared project-edit contract with its current revision; do not write around version protection.
 
 ## 5. Review before delivery

@@ -201,6 +201,18 @@ for (const play of data.plays || []) {
   report.push(`wall ${play.lane}: ${wall.length} thumbnails`);
 }
 if (browser) await browser.close();
+// Paths already in the input are relative to its folder (or that folder's parent);
+// rewrite them relative to the output's parent, where new paths are anchored.
+const inputDir = path.dirname(path.resolve(input)), anchor = path.dirname(out);
+const relocate = rel => {
+  if (!rel || path.isAbsolute(rel)) return rel;
+  if (existsSync(path.resolve(anchor, rel))) return rel;
+  const found = [path.resolve(inputDir, rel), path.resolve(inputDir, '..', rel)].find(p => existsSync(p));
+  return found ? path.relative(anchor, found) : rel;
+};
+if (data.brand?.logo) data.brand.logo = relocate(data.brand.logo);
+for (const lane of data.lanes || []) for (const m of lane.moves || []) if (m.source?.image) m.source.image = relocate(m.source.image);
+for (const p of data.plays || []) if (p.wall) p.wall = p.wall.map(relocate);
 await writeFile(path.join(out, 'growth.json'), JSON.stringify(data, null, 2));
 console.log(report.join('\n'));
 console.log('Wrote ' + path.join(out, 'growth.json'));

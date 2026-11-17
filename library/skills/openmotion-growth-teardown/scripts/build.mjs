@@ -172,10 +172,11 @@ await mkdir(path.join(out, 'compositions'), { recursive: true });
 await mkdir(path.join(out, 'assets', 'ev'), { recursive: true });
 const require = createRequire(import.meta.url);
 let gsapPath = null;
-for (const base of [process.cwd(), here, path.resolve(here, '../../../..')]) {
+// Resolution walks up node_modules from each base: an OpenMotion checkout, the working directory or this Skill.
+for (const base of [process.env.OPENMOTION_HOME, process.cwd(), here, path.resolve(here, '../../../..')].filter(Boolean)) {
   try { gsapPath = require.resolve('gsap/dist/gsap.min.js', { paths: [base] }); break; } catch {}
 }
-if (!gsapPath) { console.error('gsap is not installed; run npm install gsap in the OpenMotion checkout'); process.exit(1); }
+if (!gsapPath) { console.error('GSAP was not found. Set OPENMOTION_HOME to your OpenMotion checkout, or run `npm install gsap` in the working directory.'); process.exit(1); }
 await copyFile(gsapPath, path.join(out, 'assets', 'gsap.min.js'));
 const copied = new Map();
 async function asset(rel) {
