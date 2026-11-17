@@ -13,12 +13,14 @@ Render, then watch the MP4 once at full speed with sound and once frame by frame
 
 | Moment | Check |
 | --- | --- |
+| Intro, first 2 s | The OpenMotion wordmark and tagline are crisp and centered |
 | Intro, end of typing | The command reads naturally; the logo chip is the company's real mark |
+| Any headline | The OpenMotion mark sits before the headline, aligned with its cap height |
 | Sources | Every tile has a real icon; the call count is the real count |
 | Map, last second | No move label overlaps another or runs off the lane; the counter lands on the latest sourced value |
 | Each play, last second | The orange stretches start at that lane's moves; each leader line ends on the move's date; cards show the real page, video or a clipping with the real headline; nothing important is hidden by a cookie banner |
 | Plays to copy | Instructions are complete sentences and fit in their cards |
-| Outro | Gallery cards (when used) come from other real teardowns |
+| Outro | Gallery cards (when used) come from other real teardowns; the OpenMotion wordmark signs the film |
 
 `npx hyperframes snapshot --at <times>` captures exact frames; `npx hyperframes check` reports overflow, contrast and timing warnings.
 

@@ -3,6 +3,7 @@
 ## 2026-11-17: Add the Growth Teardown library Skill
 
 - Add optional [`openmotion-growth-teardown`](../../library/skills/openmotion-growth-teardown/SKILL.md): name a company, research its dated growth moves and metric points with sources, and generate an editable nine-scene HyperFrames film (map, three plays with real evidence, plays to copy).
+- Films are branded with the OpenMotion wordmark (intro and outro) and mark (every headline); the Skill carries an unchanged copy of the two design-system brand files for standalone installs.
 - Includes a research method, the `growth.json` contract and validator, an evidence collector (page screenshots, video thumbnails and thumbnail walls, favicons), drawn evidence cards and a deterministic cue-synchronized score with no third-party audio.
 - Library content only: not registered as an MCP resource and not a new core production route. Local Higgsfield, Lovable and Cursor runs exercised research, generation and rendering; creative acceptance remains with the user.
 

@@ -1,0 +1,1 @@
+Unchanged copies of `packages/design-system/brand/openmotion-logo.svg` and `loading-mark.svg` for standalone installs. In a checkout, `scripts/build.mjs` reads the design-system originals first; update those, then copy them here.

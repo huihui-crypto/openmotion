@@ -124,6 +124,9 @@ const presenterStoryFiles = [
 
 const growthTeardownFiles = [
   'library/skills/openmotion-growth-teardown/SKILL.md',
+  'library/skills/openmotion-growth-teardown/assets/brand/README.md',
+  'library/skills/openmotion-growth-teardown/assets/brand/loading-mark.svg',
+  'library/skills/openmotion-growth-teardown/assets/brand/openmotion-logo.svg',
   'library/skills/openmotion-growth-teardown/references/research.md',
   'library/skills/openmotion-growth-teardown/references/review.md',
   'library/skills/openmotion-growth-teardown/references/schema.md',

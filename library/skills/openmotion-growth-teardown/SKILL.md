@@ -5,6 +5,8 @@ description: OpenMotion — Reverse-engineer how a company grew and turn it into
 
 # OpenMotion · Growth Teardown
 
+An OpenMotion Skill. Every film it makes is branded as made with OpenMotion: the OpenMotion wordmark opens the film, the OpenMotion mark leads every scene headline and the wordmark signs the outro. The company being analysed keeps its own logo where it appears (the command line, its gallery card); never replace or restyle either brand.
+
 Name a company, get every move that grew it — on one timeline, with the receipts. The output is a short film and the data behind it:
 
 1. **`growth.json`** — the metric curve (revenue run rate, ARR, users, stars…), every dated growth move in 3–4 lanes, and three plays. Every number and move carries its source URL.

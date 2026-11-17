@@ -178,6 +178,13 @@ for (const base of [process.env.OPENMOTION_HOME, process.cwd(), here, path.resol
 }
 if (!gsapPath) { console.error('GSAP was not found. Set OPENMOTION_HOME to your OpenMotion checkout, or run `npm install gsap` in the working directory.'); process.exit(1); }
 await copyFile(gsapPath, path.join(out, 'assets', 'gsap.min.js'));
+// OpenMotion brand marks: the design-system source in a checkout, else this Skill's unchanged copy.
+const brandDir = [path.resolve(here, '../../../../packages/design-system/brand'), process.env.OPENMOTION_HOME && path.join(process.env.OPENMOTION_HOME, 'packages/design-system/brand'), path.resolve(here, '../assets/brand')]
+  .filter(Boolean).find(d => existsSync(path.join(d, 'openmotion-logo.svg')) && existsSync(path.join(d, 'loading-mark.svg')));
+if (!brandDir) { console.error('OpenMotion brand marks not found (openmotion-logo.svg, loading-mark.svg).'); process.exit(1); }
+await mkdir(path.join(out, 'assets', 'brand'), { recursive: true });
+await copyFile(path.join(brandDir, 'openmotion-logo.svg'), path.join(out, 'assets', 'brand', 'openmotion-logo.svg'));
+await copyFile(path.join(brandDir, 'loading-mark.svg'), path.join(out, 'assets', 'brand', 'openmotion-mark.svg'));
 const copied = new Map();
 async function asset(rel) {
   if (!rel) return null;
@@ -201,10 +208,10 @@ const baseCss = id => `
     radial-gradient(38% 40% at 88% 20%, rgba(196,181,253,.28), transparent 70%),
     radial-gradient(45% 50% at 50% 70%, rgba(165,180,252,.20), transparent 70%)}
   .${id}-head{position:absolute;left:120px;top:62px;display:flex;align-items:center;gap:26px;white-space:nowrap}
-  .${id}-badge{width:64px;height:64px;border-radius:16px;background:${C.accent};display:grid;place-items:center;box-shadow:0 8px 24px rgba(59,91,255,.28)}
+  .${id}-badge{width:66px;height:66px;flex:none;display:block}
   .${id}-h{font-size:${zh ? 76 : 88}px;font-weight:600;letter-spacing:-0.035em;line-height:1}
   .mono{font-family:${MONO}}`;
-const badge = id => `<div class="${id}-badge"><svg width="38" height="38" viewBox="0 0 38 38"><path d="M5 29 L14 20 L20 25 L33 9" fill="none" stroke="${badgeInk}" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="33" cy="9" r="3.6" fill="${badgeInk}"/></svg></div>`;
+const badge = id => `<img class="${id}-badge" src="assets/brand/openmotion-mark.svg" alt="OpenMotion">`;
 const headline = (id, text) => `<div class="${id}-head" id="${id}-head">${badge(id)}<div class="${id}-h" id="${id}-htext">${esc(text)}</div></div>`;
 const headIn = (id, at = 0.05) => `tl.fromTo('#${id}-head',{opacity:0,y:18},{opacity:1,y:0,duration:0.5,ease:'power3.out'},${at});`;
 function scene(id, css, body, script) {
@@ -306,22 +313,31 @@ const logo = await asset(data.brand?.logo);
 
 // 1 intro
 {
-  const id = 'intro', dur = 4;
+  const id = 'intro', OFF = 2.2, dur = 4 + OFF;
   const cmd = T.cmd(company);
   const chars = [...cmd];
-  const body = `${headline(id, T.intro)}
+  const body = `<div id="${id}-lock" style="position:absolute;left:0;right:0;top:380px;display:flex;flex-direction:column;align-items:center;gap:34px">
+  <img id="${id}-wordmark" src="assets/brand/openmotion-logo.svg" alt="OpenMotion" style="width:620px;height:auto">
+  <div id="${id}-tag" style="font-size:58px;font-weight:600;letter-spacing:-.03em;color:${C.ink}">${esc(T.intro)}</div>
+</div>
+${headline(id, T.intro)}
 <div id="${id}-term" style="position:absolute;left:460px;top:430px;width:1000px;height:150px;border-radius:18px;background:#16181f;box-shadow:0 30px 80px rgba(20,22,40,.35);overflow:hidden">
   <div style="height:40px;display:flex;align-items:center;gap:9px;padding-left:20px;background:#1f222b"><i style="width:13px;height:13px;border-radius:50%;background:#ff5f57"></i><i style="width:13px;height:13px;border-radius:50%;background:#febc2e"></i><i style="width:13px;height:13px;border-radius:50%;background:#28c840"></i><span class="mono" style="margin-left:14px;color:#8b90a0;font-size:16px">agent</span></div>
   <div class="mono" style="padding:30px 32px;font-size:32px;color:#e7e9f0;white-space:nowrap;display:flex;align-items:center"><span style="color:#7c8cff;margin-right:18px">›</span>${chars.map((ch, i) => `<span id="${id}-c${i}" style="${ch === ' ' ? 'white-space:pre' : ''}">${esc(ch)}</span>`).join('')}${logo ? `<img id="${id}-logo" src="${logo}" style="width:38px;height:38px;border-radius:9px;margin-left:16px;object-fit:contain;background:#fff">` : ''}<span id="${id}-caret" style="display:inline-block;width:16px;height:36px;background:#7c8cff;margin-left:6px"></span></div>
 </div>`;
-  const script = `${headIn(id)}
-tl.fromTo('#${id}-term',{opacity:0,y:40,scale:.96},{opacity:1,y:0,scale:1,duration:.6,ease:'power3.out'},0.5);
-${chars.map((_, i) => `tl.fromTo('#${id}-c${i}',{opacity:0},{opacity:1,duration:0.01},${(1.0 + i * 0.045).toFixed(3)});`).join('\n')}
-${logo ? `tl.fromTo('#${id}-logo',{opacity:0,scale:.4},{opacity:1,scale:1,duration:.3,ease:'back.out(3)'},${(1.0 + chars.length * 0.045).toFixed(2)});` : ''}
-tl.fromTo('#${id}-caret',{opacity:1},{opacity:0,duration:0.01,repeat:${Math.floor(dur / 0.5)},yoyo:true,repeatDelay:0.25},0.6);
+  const script = `tl.fromTo('#${id}-wordmark',{opacity:0,y:24,scale:.94},{opacity:1,y:0,scale:1,duration:.7,ease:'power3.out'},0.1);
+tl.fromTo('#${id}-tag',{opacity:0,y:20},{opacity:1,y:0,duration:.55,ease:'power3.out'},0.55);
+tl.to('#${id}-lock',{opacity:0,y:-40,duration:.45,ease:'power2.in'},${OFF - 0.5});
+tl.set('#${id}-lock',{opacity:0},${OFF});
+${headIn(id, OFF)}
+tl.fromTo('#${id}-term',{opacity:0,y:40,scale:.96},{opacity:1,y:0,scale:1,duration:.6,ease:'power3.out'},${OFF + 0.5});
+${chars.map((_, i) => `tl.fromTo('#${id}-c${i}',{opacity:0},{opacity:1,duration:0.01},${(OFF + 1.0 + i * 0.045).toFixed(3)});`).join('\n')}
+${logo ? `tl.fromTo('#${id}-logo',{opacity:0,scale:.4},{opacity:1,scale:1,duration:.3,ease:'back.out(3)'},${(OFF + 1.0 + chars.length * 0.045).toFixed(2)});` : ''}
+tl.fromTo('#${id}-caret',{opacity:1},{opacity:0,duration:0.01,repeat:${Math.floor((dur - OFF) / 0.5)},yoyo:true,repeatDelay:0.25},${OFF + 0.6});
 tl.to('#${id}-term',{y:-260,scale:.7,opacity:0,duration:.5,ease:'power2.in'},${dur - 0.55});`;
-  chars.forEach((ch, i) => { if (ch !== ' ') cue('tick', 1.0 + i * 0.045); });
-  cue('pop', 1.0 + chars.length * 0.045);
+  cue('rise', 0.1); cue('pop', 0.55); cue('whoosh', OFF);
+  chars.forEach((ch, i) => { if (ch !== ' ') cue('tick', OFF + 1.0 + i * 0.045); });
+  cue('pop', OFF + 1.0 + chars.length * 0.045);
   scenes.push({ id, dur, html: scene(id, '', body, script) });
 }
 
@@ -524,7 +540,10 @@ ${plays.map((_, k) => `tl.fromTo('#${id}-col${k}',{opacity:0,y:60},{opacity:1,y:
   const body = `${headline(id, T.outro)}${galHtml}
 <div id="${id}-term" style="position:absolute;left:410px;top:${termTop}px;width:1100px;height:130px;border-radius:18px;background:#16181f;box-shadow:0 30px 80px rgba(20,22,40,.35)">
   <div class="mono" style="padding:42px 34px;font-size:32px;color:#e7e9f0;white-space:nowrap"><span style="color:#7c8cff;margin-right:18px">›</span>${chars.map((ch, i) => `<span id="${id}-c${i}" style="${ch === ' ' ? 'white-space:pre' : ''}">${esc(ch)}</span>`).join('')}</div></div>
-<div id="${id}-brand" class="mono" style="position:absolute;left:0;right:0;top:${termTop + 160}px;text-align:center;font-size:22px;color:${C.sub}">OpenMotion · growth-teardown</div>`;
+<div id="${id}-brand" style="position:absolute;left:0;right:0;top:${termTop + 175}px;display:flex;align-items:center;justify-content:center;gap:26px">
+  <img src="assets/brand/openmotion-logo.svg" alt="OpenMotion" style="width:420px;height:auto">
+  <span class="mono" style="font-size:24px;color:${C.sub};padding-left:26px;border-left:2px solid ${C.line}">growth-teardown skill</span>
+</div>`;
   const script = `${headIn(id)}
 ${show.map((_, k) => `tl.fromTo('#${id}-g${k}',{opacity:0,y:40,scale:.94},{opacity:1,y:0,scale:1,duration:.5,ease:'power3.out'},${(0.2 + k * 0.12).toFixed(2)});
 tl.fromTo('#${id}-gp${k}',{strokeDashoffset:1},{strokeDashoffset:0,duration:1.1,ease:'power2.inOut'},${(0.4 + k * 0.12).toFixed(2)});`).join('\n')}
