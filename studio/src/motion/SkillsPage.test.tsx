@@ -26,6 +26,7 @@ it('lists every curated skill with its upstream repository', () => {
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
   expect(motionSkills).toHaveLength(26);
   expect(motionSkills[0].id).toBe('motionmaxxing');
+  expect(motionSkills[1].id).toBe('openmotion-growth-teardown');
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
   // Only Skills authored in this repository omit an upstream repository.
   expect(motionSkills.filter(skill => !skill.repository).map(skill => skill.id)).toEqual(['openmotion-growth-teardown']);
