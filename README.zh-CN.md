@@ -721,9 +721,9 @@ BYOA 让 Agent 留在已有客户端，BYOK 连接受支持的模型账号。Stu
 
 [资源提交清单](library/ENTRY_TEMPLATE.md) · [参与贡献](CONTRIBUTING.md) · [反馈问题](https://github.com/nexu-io/openmotion/issues) · [贡献者](https://github.com/nexu-io/openmotion/graphs/contributors) · [媒体资料](docs/media-kit.md)
 
-OpenMotion 独立官网将上线于 `open-design.ai/openmotion`。
+本仓库已从 `nexu-io/html-anything` 更名为 [`nexu-io/openmotion`](https://github.com/nexu-io/openmotion)。
 
-[OpenDesign 动效展示](https://open-design.ai/zh/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_zh) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
+[OpenMotion 官网](https://open-design.ai/zh/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_zh) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [飞书群](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
 
 [**在 GitHub 上给 OpenMotion 点个 Star**](https://github.com/nexu-io/openmotion)
 
@@ -739,7 +739,7 @@ OpenMotion 采用 [Apache-2.0](LICENSE)许可。第三方代码、模板、媒�
 
 | 来源 | 关联 |
 | --- | --- |
-| [OpenDesign](https://github.com/nexu-io/open-design) | 界面来源、资源结构和品牌方向；[设计体系](docs/design-system.md) 和 [Motion 展示](https://open-design.ai/zh/motion/) |
+| [OpenDesign](https://github.com/nexu-io/open-design) | OpenMotion 的开发团队，负责界面设计、资源结构和品牌方向。[设计体系](docs/design-system.md) 和 [Motion 展示](https://open-design.ai/zh/motion/) |
 | [Hyperframes](https://github.com/heygen-com/hyperframes) | HTML 视频合成、Studio 和渲染基础，固定为 0.9.7；创作者参考、外部改编演示与组件源码；[引擎说明](docs/hyperframes.md)、[模板声明](template-library/NOTICE.md) 和[目录来源](docs/template-catalog.md) |
 | [MotionGit](https://motiongit.com/) / adunext | Kinetic Tech 源码以 Presenter Tech 打包；[许可与署名](library/templates/presenter-tech/NOTICE.md) |
 | [Hypit](https://github.com/hypit-ai/hypit) | Agent 主导热门视频复刻与可编辑版本的灵感来源；未引入运行时 |

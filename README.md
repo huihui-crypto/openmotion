@@ -745,9 +745,9 @@ Share a remake, a reusable template or a Motion.md that captures the rhythm of a
 
 [Library entry checklist](library/ENTRY_TEMPLATE.md) · [Contribute](CONTRIBUTING.md) · [Report an issue](https://github.com/nexu-io/openmotion/issues) · [Contributors](https://github.com/nexu-io/openmotion/graphs/contributors) · [Media kit](docs/media-kit.md)
 
-The dedicated OpenMotion site is coming to `open-design.ai/openmotion`.
+This repository was renamed from `nexu-io/html-anything` to [`nexu-io/openmotion`](https://github.com/nexu-io/openmotion).
 
-[Motion showcase](https://open-design.ai/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_en) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [Feishu](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
+[OpenMotion website](https://open-design.ai/motion/) · [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=openmotion&utm_content=readme_en) · [Discord](https://discord.com/invite/M7NnHS9gNa) · [Feishu](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b6cs46dc-acb2-48ed-941d-c45642ead841) · [X @OpenDesignDevs](https://x.com/OpenDesignDevs) · [X @OpenDesignHQ](https://x.com/OpenDesignHQ) · [YouTube](https://www.youtube.com/channel/UChtshixMhvtgBWzoD9R_Qfg)
 
 [**Star OpenMotion on GitHub**](https://github.com/nexu-io/openmotion)
 
@@ -763,7 +763,7 @@ OpenMotion is licensed under [Apache-2.0](LICENSE). Third-party code, templates,
 
 | Source | Connection |
 | --- | --- |
-| [OpenDesign](https://github.com/nexu-io/open-design) | UI provenance, resource structure and brand direction; [design system](docs/design-system.md) and [Motion showcase](https://open-design.ai/motion/) |
+| [OpenDesign](https://github.com/nexu-io/open-design) | Develops OpenMotion and provides its UI foundations, resource structure and brand direction. [Design system](docs/design-system.md) and [Motion showcase](https://open-design.ai/motion/) |
 | [Hyperframes](https://github.com/heygen-com/hyperframes) | HTML-to-video composition, Studio and rendering foundations, pinned to 0.9.7; creator references, external adaptation demonstrations and component source; [engine notes](docs/hyperframes.md), [template notices](template-library/NOTICE.md) and [catalog provenance](docs/template-catalog.md) |
 | [MotionGit](https://motiongit.com/) / adunext | Kinetic Tech source packaged as Presenter Tech; [license and attribution](library/templates/presenter-tech/NOTICE.md) |
 | [Hypit](https://github.com/hypit-ai/hypit) | Inspiration for agent-led viral-video cloning and editable variants; no runtime imported here |
