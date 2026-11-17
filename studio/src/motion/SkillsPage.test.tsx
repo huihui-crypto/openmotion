@@ -213,3 +213,17 @@ it('opens the contribution guide section for submitting a skill, like the templa
   expect(section).toContain('nexu-io/openmotion');
   expect(section).toContain('draft pull request');
 });
+
+it('falls back to the poster when a cover video cannot load', () => {
+  act(() => root.render(<Host />));
+  const card = container.querySelector('[data-skill-id="motionmaxxing"]')!;
+  const videos = [...card.querySelectorAll('video')];
+  expect(videos.length).toBeGreaterThan(0);
+  act(() => videos.forEach(node => node.dispatchEvent(new Event('error'))));
+  expect(card.querySelector('.om-skill-cover')).toBeNull();
+  expect(card.querySelectorAll('img').length).toBe(videos.length);
+});
+
+it('serves no cover video from raw GitHub, which sends it as an undecodable octet-stream', () => {
+  expect(motionSkills.filter(skill => skill.cover?.video?.includes('raw.githubusercontent.com')).map(skill => skill.id)).toEqual([]);
+});
