@@ -4,7 +4,7 @@
 import { slug } from '../../../tracking/core.ts';
 import type { BrandKit } from '../../../shared/brand-kit';
 import type { MotionSkill, SkillParameters } from './skillCatalog';
-import { embeddedView, newTrackingId, searchKeyword, send, slugField, type Fields } from './reporting';
+import { embeddedView, newTrackingId, optionId, searchKeyword, send, slugField, type Fields } from './reporting';
 
 export { newTrackingId };
 type Click = Fields<'ui_click'>;
@@ -129,7 +129,7 @@ export function reportMcpPageView(entry: McpEntry, client: McpClient, hasProject
 export function reportMcpClick(area: McpClickArea, element: Click['element'], fields: Pick<Click, 'mcp_client' | 'setup_method' | 'doc_id' | 'section_id' | 'faq_index' | 'expanded' | 'position'>
   & { capability?: string; template?: string; option?: string } = {}) {
   const { capability, template, option, ...rest } = fields;
-  send('ui_click', { ...mcpPage, area, element, ...rest, ...slugField('capability_id', capability), ...slugField('template_id', template), ...slugField('filter_value', option) });
+  send('ui_click', { ...mcpPage, area, element, ...rest, ...slugField('capability_id', capability), ...slugField('template_id', template), ...(option === undefined ? {} : optionId(option)) });
 }
 /** Only `clipboard_written` is a successful copy. Instruction text itself is never reported. */
 export function reportMcpCopyResult(kind: McpCopyKind, status: 'clipboard_written' | 'failed', client: McpClient,

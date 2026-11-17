@@ -20,3 +20,8 @@ export const slugField = <K extends string>(key: K, value: string | undefined): 
   value !== undefined && slug.test(value) ? { [key]: value } as Record<K, string> : {};
 /** Whether the application is shown inside a host (same rule as the studio page view). */
 export const embeddedView = () => new URLSearchParams(location.search).get('embed') === '1';
+/** A catalogue option as a stable id. Display text never leaves the browser; an option that cannot be reduced to a slug is left out. */
+export function optionId(value: string) {
+  const id = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64).replace(/-$/, '');
+  return slug.test(id) ? { filter_value: id } : {};
+}

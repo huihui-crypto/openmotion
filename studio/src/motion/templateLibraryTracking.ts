@@ -1,10 +1,9 @@
 // Reports for the editor's template library. Event, area, element and field names follow the shared OpenMotion
 // tracking sheet so one funnel reads the same on the website and in the editor.
 // The dialog calls these and owns no tracking code of its own; nothing here may throw into it.
-import { slug } from '../../../tracking/core.ts';
 import { studioEvents } from '../../../tracking/events.ts';
 import { isEditableTemplate, type GalleryTemplate } from '../../../shared/catalog';
-import { send, slugField, searchKeyword } from './reporting';
+import { optionId, send, slugField, searchKeyword } from './reporting';
 
 import type { Fields } from './reporting';
 type Click = Fields<'ui_click'>;
@@ -19,7 +18,7 @@ export type ListContext = { searchId?: string; sort: Sort; filterCount: number }
 /** One opened detail: its id and how the user got there. */
 export type DetailView = { id: string; placement: Placement };
 
-export { newTrackingId, searchKeyword } from './reporting';
+export { newTrackingId, optionId, searchKeyword } from './reporting';
 const SORTS: readonly string[] = studioEvents.ui_click.fields.sort;
 export const asSort = (value: string): Sort => SORTS.includes(value) ? value as Sort : 'recommended';
 const studio = { page_name: 'studio' } as const;
@@ -30,11 +29,6 @@ const detail = (view: DetailView | undefined) => view ? { detail_view_id: view.i
 const resource = (template: Template) => ({ resource_kind: isEditableTemplate(template) ? 'editable_project' as const : 'reference' as const });
 const instruction = (template: Template, submit = false) => ({
   instruction_kind: submit ? 'recreate_submit' as const : isEditableTemplate(template) ? 'template_use' as const : 'reference_recreate' as const });
-/** A catalogue option as a stable id. Display text never leaves the browser; an option that cannot be reduced to a slug is left out. */
-export function optionId(value: string) {
-  const id = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 64).replace(/-$/, '');
-  return slug.test(id) ? { filter_value: id } : {};
-}
 
 export function reportLibraryShown() {
   send('surface_view', { ...studio, area: 'template_library', element: 'library' });
