@@ -188,7 +188,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "带出处的增长地图视频：指标曲线、按泳道排列的带日期增长动作，以及三招配真实页面证据",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "按 OpenMotion 增长拆解 Skill 执行：搜集带出处的增长动作和指标点，写成 growth.json，抓取真实网页截图和视频封面，再生成九幕视频。画面上每个数字都要注明出处。",
     "How Lovable grew in its first two years": "Lovable 头两年是怎么增长的",
-    "Growth reverse-engineering": "增长逆向拆解"
+    "Growth reverse-engineering": "增长逆向拆解",
+    "OpenMotion skill": "OpenMotion Skill"
   },
   "ja": {
     "Skills": "Skills",
@@ -379,7 +380,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "出典付きの成長マップ動画：指標カーブ、レーン別に並ぶ日付付きの成長施策、実際のページで裏付けた3つの打ち手",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "OpenMotion の成長分析 Skill に従ってください：日付付きの成長施策と指標を出典ごとに調べて growth.json に書き、実際のページのスクリーンショットと動画サムネイルを集め、9シーンの動画を生成します。画面上の数字にはすべて出典を示してください。",
     "How Lovable grew in its first two years": "Lovable は最初の2年でどう成長したか",
-    "Growth reverse-engineering": "成長のリバースエンジニアリング"
+    "Growth reverse-engineering": "成長のリバースエンジニアリング",
+    "OpenMotion skill": "OpenMotion の Skill"
   },
   "ko": {
     "Skills": "Skills",
@@ -570,7 +572,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "출처가 있는 성장 지도 영상: 지표 곡선, 레인별로 정리한 날짜별 성장 전략, 실제 페이지로 뒷받침한 세 가지 전략",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "OpenMotion 성장 분석 Skill을 따르세요: 날짜가 있는 성장 전략과 지표를 출처와 함께 조사해 growth.json에 쓰고, 실제 페이지 스크린샷과 영상 썸네일을 모은 뒤 9개 장면의 영상을 생성합니다. 화면의 모든 숫자에는 출처를 밝혀야 합니다.",
     "How Lovable grew in its first two years": "Lovable은 첫 2년 동안 어떻게 성장했나",
-    "Growth reverse-engineering": "성장 역설계"
+    "Growth reverse-engineering": "성장 역설계",
+    "OpenMotion skill": "OpenMotion Skill"
   },
   "ru": {
     "Skills": "Skills",
@@ -761,7 +764,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "Карта роста с источниками: кривая метрики, датированные шаги роста по дорожкам и три приёма, подтверждённые реальными страницами",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Следуйте Skill разбора роста OpenMotion: соберите датированные шаги роста и точки метрики с источниками, запишите growth.json, соберите скриншоты реальных страниц и обложки видео, затем создайте фильм из девяти сцен. У каждого числа на экране должен быть источник.",
     "How Lovable grew in its first two years": "Как Lovable рос в первые два года",
-    "Growth reverse-engineering": "Обратный разбор роста"
+    "Growth reverse-engineering": "Обратный разбор роста",
+    "OpenMotion skill": "Skill OpenMotion"
   },
   "de": {
     "Skills": "Skills",
@@ -952,7 +956,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "Ein Wachstumsvideo mit Quellen: Kennzahlenkurve, datierte Wachstumsschritte in Spuren und drei Strategien mit echten Seiten als Beleg",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Folge dem OpenMotion-Skill zur Wachstumsanalyse: recherchiere datierte Wachstumsschritte und Kennzahlen mit Quellen, schreibe growth.json, sammle Screenshots echter Seiten und Video-Thumbnails und erzeuge dann den Film mit neun Szenen. Jede Zahl im Bild braucht eine Quelle.",
     "How Lovable grew in its first two years": "Wie Lovable in den ersten zwei Jahren gewachsen ist",
-    "Growth reverse-engineering": "Wachstum rückwärts analysiert"
+    "Growth reverse-engineering": "Wachstum rückwärts analysiert",
+    "OpenMotion skill": "OpenMotion-Skill"
   },
   "fr": {
     "Skills": "Skills",
@@ -1143,7 +1148,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "Une vidéo de carte de croissance sourcée : courbe de l’indicateur, actions datées réparties en couloirs et trois leviers étayés par de vraies pages",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Suivez le Skill d’analyse de croissance d’OpenMotion : recherchez les actions de croissance datées et les points de l’indicateur avec leurs sources, écrivez growth.json, collectez des captures de vraies pages et des miniatures vidéo, puis générez le film en neuf scènes. Chaque chiffre à l’écran doit citer sa source.",
     "How Lovable grew in its first two years": "Comment Lovable a grandi pendant ses deux premières années",
-    "Growth reverse-engineering": "Rétro-ingénierie de la croissance"
+    "Growth reverse-engineering": "Rétro-ingénierie de la croissance",
+    "OpenMotion skill": "Skill OpenMotion"
   },
   "es": {
     "Skills": "Skills",
@@ -1334,7 +1340,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "Un video de mapa de crecimiento con fuentes: curva de la métrica, acciones fechadas por carriles y tres jugadas respaldadas por páginas reales",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Sigue el Skill de análisis de crecimiento de OpenMotion: investiga acciones de crecimiento fechadas y puntos de la métrica con sus fuentes, escribe growth.json, reúne capturas de páginas reales y miniaturas de video y luego genera el video de nueve escenas. Cada número en pantalla debe citar su fuente.",
     "How Lovable grew in its first two years": "Cómo creció Lovable en sus dos primeros años",
-    "Growth reverse-engineering": "Ingeniería inversa del crecimiento"
+    "Growth reverse-engineering": "Ingeniería inversa del crecimiento",
+    "OpenMotion skill": "Skill de OpenMotion"
   },
   "pt-BR": {
     "Skills": "Skills",
@@ -1525,7 +1532,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "Um vídeo de mapa de crescimento com fontes: curva da métrica, ações datadas em faixas e três jogadas comprovadas por páginas reais",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Siga a Skill de análise de crescimento do OpenMotion: pesquise ações de crescimento datadas e pontos da métrica com fontes, escreva growth.json, reúna capturas de páginas reais e miniaturas de vídeo e depois gere o vídeo de nove cenas. Todo número na tela precisa citar a fonte.",
     "How Lovable grew in its first two years": "Como a Lovable cresceu nos dois primeiros anos",
-    "Growth reverse-engineering": "Engenharia reversa do crescimento"
+    "Growth reverse-engineering": "Engenharia reversa do crescimento",
+    "OpenMotion skill": "Skill do OpenMotion"
   },
   "it": {
     "Skills": "Skill",
@@ -1716,7 +1724,8 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "Un video della mappa di crescita con fonti: curva della metrica, mosse datate divise per corsie e tre strategie supportate da pagine reali",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "Segui la Skill di analisi della crescita di OpenMotion: ricerca le mosse di crescita datate e i punti della metrica con le fonti, scrivi growth.json, raccogli screenshot di pagine reali e miniature video, poi genera il video in nove scene. Ogni numero sullo schermo deve citare la fonte.",
     "How Lovable grew in its first two years": "Come è cresciuta Lovable nei primi due anni",
-    "Growth reverse-engineering": "Reverse engineering della crescita"
+    "Growth reverse-engineering": "Reverse engineering della crescita",
+    "OpenMotion skill": "Skill di OpenMotion"
   },
   "tr": {
     "Skills": "Skill’ler",
@@ -1907,6 +1916,7 @@
     "A sourced growth-map video: metric curve, dated growth moves in lanes and three plays backed by real pages": "Kaynaklı bir büyüme haritası videosu: metrik eğrisi, şeritlere dizilmiş tarihli büyüme hamleleri ve gerçek sayfalarla desteklenen üç strateji",
     "Follow the OpenMotion growth-teardown Skill: research dated growth moves and metric points with their sources, write growth.json, collect real page screenshots and video thumbnails, then generate the nine-scene film. Every number on screen must cite its source.": "OpenMotion büyüme analizi Skill’ini izle: tarihli büyüme hamlelerini ve metrik noktalarını kaynaklarıyla araştır, growth.json dosyasını yaz, gerçek sayfa ekran görüntüleri ve video küçük resimleri topla, ardından dokuz sahnelik videoyu oluştur. Ekrandaki her sayının kaynağı belirtilmeli.",
     "How Lovable grew in its first two years": "Lovable ilk iki yılında nasıl büyüdü",
-    "Growth reverse-engineering": "Büyümede tersine mühendislik"
+    "Growth reverse-engineering": "Büyümede tersine mühendislik",
+    "OpenMotion skill": "OpenMotion Skill’i"
   }
 }

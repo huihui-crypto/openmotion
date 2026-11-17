@@ -165,6 +165,8 @@ it('localizes every Skills string and instruction in all supported languages', a
   const { languages } = await import('../i18n/messages');
   const placeholders = (text: string) => [...text.matchAll(/\{\w+\}/g)].map(match => match[0]).sort();
   const sources = Object.keys(skillsUi['zh-CN']);
+  // Skills authored in this repository show the "OpenMotion skill" source label instead of an upstream repository.
+  if (motionSkills.some(skill => !skill.repository)) expect(sources).toContain('OpenMotion skill');
   for (const { locale } of languages.filter(language => language.locale !== 'en')) {
     const ui = (skillsUi as Record<string, Record<string, string>>)[locale];
     const instructions = (prompts as Record<string, Record<string, string>>)[locale];
