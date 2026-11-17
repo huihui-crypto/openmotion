@@ -131,3 +131,33 @@ it('reports a started extraction and an official import by catalogue id', () => 
   expect(of('brand_kit_import_result')[0].properties).toMatchObject({ catalog_id: 'azure', position: 3, already_in_library: false });
   expectAdmitted();
 });
+
+const { McpConnectionPage } = await import('./McpConnectionPage');
+const mcpInfo = { name: 'OpenMotion', version: '1.2.3', previewUrl: 'http://127.0.0.1:4567', dataDirectory: '/PRIVATE_DATA_DIR', templateSource: 'repository',
+  transport: { type: 'stdio', command: 'node', args: ['/PRIVATE_DATA_DIR/mcp.ts'], cwd: '/PRIVATE_DATA_DIR', env: { MOTION_DATA_DIR: '/PRIVATE_DATA_DIR' } }, tools: [{ name: 'openmotion_media_use', description: 'Media Use' }] };
+const mcpTemplate = { id: 'fixture-film', title: 'Fixture film', description: 'Editable typography', subtitle: 'Launch', posterUrl: '/poster.png' };
+const roleTab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('[role=tab]')].find(node => node.textContent?.trim().endsWith(name))!;
+
+it('reports the MCP page entry, client and setup choices, and each copy result without the copied text', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => Response.json(String(url).includes('template-catalog') ? { items: [mcpTemplate] } : mcpInfo)));
+  const openLibrary = vi.fn(), openProviders = vi.fn();
+  await act(async () => root.render(<I18nProvider initialLocale="en"><McpConnectionPage entry="home_composer" hasProject openLibrary={openLibrary} openProviders={openProviders} /></I18nProvider>));
+  expect(of('page_view')[0].properties).toMatchObject({ page_name: 'mcp', entry_from: 'home_composer', mcp_client: 'codex', has_project: true, embedded: false });
+  await act(async () => roleTab('Claude Code').click());
+  expect(of('ui_click').at(-1)?.properties).toMatchObject({ area: 'mcp_client', element: 'client_tab', mcp_client: 'claude' });
+  await act(async () => button('Copy connection instruction').click());
+  expect(of('mcp_copy_result').at(-1)?.properties).toMatchObject({ copy_kind: 'connection_instruction', copy_status: 'clipboard_written', setup_method: 'agent' });
+  await act(async () => roleTab('Manual setup').click());
+  expect(of('ui_click').at(-1)?.properties).toMatchObject({ area: 'mcp_setup', element: 'setup_method', setup_method: 'manual' });
+  copy.mockRejectedValueOnce(new Error('denied'));
+  await act(async () => button('Copy configuration').click());
+  expect(of('mcp_copy_result').at(-1)?.properties).toMatchObject({ copy_kind: 'manual_config', copy_status: 'failed' });
+  await act(async () => button('Explore templates').click());
+  expect(openLibrary).toHaveBeenCalled();
+  expect(of('ui_click').at(-1)?.properties).toMatchObject({ area: 'mcp_start', element: 'open_library' });
+  await act(async () => button('Manage providers').click());
+  expect(openProviders).toHaveBeenCalled();
+  expect(of('ui_click').at(-1)?.properties).toMatchObject({ area: 'mcp_resources', element: 'manage_providers' });
+  expectAdmitted();
+  expect(JSON.stringify(sent)).not.toMatch(/PRIVATE_DATA_DIR|mcp\.ts/);
+});

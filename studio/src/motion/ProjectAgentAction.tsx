@@ -91,7 +91,7 @@ function ProjectAgentContent({ projectId, onClose, onCopyFailure }: { projectId:
       </div>
       <div className="flex flex-col items-start gap-1">
         <p className="text-step-12 leading-relaxed text-text-2">{t('Copy the instruction to another conversation to continue editing this project.')}</p>
-        <Button variant="ghost" size="sm" className="-ml-1 px-1 font-normal underline underline-offset-2" onClick={() => { onClose(); openConnections(); }}>
+        <Button variant="ghost" size="sm" className="-ml-1 px-1 font-normal underline underline-offset-2" onClick={() => { onClose(); openConnections('project_agent'); }}>
           {t('Connection help')}<RemixIcon name="arrow-right-up-line" size={12} />
         </Button>
       </div>

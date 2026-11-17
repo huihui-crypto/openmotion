@@ -1,3 +1,4 @@
+import type { McpEntry } from './pageTracking';
 import { useEffect, useState } from 'react';
 import { modelKinds } from '../../../shared/provider-directory';
 import { RemixIcon } from '../icons/RemixIcons';
@@ -31,7 +32,7 @@ const sections: { id: SettingsSection; label: string; icon: string; group: strin
   { id: 'help', label: 'Help', icon: 'question-line', group: 'Resources' },
   { id: 'about', label: 'About OpenMotion', icon: 'information-line', group: 'Resources' },
 ];
-export function SettingsCenter({ section, onSection, openConnections, navigationCollapsed = false, providerId, onProviderChange }: { navigationCollapsed?: boolean; section: SettingsSection; onSection: (section: SettingsSection) => void; openConnections: () => void; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
+export function SettingsCenter({ section, onSection, openConnections, navigationCollapsed = false, providerId, onProviderChange }: { navigationCollapsed?: boolean; section: SettingsSection; onSection: (section: SettingsSection) => void; openConnections: (entry: McpEntry) => void; providerId?: string | null; onProviderChange?: (id: string | null) => void }) {
   const { t } = useI18n();
   const [search, setSearch] = useState('');
   const filtered = sections.filter(item => t(item.label).toLowerCase().includes(search.toLowerCase()));
@@ -45,8 +46,8 @@ export function SettingsCenter({ section, onSection, openConnections, navigation
         : section === 'models' ? <DefaultModels openProviders={() => onSection('providers')} />
         : section === 'appearance' ? <AppearanceSettings />
         : section === 'privacy' ? <div className="om-settings-page"><h1 className="om-title">{t('Privacy & data')}</h1><PrivacySettings embedded onClose={() => {}} /></div>
-        : section === 'general' ? <GeneralSettings openConnections={openConnections} />
-        : <ResourceSettings about={section === 'about'} openConnections={openConnections} />}
+        : section === 'general' ? <GeneralSettings openConnections={() => openConnections('settings_general')} />
+        : <ResourceSettings about={section === 'about'} openConnections={() => openConnections('settings_resources')} />}
     </main>
   </div>;
 }

@@ -38,7 +38,7 @@ export function ApplicationRail({ settings, openSettings, home }: { settings: Se
     {item('Template library', 'apps-2-line', event => openLibrary(event.currentTarget), false, switchingDisabled)}
     {item('Brand Kit', 'palette-line', () => openSettings('brand-kit'), settings === 'brand-kit')}
     {item('Skills', 'flashlight-line', openSkills, skillsOpen)}
-    {item('MCP · Connect Agent', 'plug-line', openConnections, settings === 'mcp')}
+    {item('MCP · Connect Agent', 'plug-line', () => openConnections('app_rail'), settings === 'mcp')}
     <div className="om-rail-spacer" />
     {item('Help', 'question-line', () => openSettings('help'), settings === 'help')}
     {item('Settings', 'settings-3-line', () => openSettings('general'), Boolean(settings && !['mcp', 'brand-kit', 'providers', 'help', 'account', 'subscription'].includes(settings)))}

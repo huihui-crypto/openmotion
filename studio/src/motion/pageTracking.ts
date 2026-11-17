@@ -113,3 +113,28 @@ export function reportBrandDownloadResult(kit: Pick<BrandKit, 'catalogId'>, stat
 export function reportBrandActionResult(kit: Pick<BrandKit, 'catalogId'>, action: Fields<'brand_kit_action_result'>['action'], outcome: 'success' | 'failure', detailViewId: string | undefined) {
   send('brand_kit_action_result', { ...brandPage, ...brandFields(kit), action, outcome, ...(detailViewId ? { detail_view_id: detailViewId } : {}) });
 }
+
+// ---------- MCP connection page ----------
+const mcpPage = { page_name: 'mcp' } as const;
+export type McpEntry = NonNullable<Fields<'page_view'>['entry_from']>;
+export type McpClient = Fields<'mcp_copy_result'>['mcp_client'];
+export type McpSetup = 'agent' | 'manual';
+type McpCopyKind = Fields<'mcp_copy_result'>['copy_kind'];
+type McpClickArea = Extract<Click['area'], `mcp_${string}`>;
+
+/** One view per opening of the page, with the entry that opened it and the client tab it opened on. */
+export function reportMcpPageView(entry: McpEntry, client: McpClient, hasProject: boolean) {
+  send('page_view', { ...mcpPage, ...shell(hasProject), entry_from: entry, mcp_client: client });
+}
+export function reportMcpClick(area: McpClickArea, element: Click['element'], fields: Pick<Click, 'mcp_client' | 'setup_method' | 'doc_id' | 'section_id' | 'faq_index' | 'expanded' | 'position'>
+  & { capability?: string; template?: string; option?: string } = {}) {
+  const { capability, template, option, ...rest } = fields;
+  send('ui_click', { ...mcpPage, area, element, ...rest, ...slugField('capability_id', capability), ...slugField('template_id', template), ...slugField('filter_value', option) });
+}
+/** Only `clipboard_written` is a successful copy. Instruction text itself is never reported. */
+export function reportMcpCopyResult(kind: McpCopyKind, status: 'clipboard_written' | 'failed', client: McpClient,
+  extra: { setup?: McpSetup; capability?: string; template?: string; includesSetup?: boolean } = {}) {
+  send('mcp_copy_result', { ...mcpPage, copy_kind: kind, copy_status: status, mcp_client: client,
+    ...(extra.setup ? { setup_method: extra.setup } : {}), ...slugField('capability_id', extra.capability), ...slugField('template_id', extra.template),
+    ...(extra.includesSetup === undefined ? {} : { includes_setup: extra.includesSetup }) });
+}

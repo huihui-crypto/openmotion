@@ -1,12 +1,14 @@
 import { createContext, useContext } from 'react';
 import type { useWorkspace } from './useWorkspace';
+import type { McpEntry } from './pageTracking';
 
 export type WorkspaceChrome = {
   workspace: ReturnType<typeof useWorkspace>;
   switchingDisabled: boolean;
   saveState: string;
   openLibrary: (trigger?: HTMLElement, templateId?: string) => void;
-  openConnections: () => void;
+  /** Opens the MCP connection page; `entry` records which control opened it. */
+  openConnections: (entry: McpEntry) => void;
   openModelSettings: () => void;
   openHome: () => void;
   openAssets: () => void;
