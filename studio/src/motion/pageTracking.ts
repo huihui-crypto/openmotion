@@ -2,32 +2,24 @@
 // same page_name + area + element convention as the template library, so the funnels read alike.
 // The pages call these and own no tracking code of their own; nothing here may throw into them.
 import { slug } from '../../../tracking/core.ts';
-import type { EventFields } from '../../../tracking/core.ts';
-import { studioEvents } from '../../../tracking/events.ts';
-import type { StudioEvent } from '../../../tracking/events.ts';
 import type { BrandKit } from '../../../shared/brand-kit';
 import type { MotionSkill, SkillParameters } from './skillCatalog';
-import { trackMotion } from './tracking';
+import { embeddedView, newTrackingId, searchKeyword, send, slugField, type Fields } from './reporting';
 
-type Fields<E extends StudioEvent> = EventFields<typeof studioEvents[E]>;
+export { newTrackingId };
 type Click = Fields<'ui_click'>;
-
-const send = <E extends StudioEvent>(event: E, properties: Fields<E>) => {
-  try { void trackMotion(event, properties).catch(() => {}); } catch { /* reporting never interrupts browsing, copying or downloading */ }
-};
-export const newTrackingId = () => crypto.randomUUID();
-/** The settled search-box value as it is reported: trimmed, control characters removed, at most 100 characters. */
-const searchKeyword = (query: string) => query.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 100).trim();
+/** The page view carries the same shell context as the studio page view, so the funnels segment alike. */
+const shell = (hasProject: boolean) => ({ view_id: newTrackingId(), embedded: embeddedView(), has_project: hasProject });
 
 // ---------- Skills ----------
 const skills = { page_name: 'skills' } as const;
 const CATEGORY = { 'Product promos': 'product_promos', Explainers: 'explainers', 'Brand & covers': 'brand_covers', 'Motion techniques': 'motion_techniques' } as const;
 export const skillCategoryId = (category: MotionSkill['category']) => CATEGORY[category];
 /** A catalogue id is sent only when it is a bounded slug; anything else is left out, never rewritten. */
-const skillFields = (skill: MotionSkill) => ({ ...(slug.test(skill.id) ? { skill_id: skill.id } : {}), skill_category: skillCategoryId(skill.category) });
+const skillFields = (skill: MotionSkill) => ({ ...slugField('skill_id', skill.id), skill_category: skillCategoryId(skill.category) });
 
-export function reportSkillsPageView() {
-  send('page_view', { ...skills, view_id: newTrackingId() });
+export function reportSkillsPageView(hasProject: boolean) {
+  send('page_view', { ...skills, ...shell(hasProject) });
 }
 /** `category` null is the「All」button. */
 export function reportSkillCategory(category: MotionSkill['category'] | null, resultCount: number) {
@@ -78,8 +70,8 @@ export type BrandCollection = 'official' | 'mine';
 export const brandFields = (kit: Pick<BrandKit, 'catalogId'>) => kit.catalogId && slug.test(kit.catalogId)
   ? { brand_source: 'official' as const, catalog_id: kit.catalogId } : { brand_source: kit.catalogId ? 'official' as const : 'mine' as const };
 
-export function reportBrandKitPageView(collection: BrandCollection) {
-  send('page_view', { ...brandPage, view_id: newTrackingId(), brand_collection: collection });
+export function reportBrandKitPageView(collection: BrandCollection, hasProject: boolean) {
+  send('page_view', { ...brandPage, ...shell(hasProject), brand_collection: collection });
 }
 export function reportBrandCollectionTab(collection: BrandCollection) {
   send('ui_click', { ...brandPage, area: 'brand_collection', element: 'collection_tab', brand_collection: collection });

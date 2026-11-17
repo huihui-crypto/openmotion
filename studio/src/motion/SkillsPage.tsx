@@ -21,7 +21,7 @@ const displayNameOf = (t: (text: string) => string) => (skill: MotionSkill) => t
 const defaults: SkillParameters = { subject: '', duration: 10, aspect: '16:9', style: '' };
 
 /** Open-source motion techniques the user can hand to an Agent through OpenMotion MCP. */
-export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null; onSkillChange: (id: string | null) => void }) {
+export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { skillId: string | null; onSkillChange: (id: string | null) => void; hasProject?: boolean }) {
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
@@ -52,7 +52,7 @@ export function SkillsPage({ skillId, onSkillChange }: { skillId: string | null;
   };
   const visible = useMemo(() => matching(category, query), [query, category, t]);
   // One page view per visit; one detail view per opened Skill; one search result per settled query (500 ms after typing stops).
-  useEffect(() => { tracking.reportSkillsPageView(); }, []);
+  useEffect(() => { tracking.reportSkillsPageView(hasProject); }, []);
   const detailView = useRef<string | undefined>(undefined), searchId = useRef<string | undefined>(undefined);
   useEffect(() => {
     detailView.current = selected ? tracking.newTrackingId() : undefined;

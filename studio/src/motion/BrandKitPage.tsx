@@ -43,11 +43,13 @@ export function BrandKitPage({
   onSelect,
   onClose = () => onSelect(null),
   previewsEnabled = true,
+  hasProject = false,
 }: {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onClose?: () => void;
   previewsEnabled?: boolean;
+  hasProject?: boolean;
 }) {
   const { t } = useI18n(),
     toast = useToast();
@@ -120,7 +122,7 @@ export function BrandKitPage({
   );
   const selected = kits?.find((kit) => kit.id === detailId);
   // One page view per visit; one detail view per opened kit, reported once its record is loaded.
-  useEffect(() => { tracking.reportBrandKitPageView(collection); }, []);
+  useEffect(() => { tracking.reportBrandKitPageView(collection, hasProject); }, []);
   const detailView = useRef<string | undefined>(undefined);
   useEffect(() => {
     detailView.current = selected ? tracking.newTrackingId() : undefined;
