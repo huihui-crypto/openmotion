@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { lstat, readFile } from 'node:fs/promises';
+import { lstat, readFile, realpath } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,11 +12,15 @@ const languages = ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'];
 // Connect only to an existing host. Starting `codex app-server` would verify a
 // different process and would leave the calling chat's tool catalog unchanged.
 async function hostClient({ codex, socketPath, timeoutMs, env }) {
-  const info = await lstat(socketPath);
-  if (!info.isSocket() || info.isSymbolicLink() || process.getuid && info.uid !== process.getuid()) throw new Error('HOST_CONTROL_UNAVAILABLE');
+  const resolvedSocketPath = await realpath(socketPath);
+  const [entry, socket, directory] = await Promise.all([
+    lstat(socketPath), lstat(resolvedSocketPath), lstat(path.dirname(resolvedSocketPath)),
+  ]);
+  if (!socket.isSocket() || !directory.isDirectory() || (directory.mode & 0o022)
+    || process.getuid && [entry, socket, directory].some(info => info.uid !== process.getuid())) throw new Error('HOST_CONTROL_UNAVAILABLE');
   const javascriptCli = /\.[cm]?js$/i.test(codex);
   const child = spawn(javascriptCli ? process.execPath : codex,
-    [...(javascriptCli ? [codex] : []), 'app-server', 'proxy', '--sock', socketPath],
+    [...(javascriptCli ? [codex] : []), 'app-server', 'proxy', '--sock', resolvedSocketPath],
     { env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
   let buffer = '', nextId = 0;
   const pending = new Map();

@@ -1,7 +1,8 @@
 import { onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, readFile, rm, copyFile } from 'node:fs/promises';
+import fsPromises, { mkdtemp, writeFile, readFile, rm, copyFile, symlink, realpath, mkdir, chmod } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -131,6 +132,13 @@ test('the CLI proxy transport initializes the existing host and closes without s
   const socketPath = path.join(directory, 'control.sock');
   const socket = createServer();
   await new Promise<void>((resolve, reject) => { socket.once('error', reject); socket.listen(socketPath, resolve); });
+  const resolvedSocketPath = await realpath(socketPath);
+  const controlDirectory = path.join(directory, 'app-server-control');
+  await mkdir(controlDirectory, { mode: 0o700 });
+  const linkedSocketPath = path.join(controlDirectory, 'app-server-control.sock');
+  await symlink('../control.sock', linkedSocketPath);
+  const chainedSocketPath = path.join(directory, 'chained.sock');
+  await symlink('app-server-control/app-server-control.sock', chainedSocketPath);
   const log = path.join(directory, 'calls.jsonl');
   const codex = path.join(directory, 'codex');
   await writeFile(codex, `#!${process.execPath}
@@ -152,15 +160,63 @@ for await (const line of readline.createInterface({input:process.stdin})) {
     const javascriptCli = path.join(directory, 'codex.mjs');
     await copyFile(codex, javascriptCli);
     for (const executable of [codex, javascriptCli]) {
+      for (const entry of [linkedSocketPath, socketPath, chainedSocketPath]) {
+        await writeFile(log, '');
+        const result = await prepareCodexHostHandoff({ threadId, dataDirectory, codex: executable, socketPath: entry,
+          expectedVersion: '0.0.1', language: 'zh', timeoutMs: 5000 });
+        assert.equal(result.status, 'ready_for_presentation', JSON.stringify({ result, log: await readFile(log, 'utf8').catch(() => '') }));
+        const calls = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+        assert.deepEqual(calls[0].argv, ['app-server', 'proxy', '--sock', resolvedSocketPath]);
+        assert.deepEqual(calls.slice(1).map(call => call.method), ['initialize', 'initialized', 'thread/loaded/list',
+          'mcpServerStatus/list', 'mcpServer/tool/call']);
+        assert.equal(calls.some(call => call.method === 'openmotion_show_template_recommendations'), false);
+      }
+    }
+    await t.test('the profile default resolves its existing socket symlink', async () => {
       await writeFile(log, '');
-      const result = await prepareCodexHostHandoff({ threadId, dataDirectory, codex: executable, socketPath,
-        expectedVersion: '0.0.1', language: 'zh', timeoutMs: 5000 });
-      assert.equal(result.status, 'ready_for_presentation', JSON.stringify({ result, log: await readFile(log, 'utf8').catch(() => '') }));
-      const calls = (await readFile(log, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-      assert.deepEqual(calls[0].argv, ['app-server', 'proxy', '--sock', socketPath]);
-      assert.deepEqual(calls.slice(1).map(call => call.method), ['initialize', 'initialized', 'thread/loaded/list',
-        'mcpServerStatus/list', 'mcpServer/tool/call']);
-      assert.equal(calls.some(call => call.method === 'openmotion_show_template_recommendations'), false);
+      const result = await prepareCodexHostHandoff({ threadId, dataDirectory, codex,
+        env: { ...process.env, CODEX_HOME: directory, OPENMOTION_CODEX_SOCKET: undefined } });
+      assert.equal(result.status, 'ready_for_presentation');
+      assert.deepEqual(JSON.parse((await readFile(log, 'utf8')).split('\n')[0]).argv,
+        ['app-server', 'proxy', '--sock', resolvedSocketPath]);
+    });
+    const dangling = path.join(directory, 'dangling.sock'), loop = path.join(directory, 'loop.sock');
+    await symlink('missing.sock', dangling);
+    await symlink('loop.sock', loop);
+    for (const [name, target] of [['file', codex], ['directory', controlDirectory], ['dangling', dangling], ['loop', loop]]) {
+      await t.test('rejects a ' + name + ' target without launching the proxy', async () => {
+        const entry = path.join(directory, name + '-link.sock');
+        await symlink(target, entry);
+        await writeFile(log, '');
+        const result = await prepareCodexHostHandoff({ threadId, dataDirectory, codex, socketPath: entry });
+        assert.equal(result.reason, 'HOST_CONTROL_UNAVAILABLE');
+        assert.equal(await readFile(log, 'utf8'), '');
+      });
+    }
+    for (const mode of [0o720, 0o702]) await t.test('rejects a writable socket directory: ' + mode.toString(8), async () => {
+      await writeFile(log, '');
+      await chmod(directory, mode);
+      try {
+        const result = await prepareCodexHostHandoff({ threadId, dataDirectory, codex, socketPath: linkedSocketPath });
+        assert.equal(result.reason, 'HOST_CONTROL_UNAVAILABLE');
+        assert.equal(await readFile(log, 'utf8'), '');
+      } finally { await chmod(directory, 0o700); }
+    });
+    for (const [name, target] of [['entry', linkedSocketPath], ['socket', resolvedSocketPath], ['directory', path.dirname(resolvedSocketPath)]]) {
+      await t.test('rejects foreign ownership: ' + name, async t => {
+        await writeFile(log, '');
+        const original = fsPromises.lstat;
+        const mocked = t.mock.method(fsPromises, 'lstat', async file => {
+          const info = await original(file);
+          return file === target ? Object.assign(Object.create(info), { uid: info.uid + 1 }) : info;
+        });
+        syncBuiltinESMExports();
+        try {
+          const result = await prepareCodexHostHandoff({ threadId, dataDirectory, codex, socketPath: linkedSocketPath });
+          assert.equal(result.reason, 'HOST_CONTROL_UNAVAILABLE');
+          assert.equal(await readFile(log, 'utf8'), '');
+        } finally { mocked.mock.restore(); syncBuiltinESMExports(); }
+      });
     }
   } finally {
     await new Promise<void>(resolve => socket.close(() => resolve()));
