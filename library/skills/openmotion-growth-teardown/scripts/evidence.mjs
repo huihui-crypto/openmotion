@@ -193,7 +193,7 @@ for (const play of data.plays || []) {
   if (!play.wallQuery || play.wall) continue;
   const ids = await youtubeSearchIds(play.wallQuery);
   const files = await pool(ids.slice(0, 56), 8, async (id, i) => {
-    const wb = `wall-${play.lane}-${String(i).padStart(2, '0')}`;
+    const wb = `wall-${id}`; // keyed by video id, so a changed query never reuses another query's thumbnails
     return existsSync(path.join(out, wb + '.jpg')) ? wb + '.jpg' : saveUrl(`https://i.ytimg.com/vi/${id}/mqdefault.jpg`, wb);
   });
   const wall = files.filter(Boolean).slice(0, 48).map(f => path.join(path.basename(out), f));

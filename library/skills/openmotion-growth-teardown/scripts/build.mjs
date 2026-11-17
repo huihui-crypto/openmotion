@@ -30,6 +30,8 @@ const zh = lang === 'zh';
 // ---------- validation ----------
 const errors = [];
 const DATE = /^\d{4}-\d{2}(-\d{2})?$/;
+// Month-only dates sit mid-month, matching how the curve is drawn.
+const dateMs = d => { const [y, m, day] = String(d).split('-').map(Number); return Date.UTC(y, m - 1, day || 15); };
 const width = s => [...String(s)].reduce((n, ch) => n + (/[　-鿿＀-￯]/.test(ch) ? 2 : 1), 0);
 if (!data.company) errors.push('company is required');
 const points = data.metric?.points || [];
@@ -38,7 +40,7 @@ points.forEach((p, i) => {
   if (!DATE.test(p.date || '')) errors.push(`metric.points[${i}].date must be YYYY-MM or YYYY-MM-DD`);
   if (typeof p.value !== 'number') errors.push(`metric.points[${i}].value must be a number`);
   if (!p.source?.url) errors.push(`metric.points[${i}] has no source.url`);
-  if (i && points[i - 1].date > p.date) errors.push(`metric.points[${i}] is out of date order`);
+  if (i && DATE.test(points[i - 1].date || '') && DATE.test(p.date || '') && dateMs(points[i - 1].date) > dateMs(p.date)) errors.push(`metric.points[${i}] is out of date order`);
 });
 const lanes = data.lanes || [];
 if (lanes.length < 2 || lanes.length > 4) errors.push('use 2-4 lanes');
@@ -66,7 +68,7 @@ if (checkOnly) { console.log(`✓ ${data.company}: ${points.length} metric point
 // ---------- helpers ----------
 const W = 1920, H = 1080, FPS = 30;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const t = d => { const [y, m, day] = d.split('-').map(Number); return Date.UTC(y, m - 1, day || 15); };
+const t = dateMs;
 const unit = data.metric.unit ?? '';
 function fmt(v) {
   const a = Math.abs(v);
@@ -572,5 +574,11 @@ ${audio}
 </body>
 </html>
 `);
-await writeFile(path.join(out, 'growth.json'), JSON.stringify(data, null, 2));
+// Point the project's copy of growth.json at the copied assets so out/ rebuilds on its own.
+const local = rel => copied.get(rel) || rel;
+const project = JSON.parse(JSON.stringify(data));
+if (project.brand?.logo) project.brand.logo = local(project.brand.logo);
+for (const lane of project.lanes || []) for (const m of lane.moves || []) if (m.source?.image) m.source.image = local(m.source.image);
+for (const p of project.plays || []) if (p.wall) p.wall = p.wall.map(local);
+await writeFile(path.join(out, 'growth.json'), JSON.stringify(project, null, 2));
 console.log(`✓ ${company}: ${scenes.length} scenes, ${total.toFixed(1)} s → ${out}`);
