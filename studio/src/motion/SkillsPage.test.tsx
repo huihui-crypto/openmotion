@@ -24,11 +24,26 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(25);
+  expect(motionSkills).toHaveLength(26);
   expect(motionSkills[0].id).toBe('motionmaxxing');
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
-  expect(motionSkills.every(skill => skill.repository)).toBe(true);
+  // Only Skills authored in this repository omit an upstream repository.
+  expect(motionSkills.filter(skill => !skill.repository).map(skill => skill.id)).toEqual(['openmotion-growth-teardown']);
   expect(new Set(motionSkills.map(skill => skill.id)).size).toBe(motionSkills.length);
+});
+
+it('presents the growth teardown as an OpenMotion skill', async () => {
+  const write = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: write } });
+  act(() => root.render(<Host />));
+  act(() => button('Growth teardown').click());
+  expect(container.querySelector('.om-skill-source')!.textContent).toContain('OpenMotion skill');
+  expect(container.querySelector('.om-skill-source a, a.om-skill-source')).toBeNull();
+  await act(async () => button('Copy for Agent').click());
+  const text = write.mock.calls[0][0] as string;
+  expect(text).toContain('Make a video with the OpenMotion "Growth Teardown" skill.');
+  expect(text).toContain('Source: OpenMotion skill');
+  expect(text).toContain('growth-teardown Skill');
 });
 
 it('filters by category and search', () => {
