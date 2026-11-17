@@ -41,6 +41,7 @@ function mountRenderQueue(
   mvpEditor = false,
   jobs: RenderJob[] = [],
   emptyComposition = false,
+  isRendering = false,
 ) {
   const host = document.createElement("div");
   document.body.append(host);
@@ -54,7 +55,7 @@ function mountRenderQueue(
         onDelete={vi.fn()}
         onClearCompleted={vi.fn()}
         onStartRender={onStartRender}
-        isRendering={false}
+        isRendering={isRendering}
         compositionDimensions={compositionDimensions}
         ffmpeg={ffmpegStatus}
         ffmpegChecking={false}
@@ -104,6 +105,31 @@ function exportButtonIn(host: HTMLElement): HTMLButtonElement {
 }
 
 describe("RenderQueue controls", () => {
+  it("offers a separate export only by explicit click while keeping the inactive unknown attempt visible", () => {
+    const onStartRender: Mock<StartRenderHandler> = vi.fn();
+    const prior: RenderJob = { id: "prior", nativeJobId: "native-prior", filename: "Prior.mp4", status: "unknown", workerActive: false, progress: 40, createdAt: 1 };
+    const host = mountRenderQueue(onStartRender, undefined, true, [prior]);
+    expect(exportButtonIn(host).textContent).toBe("Export current version as a new task");
+    expect(exportButtonIn(host).disabled).toBe(false);
+    expect(host.textContent).toContain("Prior.mp4");
+    expect(host.textContent).toContain("Result needs checking");
+    expect(onStartRender).not.toHaveBeenCalled();
+    act(() => exportButtonIn(host).click());
+    expect(onStartRender).toHaveBeenCalledExactlyOnceWith("mp4", "standard", "auto", 30, false);
+    expect(host.textContent).toContain("Prior.mp4");
+  });
+
+  it("keeps the new-export control blocked when another worker is active", () => {
+    const onStartRender: Mock<StartRenderHandler> = vi.fn();
+    const prior: RenderJob = { id: "prior", filename: "Prior.mp4", status: "unknown", workerActive: false, progress: 40, createdAt: 1 };
+    const active: RenderJob = { ...prior, id: "active", status: "rendering", workerActive: true };
+    const host = mountRenderQueue(onStartRender, undefined, true, [prior, active], false, true);
+    expect(exportButtonIn(host).textContent).toBe("Rendering…");
+    expect(exportButtonIn(host).disabled).toBe(true);
+    act(() => exportButtonIn(host).click());
+    expect(onStartRender).not.toHaveBeenCalled();
+  });
+
   it("has no native select left in the panel", () => {
     // R8. The four format / resolution / frame-rate / quality controls are the
     // shared Select now; a native one would bring back an OS popup that no

@@ -58,6 +58,32 @@ function verifiedFile(root: string, file: AssetFile): Buffer {
   requireValue(bytes.length === file.bytes && digest(bytes) === file.sha256, 'asset identity differs: ' + file.path);
   return bytes;
 }
+
+/** Inline documents use renders of local editable projects, not remote films. */
+export function loadInlineProjectPreviews(templateIds: string[], options: { directory?: string; applicationRoot?: string } = {}) {
+  const directory = options.directory ?? uiDirectory;
+  const appRoot = options.applicationRoot ?? applicationRoot;
+  const manifest = JSON.parse(regularFile(directory, 'project-previews/manifest.json').toString('utf8'));
+  requireValue(manifest.schemaVersion === 1 && manifest.previewSource === 'project' && manifest.silent === true
+    && Array.isArray(manifest.templates) && manifest.templates.length === onboardingTemplateIds.length, 'invalid project preview manifest');
+  const ids = manifest.templates.map((item: any) => item.id);
+  requireValue(new Set(ids).size === onboardingTemplateIds.length
+    && onboardingTemplateIds.every(id => ids.includes(id)), 'incomplete project previews');
+  return templateIds.map(id => {
+    const item = manifest.templates.find((item: any) => item.id === id);
+    requireValue(item, 'missing project preview: ' + id);
+    const record = JSON.parse(regularFile(appRoot, 'library/templates/catalog/' + id + '/template.json').toString('utf8'));
+    requireValue(item.sourceFilesSha256 === digest(JSON.stringify(record.entry.files)), 'project source identity differs');
+    requireValue(Number.isFinite(item.durationSeconds) && item.durationSeconds > 0, 'invalid project duration');
+    requireValue(item.video?.path === 'project-previews/' + id + '.webm' && item.video.mimeType === 'video/webm'
+      && item.poster?.path === 'project-previews/' + id + '.jpg' && item.poster.mimeType === 'image/jpeg', 'invalid project media paths');
+    const video = verifiedFile(directory, item.video), poster = verifiedFile(directory, item.poster);
+    requireValue(video.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))
+      && poster[0] === 0xff && poster[1] === 0xd8, 'invalid project media bytes');
+    return { id, durationSeconds: item.durationSeconds, videoBase64: video.toString('base64'), videoMimeType: 'video/webm' as const,
+      posterBase64: poster.toString('base64'), posterMimeType: 'image/jpeg' };
+  });
+}
 function freeze<T>(value: T): Readonly<T> {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     for (const child of Object.values(value)) freeze(child);
@@ -152,11 +178,11 @@ export function loadTemplatePresentation(options: { directory?: string; applicat
   requireValue(Buffer.byteLength(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { contents: [content] } })) <= templatePresentationLimit, 'resource exceeds 1.5 MiB');
   const tool: ToolDefinition = {
     name: templatePresentationName, title: 'OpenMotion · Show Template Recommendations',
-    description: 'Show three approved, full-video template previews in this chat, in the supplied order. Always set language to the language of the latest user request (or their explicit requested output language), regardless of the host interface locale. Supported: zh, en, ja, ko, fr, es, pt; use en for other languages. For first-run onboarding, preserve the prepared random three-of-nine selection, visibly open the template library, then set onboarding=false for cards only. Installation preparation returns separate welcomeMarkdown; stream it once as ordinary final reply text after this Tool result, referring to the cards above. Do not embed the welcome in the App, use collapsed commentary or simulate streaming. Legacy onboarding=true retains a component-owned welcome for older explicit callers only. Result _meta binds the negotiated immutable ui.resourceUri and a recommendation-specific openai/widgetSessionId. This read-only presentation does not create or select a project. Use only when discovered natively; otherwise keep the template-library handoff and report incomplete inline delivery.',
+    description: 'Show three approved, full-video template previews in this chat, in the supplied order. Always set language to the language of the latest user request (or their explicit requested output language), regardless of the host interface locale. Supported: zh, en, ja, ko, fr, es, pt; use en for other languages. For first-run onboarding, preserve the prepared random three-of-four selection, open the template library once, then set onboarding=true: the persistent conversation component displays the maintained welcome above exactly three cards. Do not repeat the welcome in the final reply. Ordinary recommendations omit onboarding. Result _meta binds the negotiated immutable ui.resourceUri and a recommendation-specific openai/widgetSessionId. This read-only presentation does not create or select a project. Use only when discovered natively; otherwise use the prepared self-contained project-preview document from installation onboarding and assess native activation separately.',
     inputSchema: { type: 'object', properties: { templateIds: { type: 'array', minItems: 3, maxItems: 3,
       items: { type: 'string', enum: supportedIds }, uniqueItems: true },
       language: { type: 'string', enum: supportedLanguages, description: 'Language of the latest user request, or their explicit requested output language. Always supply this field; do not infer it from the host UI locale.' },
-      onboarding: { type: 'boolean', description: 'Use false for current installation onboarding: cards only, followed by the separately prepared welcomeMarkdown streamed as ordinary final reply text. Legacy true includes a component-owned welcome for older explicit callers; it does not stream welcome text. Use only after the right-hand template library is visibly open. Keep the three prepared curated-pool IDs in their supplied order; never resample an existing presentation. Omission retains ordinary cards-only recommendations.' } }, required: ['templateIds'], additionalProperties: false },
+      onboarding: { type: 'boolean', description: 'Use true for installation onboarding: the maintained welcome appears above exactly three cards in the persistent conversation component. Open the right-hand template library first; detailed validation is unnecessary. Keep the three prepared curated-pool IDs in their supplied order. Use false only when the welcome was already delivered; omission retains ordinary cards-only recommendations.' } }, required: ['templateIds'], additionalProperties: false },
     annotations: { readOnlyHint: true, openWorldHint: false },
     _meta: { ui: { resourceUri: uri }, 'openai/ui': { preferredModelDisplayMode: 'inline' } },
   };

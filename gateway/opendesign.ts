@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import type { Model } from '../shared/gateway.ts';
-import { modelDefaults } from '../shared/generation-options.ts';
+import { resolveGenerationParameters } from '../shared/generation-options.ts';
 import { apiJson, publicProviderFetch, ProviderError, retryRead, type Fetcher } from './network.ts';
 import type { ProviderAdapter, ProviderContext } from './providers.ts';
 
@@ -56,9 +56,9 @@ export const opendesign: ProviderAdapter = {
     const api = ctx.baseUrl + '/api/v1/media';
     const audio = job.modality === 'audio';
     const speech = audio && job.model.mode === 'text-to-speech';
-    const parameters = { ...modelDefaults(job.model), ...job.parameters };
     let remoteId = job.remoteId;
     if (!remoteId) {
+      const parameters = resolveGenerationParameters(job.model, job.parameters, !!ctx.references?.length);
       const { voice, ...speechOptions } = parameters;
       if (speech && (typeof voice !== 'string' || !voice.trim())) throw new Error('Choose a provider voice ID in parameters.voice');
       const audioBody = speech ? { voice, parameters: { ...speechOptions, text: job.prompt } } : { parameters: { ...parameters, prompt: job.prompt } };

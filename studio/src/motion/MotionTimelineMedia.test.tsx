@@ -21,7 +21,7 @@ afterEach(() => { act(() => root?.unmount()); document.body.innerHTML = ''; useP
 
 it.each([false, true])('replaces only the captured image src and rejects stale targets (MVP: %s)', async (mvpEditor) => {
   const element = { id: 'forest', key: 'scene:forest', tag: 'img', src: 'assets/original.png', sourceFile: 'scenes/intro.html', start: 2, duration: 6, track: 0 } as TimelineElement;
-  usePlayerStore.setState({ elements: [element], selectedElementId: element.key });
+  usePlayerStore.setState({ timelineProjectId: 'p', elements: [element], selectedElementId: element.key });
   const captured = selectedMedia(element)!;
   const image = document.createElement('img'); image.setAttribute('src', '/api/projects/p/preview/assets/original.png');
   const selection = { id: 'forest', tagName: 'img', sourceFile: 'scenes/intro.html', element: image } as unknown as DomEditSelection;
@@ -49,4 +49,10 @@ it.each([false, true])('replaces only the captured image src and rejects stale t
   expect(source).toBe(original);
   await act(async () => root.render(render('another')));
   await expect(target.replace!('assets/generated/last.png', captured)).rejects.toThrow('composition changed');
+  image.setAttribute('src', '/api/projects/p/preview/assets/original.png');
+  const failure = new TypeError('Lost write response');
+  hooks.commit.mockImplementationOnce(async (_selection, _ops, options) => { options.onError(failure); return false; });
+  await expect(hooks.target!.replace!('assets/generated/last.png', captured)).rejects.toBe(failure);
+  usePlayerStore.setState({ timelineProjectId: 'another-project' });
+  await expect(hooks.target!.place('assets/generated/last.png', { start: 0, duration: 3, track: 0 })).rejects.toMatchObject({ outcome: 'project-changed' });
 });

@@ -30,6 +30,7 @@ export const workflowRegistry = {
       wavespeed: 'skills/openmotion-production/references/media-providers/wavespeed.md',
       typography: 'skills/openmotion-production/references/typography.md',
       fonts: 'skills/openmotion-production/references/fonts.md',
+      reference: 'skills/openmotion-production/references/reference-video.md',
     },
   },
   director: {

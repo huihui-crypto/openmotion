@@ -1,11 +1,60 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generationOptions, modelDefaults, validateGenerationOptions } from '../shared/generation-options.ts';
+import { generationOptions, modelDefaults, resolveGenerationParameters, usesInputImageRatio, validateGenerationOptions } from '../shared/generation-options.ts';
 import { builtinModels } from '../gateway/catalog.ts';
 import { fixture } from './fixtures.ts';
 import { gatewayFor } from '../gateway/service.ts';
 import { providerAdapters } from '../gateway/providers.ts';
-import type { GenerationJob } from '../shared/gateway.ts';
+import type { GenerationJob, Model } from '../shared/gateway.ts';
+import { OpenDesignAccount } from '../gateway/account.ts';
+import type { AccountSummary } from '../shared/provider-directory.ts';
+
+for (const provider of ['opendesign', 'account']) for (const modelId of ['wan-2.7', 'doubao-seedance-2-5-260628']) {
+  test(`${provider}:${modelId} first-frame parameters follow the image without inheriting a fixed ratio`, () => {
+    const model: Model = { id: `${provider}:${modelId}`, provider, modelId, label: modelId, modality: 'video', mode: 'text-to-video', source: 'live',
+      defaults: { ratio: '16:9', duration: 5 }, nativeOptions: { ratios: { default: '16:9' } } };
+    const explicit = { ratio: '9:16', duration: 4 };
+    assert.throws(() => resolveGenerationParameters(model, explicit, true), /First-frame video.*Remove parameters.ratio.*adaptive/);
+    for (const ratio of ['16:9', '', null, 1]) assert.throws(() => resolveGenerationParameters(model, { ratio }, true), /First-frame video/);
+    assert.deepEqual(resolveGenerationParameters(model, {}, true), { duration: 5 });
+    assert.deepEqual(resolveGenerationParameters(model, { ratio: 'adaptive' }, true), { duration: 5, ratio: 'adaptive' });
+    assert.deepEqual(resolveGenerationParameters({ ...model, defaults: { ratio: 'adaptive' } }, {}, true), { ratio: 'adaptive' });
+    assert.deepEqual(resolveGenerationParameters({ ...model, defaults: undefined }, {}, true), {});
+    // Text-only generation keeps both saved and explicit fixed ratios, without mutating their source.
+    assert.deepEqual(resolveGenerationParameters(model, {}), { ratio: '16:9', duration: 5 });
+    assert.deepEqual(resolveGenerationParameters(model, explicit), explicit);
+    assert.deepEqual(model.defaults, { ratio: '16:9', duration: 5 });
+    assert.deepEqual(explicit, { ratio: '9:16', duration: 4 });
+    const images = [{ asset_id: 'ma_frame', role: 'first_frame' }];
+    assert.equal(usesInputImageRatio(model, false, { images }), true);
+    assert.throws(() => resolveGenerationParameters(model, { images, ratio: '16:9' }), /First-frame video/);
+    assert.deepEqual(resolveGenerationParameters(model, { images }), { duration: 5, images });
+    assert.deepEqual(resolveGenerationParameters({ ...model, defaults: { ...model.defaults, images } }, {}), { duration: 5, images });
+  });
+}
+
+test('first-frame ratio policy leaves other providers, models and image editing unchanged', () => {
+  const base: Model = { id: 'opendesign:wan-2.7', provider: 'opendesign', modelId: 'wan-2.7', label: 'Wan', modality: 'video', mode: 'text-to-video', source: 'live', defaults: { ratio: '16:9' } };
+  for (const model of [{ ...base, provider: 'fal' }, { ...base, provider: 'atlascloud' }, { ...base, modelId: 'future-video' }, { ...base, modality: 'image' as const }]) {
+    assert.equal(usesInputImageRatio(model, true), false);
+    assert.deepEqual(resolveGenerationParameters(model, { ratio: '4:3' }, true), { ratio: '4:3' });
+  }
+});
+
+test('account first-frame ratio rejection makes no connector call and does not enable account video references', () => fixture(async store => {
+  let calls = 0;
+  const account = new OpenDesignAccount(store.directory, { run: async () => { calls++; throw new Error('unexpected connector call'); } });
+  account.identity = async () => 'fixture-session';
+  account.summary = async () => ({ state: 'signed-in' } as AccountSummary);
+  const model: Model = { id: 'account:wan-2.7', provider: 'account', modelId: 'wan-2.7', label: 'Wan', modality: 'video', mode: 'text-to-video', source: 'live', defaults: { ratio: '16:9' } };
+  const job = { model, modality: 'video', providerOrigin: 'fixture-session', parameters: { ratio: '16:9' } } as GenerationJob;
+  try {
+    const run = (parameters: Record<string, unknown>) => account.generate({ ...job, parameters }, store.directory, new AbortController().signal, async () => {}, 'not-read.png');
+    await assert.rejects(run({ ratio: '16:9' }), /First-frame video/);
+    for (const parameters of [{}, { ratio: 'adaptive' }]) await assert.rejects(run(parameters), /Account reference images are supported for image editing only/);
+    assert.equal(calls, 0);
+  } finally { account.close(); }
+}));
 
 test('exact endpoint schemas preserve provider types and never guess from a model label', () => {
   const seedance = builtinModels.find(m => m.modelId === 'bytedance/seedance-2.0/text-to-video')!;

@@ -23,6 +23,31 @@ const plan = { targetLufs: -16, projectedLufs: -16, volume: 2, changeDb: 6, limi
 afterEach(() => vi.unstubAllGlobals());
 
 describe("normalizeClipsLoudness", () => {
+  it.each([
+    [null, -16, 2, 0],
+    ["gain-ceiling", -24, 1, 1],
+    ["true-peak", -18.4, 1, 1],
+  ] as const)("reports actual projected results for a batch limited by %s", async (limitedBy, projectedLufs, matched, unmatched) => {
+    vi.stubGlobal("fetch", vi.fn()
+      .mockResolvedValueOnce(Response.json({ plan }))
+      .mockResolvedValueOnce(Response.json({ plan: { ...plan, projectedLufs, limitedBy } })));
+    const save = vi.fn(async () => ({ status: "saved" as const }));
+    expect(await normalizeClipsLoudness("p1", [clip("a"), clip("b")], { onSetElementsAttributeQuiet: save }))
+      .toBe(`Adjusted 2 clips: ${matched} expected to reach target; ${unmatched} unable to reach target.`);
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it("does not claim any clip reached target when every clip is limited", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ plan: { ...plan, projectedLufs: -24, limitedBy: "gain-ceiling" } })));
+    expect(await normalizeClipsLoudness("p1", [clip("a"), clip("b")], { onSetElementsAttributeQuiet: async () => ({ status: "saved" }) }))
+      .toBe("Adjusted 2 clips: 0 expected to reach target; 2 unable to reach target.");
+  });
+
+  it("does not measure or save an empty selection", async () => {
+    const fetchSpy = vi.fn(); vi.stubGlobal("fetch", fetchSpy);
+    expect(await normalizeClipsLoudness("p1", [], {})).toBe("No audio clips selected.");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
   it("refuses a clip whose volume lane owns its gain, before measuring or writing", async () => {
     const fetchSpy = vi.fn(async () => Response.json({ plan }));
     vi.stubGlobal("fetch", fetchSpy);

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { mcpCapabilities, mcpBenefits, mcpFaq } from '../studio/src/motion/mcpCapabilities.ts';
+import { mcpCapabilities, mcpScenarios, platformExportExample, mcpBenefits, mcpFaq } from '../studio/src/motion/mcpCapabilities.ts';
 import { phase1Tools } from '../shared/phase1-tools.ts';
 import { agentGuide, type IntegrationInfo } from '../shared/integration.ts';
 
@@ -13,7 +13,18 @@ test('MCP onboarding covers every public domain tool exactly once', () => {
 
 test('every capability and benefit has a real shared icon', () => {
   const sprite = readFileSync(new URL('../packages/design-system/icons.svg', import.meta.url), 'utf8');
-  for (const { icon } of [...mcpCapabilities, ...mcpBenefits]) assert.ok(sprite.includes(`id="ri-${icon}"`), icon);
+  for (const { icon } of [...mcpCapabilities, ...mcpScenarios, ...mcpBenefits]) assert.ok(sprite.includes(`id="ri-${icon}"`), icon);
+});
+
+test('handbook scenarios compose public tools and keep their copyable instructions aligned', () => {
+  const names = new Set(phase1Tools.map(tool => tool.name));
+  for (const scenario of mcpScenarios) {
+    assert.ok(scenario.title && scenario.description);
+    for (const tool of scenario.tools) {
+      assert.ok(names.has(tool), tool);
+      assert.ok(platformExportExample('en').includes(tool), tool);
+    }
+  }
 });
 
 test('reference-image and audio guidance is translated in every interface language', () => {

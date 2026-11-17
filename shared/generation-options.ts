@@ -34,6 +34,25 @@ export function modelDefaults(model: Model): Record<string, unknown> {
   return voice ? { voice, ...model.defaults } : { ...model.defaults };
 }
 
+/** These Cloud models derive first-frame video geometry from the input image. */
+export function usesInputImageRatio(model: Model, hasInputImage: boolean, parameters: Record<string, unknown> = {}): boolean {
+  const images = { ...model.defaults, ...parameters }.images;
+  const firstFrame = Array.isArray(images) && images.some(image => image && typeof image === 'object' && image.role === 'first_frame');
+  return (hasInputImage || firstFrame) && model.modality === 'video' && ['opendesign', 'account'].includes(model.provider)
+    && ['wan-2.7', 'doubao-seedance-2-5-260628'].includes(model.modelId);
+}
+
+/** Resolve defaults without carrying a text-to-video ratio into a first-frame request. */
+export function resolveGenerationParameters(model: Model, parameters: Record<string, unknown>, hasInputImage = false): Record<string, unknown> {
+  const resolved = { ...modelDefaults(model), ...parameters };
+  if (usesInputImageRatio(model, hasInputImage, parameters)) {
+    // An explicit fixed ratio is a conflicting instruction, not a default to silently replace.
+    if (parameters.ratio !== undefined && parameters.ratio !== 'adaptive') throw new Error('First-frame video follows the input image ratio. Remove parameters.ratio or set it to "adaptive".');
+    if (resolved.ratio !== 'adaptive') delete resolved.ratio;
+  }
+  return resolved;
+}
+
 /** Exact endpoint profiles, checked 2026-11-15. Sources: docs/generation-options.md.
  * An unknown catalogue model deliberately gets no guessed schema. */
 export function generationOptions(model: Model): GenerationOptions | undefined {

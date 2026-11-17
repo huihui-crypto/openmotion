@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runFile, sha256, writeJSON } from '../../scripts/runtime-assets.mjs';
-import { checkReleaseVersion, compareReleaseVersions, releaseTemplateEnvironment, testVersion } from '../../scripts/release-version.mjs';
+import { checkReleaseVersion, comparePublicationVersions, releaseTemplateEnvironment, testVersion } from '../../scripts/release-version.mjs';
 import { generateInstallGuide } from '../../scripts/install-guide.mjs';
 import { publishGuide, storagePlan } from './publish-install-guide.mjs';
 import { scanPackage, scanSource } from './motion-scan.mjs';
@@ -76,7 +76,7 @@ export async function resolveCandidate(control, requested, version, env = proces
       const published = tags[tag];
       if (!published) continue;
       checkReleaseVersion(published);
-      if (compareReleaseVersions(version, published) > 0) continue;
+      if (comparePublicationVersions(version, published) > 0) continue;
       // Advance the published core's patch series rather than only its test counter, so the
       // result stays newer than every `${core}-test.*` version and remains run-unique.
       version = automaticVersion(published.split('-test.')[0]);
@@ -284,9 +284,9 @@ export async function publishNpm(directory, inputs, { fetcher = fetch, run = run
   await verifyAuthorization(directory, inputs, env);
   channelVersion(candidate.version, inputs.channel || 'test');
   const before = await registryPackage(candidate, fetcher);
-  if (inputs.action === 'publish-stable' && before.tags.latest) assert(compareReleaseVersions(candidate.version, before.tags.latest) >= 0, 'A newer stable version already exists; use snapshot recovery');
+  if (inputs.action === 'publish-stable' && before.tags.latest) assert(comparePublicationVersions(candidate.version, before.tags.latest) >= 0, 'A newer stable version already exists; use snapshot recovery');
   if (inputs.action === 'archive-only') assert(before.version, 'Archive-only requires an existing identical npm version');
-  if (inputs.action === 'publish-test' && before.tags.test) assert(compareReleaseVersions(candidate.version, before.tags.test) >= 0, 'A newer npm test version already exists; use snapshot recovery for an identical published version');
+  if (inputs.action === 'publish-test' && before.tags.test) assert(comparePublicationVersions(candidate.version, before.tags.test) >= 0, 'A newer npm test version already exists; use snapshot recovery for an identical published version');
   const record = { schemaVersion: 1, version: candidate.version, tgzSHA256: candidate.tgzSHA256, action: inputs.action,
     previousLatest: before.tags.latest ?? null, previousTest: before.tags.test ?? null, status: before.version ? 'already-published-identical' : 'publish-started' };
   await writeJSON(path.join(directory, 'npm-publication.json'), record);
@@ -316,7 +316,7 @@ export async function promoteTest(directory, inputs, { fetcher = fetch, run = ru
   const before = await waitForRegistry(candidate, state => !!state.version, { fetcher, wait, attempts });
   assert(before.version, 'Exact npm version is not public');
   assert.equal(before.tags.latest ?? null, npm.previousLatest, 'npm latest changed unexpectedly; stop before channel promotion');
-  const superseded = before.tags.test && compareReleaseVersions(before.tags.test, candidate.version) > 0;
+  const superseded = before.tags.test && comparePublicationVersions(before.tags.test, candidate.version) > 0;
   let status = inputs.action === 'archive-only' ? 'archive-only' : superseded ? 'superseded' : 'already-promoted';
   if (inputs.action === 'publish-test' && !superseded && before.tags.test !== candidate.version) {
     await run('npm', ['dist-tag', 'add', `${candidate.packageName}@${candidate.version}`, 'test', '--registry=https://registry.npmjs.org/']);
@@ -355,7 +355,7 @@ export async function promoteStable(directory, inputs, { fetcher = fetch, run = 
   assert.equal(npm.tgzSHA256, candidate.tgzSHA256);
   const before = await waitForRegistry(candidate, state => !!state.version, { fetcher, wait, attempts });
   assert.equal(before.tags.test ?? null, npm.previousTest, 'npm test changed during stable publication');
-  const superseded = before.tags.latest && compareReleaseVersions(before.tags.latest, candidate.version) > 0;
+  const superseded = before.tags.latest && comparePublicationVersions(before.tags.latest, candidate.version) > 0;
   if (!superseded && before.tags.latest !== candidate.version) assert.equal(before.tags.latest ?? null, npm.previousLatest, 'npm latest changed unexpectedly');
   let status = inputs.action === 'archive-only' ? 'archive-only' : superseded ? 'superseded' : 'already-promoted';
   if (inputs.action === 'publish-stable' && !superseded && before.tags.latest !== candidate.version) {
@@ -390,9 +390,9 @@ export async function archiveRelease(directory, inputs, config, { run = runFile,
   assert.equal(npm.tgzSHA256, candidate.tgzSHA256);
   if (!stable || inputs.action === 'archive-only') assert.equal(registry.tags.latest ?? null, npm.previousLatest, 'npm latest changed unexpectedly; stop and investigate before promoting a guide');
   if (stable) assert.equal(registry.tags.test ?? null, npm.previousTest, 'npm test changed during stable publication');
-  if (inputs.action === 'publish-stable' && registry.tags.latest !== candidate.version) assert(registry.tags.latest && compareReleaseVersions(registry.tags.latest, candidate.version) > 0, 'Unexpected stable channel; explicit recovery required');
+  if (inputs.action === 'publish-stable' && registry.tags.latest !== candidate.version) assert(registry.tags.latest && comparePublicationVersions(registry.tags.latest, candidate.version) > 0, 'Unexpected stable channel; explicit recovery required');
   if (inputs.action === 'publish-test' && registry.tags.test !== candidate.version) {
-    assert(registry.tags.test && compareReleaseVersions(registry.tags.test, candidate.version) > 0, 'npm test tag is missing or unexpectedly older; explicit channel recovery is required');
+    assert(registry.tags.test && comparePublicationVersions(registry.tags.test, candidate.version) > 0, 'npm test tag is missing or unexpectedly older; explicit channel recovery is required');
   }
   const prefix = path.posix.dirname(plan.versionKey), work = await mkdtemp(path.join(os.tmpdir(), 'motion-snapshot-'));
   const aws = async (operation, rest) => JSON.parse(await run('aws', ['--endpoint-url', plan.endpoint, '--region', 'auto', 's3api', operation, '--bucket', plan.bucket, ...rest]) || '{}');

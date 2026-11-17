@@ -45,6 +45,7 @@
 - [npm release acceptance](release-guide.md)
 - [Manual npm publication workflow](release-workflows.md)
 - [product/architecture.md](product/architecture.md)
+- [Platform export: user stories, Agent handoff and verification](product/platform-export.md)
 - [product/media-generation-design.md](product/media-generation-design.md)
 - [project-workspace.md](project-workspace.md)
 - [repository-migration.md](repository-migration.md)

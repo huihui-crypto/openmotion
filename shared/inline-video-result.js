@@ -66,16 +66,26 @@ export function normalizeInlineResult(input) {
       }
       return sanitize(structured);
     }
-    if (!Array.isArray(value.content) || value.content.length !== 1 || value.content[0]?.type !== 'text'
-      || typeof value.content[0].text !== 'string' || value.content[0].text.length > maxTextBytes || jsonDepth >= 2) invalid('unsupported JSON envelope');
-    let decoded;
-    try { decoded = JSON.parse(value.content[0].text); } catch {
+    if (!Array.isArray(value.content) || jsonDepth >= 2) invalid('unsupported JSON envelope');
+    // Execution hosts can prepend status text to the serialized MCP result.
+    // Accept exactly one result candidate, preserving metadata from every wrapper.
+    const candidates = [];
+    let textBytes = 0;
+    for (const item of value.content) {
+      if (item?.type !== 'text' || typeof item.text !== 'string') invalid('unsupported content block');
+      textBytes += item.text.length;
+      if (textBytes > maxTextBytes) invalid('JSON envelope exceeds size limit');
+      let parsed;
+      try { parsed = JSON.parse(item.text); } catch { continue; }
+      if (record(parsed) && (parsed.inlineWork || parsed.structuredContent !== undefined
+        || Array.isArray(parsed.content) || parsed.isError === true)) candidates.push(parsed);
+    }
+    if (candidates.length > 1) invalid('ambiguous JSON envelope');
+    if (!candidates.length) {
       if (value.isError === true) return { error: { code: 'TOOL_FAILED', message: 'The tool request failed.' } };
       invalid('malformed JSON envelope');
     }
-    if (record(decoded) && decoded.projectId && decoded.inlineWork) {
-      checkIdentity(decoded); return sanitize(decoded);
-    }
+    const decoded = candidates[0];
     return unwrap(decoded, jsonDepth + 1, envelopeDepth + 1);
   };
   const structuredContent = unwrap(input);

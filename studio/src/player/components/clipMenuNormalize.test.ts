@@ -54,7 +54,7 @@ describe("normalizeToastText", () => {
         changeDb: 3.2,
         limitedBy: null,
       }),
-    ).toBe("Normalized to −16 LUFS (+3.2 dB)");
+    ).toBe("Estimated loudness: −16 LUFS (+3.2 dB).");
   });
 
   it("says so when a limit held it back", () => {
@@ -66,11 +66,22 @@ describe("normalizeToastText", () => {
         changeDb: 12,
         limitedBy: "gain-ceiling",
       }),
-    ).toBe("Raised to −18 LUFS (+12.0 dB), the most the +12 dB ceiling allows");
+    ).toBe("Estimated loudness: −18.4 LUFS (+12.0 dB); gain limit prevents reaching target.");
+  });
+
+  it("does not call a reduction a raise or mistake a rounded value for reaching target", () => {
+    expect(normalizeToastText({ targetLufs: -16, projectedLufs: -16.04, volume: 0.5, changeDb: -6, limitedBy: "true-peak" }))
+      .toBe("Estimated loudness: −16 LUFS (−6.0 dB); peak protection prevents reaching target.");
   });
 });
 
 describe("requestNormalizePlan", () => {
+  it("rejects an invalid measurement rather than producing a success result", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => Response.json({ plan: {
+      targetLufs: -16, projectedLufs: null, volume: 2, changeDb: 6, limitedBy: null,
+    } }));
+    await expect(requestNormalizePlan("p1", clip({ src: "assets/vo.wav" }), fetchImpl)).rejects.toThrow("Could not measure this clip");
+  });
   it("posts the project-relative source and returns the plan", async () => {
     const plan = { targetLufs: -16, projectedLufs: -16, volume: 2, changeDb: 6, limitedBy: null };
     const fetchImpl = vi.fn<typeof fetch>(async () => Response.json({ plan }));

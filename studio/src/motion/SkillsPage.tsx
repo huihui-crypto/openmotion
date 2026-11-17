@@ -24,17 +24,6 @@ const defaults: SkillParameters = { subject: '', duration: 10, aspect: '16:9', s
 export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { skillId: string | null; onSkillChange: (id: string | null) => void; hasProject?: boolean }) {
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
-  const grid = useRef<HTMLDivElement>(null), [columns, setColumns] = useState(1);
-  // Read the responsive column count from CSS and lay cards out row by row, so catalog order is reading order.
-  useEffect(() => {
-    const element = grid.current;
-    if (!element || typeof ResizeObserver === 'undefined') return;
-    const measure = () => setColumns(Math.max(1, Number.parseInt(getComputedStyle(element).columnCount, 10) || 1));
-    const observer = new ResizeObserver(measure);
-    observer.observe(element.parentElement ?? element);
-    measure();
-    return () => observer.disconnect();
-  }, []);
   const [commandOpen, setCommandOpen] = useState(false);
   const [parameters, setParameters] = useState<SkillParameters>(defaults), [manualCopy, setManualCopy] = useState<{ text: string; surface: 'instruction' | 'command' } | null>(null);
   // Same install guide as template instructions; the repository guide is the fallback until the service answers.
@@ -122,11 +111,8 @@ export function SkillsPage({ skillId, onSkillChange, hasProject = false }: { ski
         <section className="om-gallery-intro om-skills-intro"><span className="om-gallery-eyebrow">{t('Pick a skill. Let your Agent make it.')}</span><h1>{t('Teach your Agent new moves.')}</h1><p>{t('Pick a skill, fill in the brief and copy the instruction. Your Agent builds an editable project in OpenMotion.')}</p>
           <div className="om-gallery-intro-actions"><a className="om-gallery-submit" href={skillSubmissionUrl} target="_blank" rel="noopener noreferrer" onClick={() => tracking.reportSkillSubmitClicked()}>{t('Submit a skill')}<MotionIcon name="arrow-up-right" size={15} /></a></div>
         </section>
-        {/* Cards fill rows left to right: the CSS column count only sets how many columns there are. */}
-        <div ref={grid} className="om-gallery-masonry om-skills-grid" data-columns={columns}>
-          {Array.from({ length: columns }, (_, column) => <div key={column} className="om-skills-column">
-            {visible.map((skill, index) => index % columns === column && <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill, index + 1)} />)}
-          </div>)}
+        <div className="om-gallery-masonry om-skills-grid">
+          {visible.map((skill, index) => <SkillCard key={skill.id} skill={skill} name={displayName(skill)} useWhen={t(skill.useWhen)} category={t(skill.category)} selected={skill.id === skillId} onSelect={() => open(skill, index + 1)} />)}
         </div>
         {!visible.length && <div className="om-empty"><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button className="om-button" onClick={() => { setQuery(''); setCategory(null); tracking.reportSkillFiltersCleared(); }}>{t('Clear filters')}</button></div>}
       </main>

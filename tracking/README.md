@@ -294,6 +294,20 @@ and [DSH's client declaration](https://github.com/deepseek-ai/deepseek-harness/b
   upstream tokens, transports and automatic experiment enrollment remain disabled.
   Feature visibility and SDK gates do not change: hidden feedback, desktop and
   audio-FX features emit only when their existing producer actually runs.
+- Manual import/export recovery uses `studio_io_action` and `studio_io_result`,
+  joined by one random `attempt_id` per intentional action. The Studio-only
+  `beginStudioIo` helper reports at most one result; automatic reads and background
+  render updates do not create actions. Import counts cover only the files selected
+  in that attempt, and a subsequent listing failure does not turn confirmed imports
+  into failed imports. A successful render recheck means the query succeeded, even
+  when `state_after=failed`. An inaccessible file is `failure/unavailable`; a network
+  result that cannot confirm availability is `unknown/unknown`. Opening a new window
+  is `success` with `delivery_status=opened`; a blocked popup is `failure` with
+  `delivery_status=popup_blocked`. Passing a download to the browser reports
+  `outcome=unknown`, `file_status=available` and
+  `delivery_status=browser_save_requested`; it does not confirm a saved file.
+  Only fixed actions, outcomes, statuses and aggregate counts are allowed: no
+  project/task identity, file names, paths, content or full error messages.
 - The editor's template library reports with the names of the shared OpenMotion
   tracking sheet, so its funnel lines up with the website's: `surface_view` for
   the library, a gallery card, a template's detail and the instruction to copy;
@@ -381,3 +395,5 @@ jobs by all submitted jobs, including cancelled, failed and unresolved jobs at
 the report cutoff. Inspect, list and status calls do not enter this cohort.
 A local save retry can update the terminal result for the same job. Use the latest result per job at the report cutoff. It does not add a model request or submission. Count outputs saved to the workspace library or project once per output.
 Generation uses the existing telemetry preference and installation identity.
+
+Studio recovery keeps request acknowledgement separate from execution outcome. An uncertain export receipt reports `studio_export_request_result.outcome=unknown`; a later identity-matched lookup can report one terminal result with the same browser `export_id`. Progress loss, cancelling and an inactive unknown record never produce a failed or cancelled terminal event. `studio_asset_import_result` retains its entry-point categories and reports confirmed failure, unknown and pending counts separately; unknown/pending items are not counted as failed. The manual `reload_editor` recovery action records only an unknown handoff outcome, not confirmed recovery.

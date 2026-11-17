@@ -1,6 +1,6 @@
 # OpenDesign Cloud media
 
-Based on the Cloud media API contract; reviewed 2026-11-16. This is a test-stage contract. Sections: discovery, request templates, polling, errors, boundaries.
+Based on the Cloud media API contract; reviewed 2026-11-17. This is a test-stage contract. Sections: discovery, request templates, polling, errors, boundaries.
 
 ## Setup and discovery
 
@@ -59,8 +59,10 @@ Image edit and image-to-video take workspace library references through `openmot
 Image-to-video with one first frame:
 
 ```json
-{"action":"generate","requestId":"cloud-i2v-01","model":"opendesign:wan-2.7","modality":"video","prompt":"The camera slowly moves closer","references":[{"assetId":"A","versionId":"A1"}],"parameters":{"duration":5,"resolution":"720p","ratio":"16:9"}}
+{"action":"generate","requestId":"cloud-i2v-01","model":"opendesign:wan-2.7","modality":"video","prompt":"The camera slowly moves closer","references":[{"assetId":"A","versionId":"A1"}],"parameters":{"duration":5,"resolution":"720p","ratio":"adaptive"}}
 ```
+
+For `wan-2.7` and `doubao-seedance-2-5-260628`, a first-frame video follows the input image's aspect ratio. Omit `parameters.ratio` or set it to `"adaptive"`; a fixed value such as `"16:9"` is incompatible with a first frame. The catalogue also lists text-to-video ratios, so its general default does not establish a valid image-to-video combination. If the brief requires a fixed frame, prepare and inspect a reference image at that ratio before submission, keeping the original asset. Do not silently replace an explicitly requested ratio or change the reference image to make a request pass validation.
 
 Native speech options pass through `parameters` unchanged, such as ElevenLabs `voice_settings.speed` or BytePlus `audio_params.speech_rate`. Seedream 5.5 and both video models currently accept one input image; first-and-last-frame video is rejected by the service.
 

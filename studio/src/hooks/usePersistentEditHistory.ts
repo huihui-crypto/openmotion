@@ -45,6 +45,9 @@ interface HistoryView {
 }
 
 const EMPTY: HistoryView = { entries: [], back: null, forward: null };
+type BlockedSteps = Partial<Record<"undo" | "redo", NextStep>>;
+const sameStep = (a: NextStep | undefined, b: NextStep | null) =>
+  Boolean(a && b && a.id === b.id && a.endedAt === b.endedAt);
 /** ponytail: the newest entries' content is kept; older ones step through the server only. */
 const OWN_ENTRIES_KEPT = 100;
 
@@ -208,6 +211,9 @@ function redoneAt(view: HistoryView): number | null {
 export function usePersistentEditHistory({ projectId }: UsePersistentEditHistoryOptions) {
   const [view, setView] = useState<HistoryView>(EMPTY);
   const [loaded, setLoaded] = useState(false);
+  const [blocked, setBlocked] = useState<BlockedSteps>({});
+  // Update synchronously too: a repeated shortcut may arrive before React renders.
+  const blockedRef = useRef<BlockedSteps>({});
   // A coalescing claim the server just took, until `refresh()` brings its entry into `view`.
   const heldClaimRef = useRef<{ paths: string[]; at: number } | null>(null);
   const projectIdRef = useRef(projectId);
@@ -233,6 +239,8 @@ export function usePersistentEditHistory({ projectId }: UsePersistentEditHistory
   useEffect(() => {
     setView(EMPTY);
     setLoaded(false);
+    blockedRef.current = {};
+    setBlocked({});
     heldClaimRef.current = null;
     own.clear();
     void refresh().finally(() => setLoaded(true));
@@ -289,6 +297,9 @@ export function usePersistentEditHistory({ projectId }: UsePersistentEditHistory
           ? own.claimedAfter(callbacks.claimedAfter)
           : null;
       const next = direction === "undo" ? view.back : view.forward;
+      if (sameStep(blockedRef.current[direction], next) && (!candidate || candidate === next?.id)) {
+        return { ok: false, reason: "empty" };
+      }
       const stepPaths = candidate ? Object.keys(own.afterOf(candidate)) : next?.paths;
       const paths = unionPaths(stepPaths, heldClaimRef.current?.paths);
       const pressedAt = own.claimCount();
@@ -307,6 +318,10 @@ export function usePersistentEditHistory({ projectId }: UsePersistentEditHistory
         if (!posted.ok) return { ok: false, reason: "failed", message: posted.error };
         const reply = posted.body as HistoryResult;
         if (!reply.ok) {
+          if (projectIdRef.current === projectId && next && (!target || target === next.id)) {
+            blockedRef.current = { ...blockedRef.current, [direction]: next };
+            setBlocked(blockedRef.current);
+          }
           const { files } = reply.conflict;
           return { ok: false, reason: "content-mismatch", paths: files };
         }
@@ -326,6 +341,9 @@ export function usePersistentEditHistory({ projectId }: UsePersistentEditHistory
         };
       };
       const run = () => {
+        if (sameStep(blockedRef.current[direction], next) && (!candidate || candidate === next?.id)) {
+          return Promise.resolve<ApplyResult>({ ok: false, reason: "empty" });
+        }
         const target = own.targetFor(candidate, pressedAt);
         return target === false ? cantUndo(stepPaths) : attempt(target);
       };
@@ -353,8 +371,8 @@ export function usePersistentEditHistory({ projectId }: UsePersistentEditHistory
 
   return {
     loaded,
-    canUndo: Boolean(view.back),
-    canRedo: Boolean(view.forward),
+    canUndo: Boolean(view.back) && !sameStep(blocked.undo, view.back),
+    canRedo: Boolean(view.forward) && !sameStep(blocked.redo, view.forward),
     undoLabel: view.back?.label,
     redoLabel: view.forward?.label,
     undoPaths: view.back?.paths ?? [],
@@ -364,7 +382,9 @@ export function usePersistentEditHistory({ projectId }: UsePersistentEditHistory
     claimKey,
     undo,
     redo,
-    predict: own.predict,
+    predict: (direction: "undo" | "redo") =>
+      sameStep(blockedRef.current[direction], direction === "undo" ? view.back : view.forward)
+        ? null : own.predict(direction),
     claims: own.claimCount,
     noteOutsideChange,
   };

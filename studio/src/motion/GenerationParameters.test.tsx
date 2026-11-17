@@ -2,13 +2,42 @@
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { expect, it, vi } from 'vitest';
-import { requestParameters } from './GenerationParameters';
+import { parameterInputImageRatio, requestParameters } from './GenerationParameters';
+import type { Model } from '../../../shared/gateway';
+import { toastErrorMessage } from '../components/ui/toastErrorMessage';
+import { languages, translate } from '../i18n/messages';
 import { ResizablePane, readPaneWidth } from './ResizablePane';
 vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ t: (text: string) => text }) }));
 it('merges advanced JSON and explicit typed controls, preserving native booleans and numbers', () => {
   expect(requestParameters({ advanced: '{"duration":8,"generate_audio":false,"seed":42}', values: { duration: 5 } })).toEqual({ duration: 5, generate_audio: false, seed: 42 });
   expect(() => requestParameters({ advanced: '[]', values: {} })).toThrow();
   expect(() => requestParameters({ advanced: '{', values: {} })).toThrow();
+});
+const firstFrameModel: Model = { id: 'opendesign:wan-2.7', provider: 'opendesign', modelId: 'wan-2.7', label: 'Wan', modality: 'video', mode: 'text-to-video', source: 'live', maxInputImages: 1, defaults: { ratio: '16:9' } };
+it('preserves inactive quick values but rejects explicit JSON ratio even if a quick override would hide it', () => {
+  const draft = { advanced: '{"seed":7}', values: { ratio: '9:16' } };
+  expect(requestParameters(draft, firstFrameModel, true)).toEqual({ seed: 7 });
+  expect(draft.values.ratio).toBe('9:16');
+  expect(requestParameters(draft, firstFrameModel, false)).toEqual({ seed: 7, ratio: '9:16' });
+  expect(() => requestParameters({ advanced: '{"ratio":"16:9"}', values: { ratio: 'adaptive' } }, firstFrameModel, true)).toThrow('First-frame video follows the input image ratio.');
+  expect(requestParameters({ advanced: '{"ratio":"adaptive"}', values: { ratio: '9:16' } }, firstFrameModel, true)).toEqual({ ratio: 'adaptive' });
+  expect(requestParameters(draft, { ...firstFrameModel, modality: 'image' }, true)).toEqual({ seed: 7, ratio: '9:16' });
+  expect(requestParameters(draft, { ...firstFrameModel, provider: 'atlascloud' }, true)).toEqual({ seed: 7, ratio: '9:16' });
+});
+it('keeps first-frame guidance visible for provider-native inputs and while editing invalid JSON', () => {
+  expect(parameterInputImageRatio(firstFrameModel, { advanced: '{"images":[{"role":"first_frame","url":"https://example.test/a.png"}]}', values: {} }, false)).toBe(true);
+  expect(parameterInputImageRatio(firstFrameModel, { advanced: '{', values: {} }, true)).toBe(true);
+  expect(parameterInputImageRatio(firstFrameModel, { advanced: '{}', values: {} }, false)).toBe(false);
+});
+it('keeps the first-frame conflict actionable through Toast sanitization and localization', () => {
+  const message = 'First-frame video follows the input image ratio. Remove parameters.ratio or set it to "adaptive".';
+  expect(toastErrorMessage(message)).toBe(message);
+  for (const { locale } of languages) {
+    const localized = translate(locale, message);
+    expect(localized).toContain('ratio');
+    expect(localized).toContain('adaptive');
+    if (locale !== 'en') expect(localized).not.toBe(message);
+  }
 });
 it('resizes with keyboard, bounds the pane, remembers width and resets on double click', async () => {
   localStorage.clear();

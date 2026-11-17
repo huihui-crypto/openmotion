@@ -62,7 +62,7 @@ Copy this instruction into your local agent to set up OpenMotion from source:
 Read https://github.com/nexu-io/openmotion/blob/main/install.md and follow the instructions to install and connect OpenMotion in the current agent.
 ```
 
-After setup, the agent opens the local template library and presents three reference-video cards randomly selected from a curated pool. Preview one, then choose **Recreate template** and send your brief to start creating. Cards show their video purpose at the top left of each preview. Reference previews require internet access. [Source installation guide](install.md) · [Onboarding selection](docs/install-onboarding.md#maintained-recommendation-selection)
+After setup, the agent opens the local template library and shows the welcome followed by three project-preview cards in a self-contained HTML document. Each installation samples three distinct entries from the curated pool of four. The complete silent previews and posters are bundled, so this display does not wait for native MCP reload or fetch remote reference films. Native original-reference playback remains available separately and requires internet access. The library opens once using the opening tool's result, with no extra page or playback audit. An opening failure is reported with a usable link and does not invalidate installation. Automatic current-chat MCP activation is assessed independently. Preview a card, choose **Recreate template**, then send your brief to start creating. [Source installation guide](install.md) · [Onboarding selection](docs/install-onboarding.md#maintained-recommendation-selection)
 
 ### Install the published npm app (optional)
 

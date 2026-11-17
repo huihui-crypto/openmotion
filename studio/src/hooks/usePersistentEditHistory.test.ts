@@ -22,6 +22,7 @@ import { usePersistentEditHistory } from "./usePersistentEditHistory";
 import { installEditorTracking, resetEditorTrackingForTests } from "../motion/editorTracking";
 import { studioEditLifecycle } from "../webmcp/writeCoordinator";
 import { withAvailableHistorySteps } from "../../../shared/studio-history-availability";
+import { TimelineHistoryButtons } from "../components/TimelineHistoryButtons";
 
 const cleanup: Array<() => unknown> = [];
 
@@ -59,16 +60,33 @@ async function studio({ withHistory = true, initialFiles = {} as Record<string, 
   let hook!: ReturnType<typeof usePersistentEditHistory>;
   function Harness() {
     hook = usePersistentEditHistory({ projectId: "demo" });
-    return null;
+    return createElement(TimelineHistoryButtons, {
+      canUndo: hook.canUndo, canRedo: hook.canRedo,
+      onUndo: () => { void hook.undo({ readFile }); },
+      onRedo: () => { void hook.redo({ readFile }); },
+    });
   }
-  const root = createRoot(document.createElement("div"));
+  const host = document.createElement("div");
+  const root = createRoot(host);
   await act(async () => root.render(createElement(Harness)));
   cleanup.push(() => act(() => root.unmount()));
   const file = () => readFileSync(join(dir, "index.html"), "utf8");
   const save = (content: string) => writeFileSync(join(dir, "index.html"), content);
   const readFile = async (path: string) => readFileSync(join(dir, path), "utf8");
-  return { dir, history, hook: () => hook, file, save, readFile };
+  return { dir, history, hook: () => hook, file, save, readFile, host };
 }
+
+it("disables a known conflicting undo before the user clicks it", async () => {
+  const { history, hook, save, host } = await studio();
+  save("B");
+  await act(() => hook().recordEdit({ label: "Move", files: { "index.html": { before: "A", after: "B" } } }));
+  const agent = await history.beginWindow({ kind: "agent", name: "Agent" }, "Agent edit");
+  save("C");
+  await agent.close();
+  await act(() => hook().noteOutsideChange());
+  await vi.waitFor(() => expect(hook().canUndo).toBe(false));
+  expect(host.querySelector<HTMLButtonElement>('button[aria-label="Undo"]')!.disabled).toBe(true);
+});
 
 it("an undo whose media bytes are missing has the same disabled flags as empty history", async () => {
   const { dir, history, hook } = await studio({ initialFiles: { "clip.mp4": "original" } });
@@ -555,8 +573,8 @@ it("a step the server could not take says why, instead of reading as nothing to 
   });
 });
 
-it("a refused step names the files that changed since its edit", async () => {
-  const { hook, save, readFile } = await studio();
+it("a refused step disables its button and repeated shortcuts until a new step is available", async () => {
+  const { hook, save, readFile, host } = await studio();
   save("B");
   await act(() =>
     hook().recordEdit({
@@ -565,12 +583,49 @@ it("a refused step names the files that changed since its edit", async () => {
     }),
   );
   await vi.waitFor(() => expect(hook().undoLabel).toBe("Moved Title"));
-  answer("/history/step", 200, { ok: false, conflict: { files: ["index.html"], newer: [] } });
+  const restoreFetch = answer("/history/step", 200, { ok: false, conflict: { files: ["index.html"], newer: [] } });
+  const requests = vi.spyOn(globalThis, "fetch");
+  const staleUndo = hook().undo;
+  let release!: () => void;
+  const waiting = new Promise<void>(resolve => { release = resolve; });
+  const queued = staleUndo({ readFile, serialize: async (_paths, run) => { await waiting; return run(); } });
   expect(await act(() => hook().undo({ readFile }))).toEqual({
     ok: false,
     reason: "content-mismatch",
     paths: ["index.html"],
   });
+  expect(hook().canUndo).toBe(false);
+  release();
+  expect(await act(() => queued)).toMatchObject({ ok: false, reason: "empty" });
+  expect(hook().predict("undo")).toBeNull();
+  expect(host.querySelector<HTMLButtonElement>('button[aria-label="Undo"]')!.disabled).toBe(true);
+  await act(() => hook().noteOutsideChange());
+  await act(() => staleUndo({ readFile }));
+  await act(() => hook().undo({ readFile }));
+  expect(hook().canUndo).toBe(false);
+  expect(requests.mock.calls.filter(([url]) => String(url).endsWith('/history/step'))).toHaveLength(1);
+  requests.mockRestore();
+  restoreFetch();
+  save("C");
+  await act(() => hook().recordEdit({ label: "New edit", files: { "index.html": { before: "B", after: "C" } } }));
+  await vi.waitFor(() => expect(hook().canUndo).toBe(true));
+  expect(host.querySelector<HTMLButtonElement>('button[aria-label="Undo"]')!.disabled).toBe(false);
+  expect(await act(() => hook().undo({ readFile }))).toMatchObject({ ok: true });
+});
+
+it("disables a redo conflict without disabling the independent undo step", async () => {
+  const { hook, save, readFile, host } = await studio();
+  save("B");
+  await act(() => hook().recordEdit({ label: "First edit", files: { "index.html": { before: "A", after: "B" } } }));
+  save("C");
+  await act(() => hook().recordEdit({ label: "Second edit", files: { "index.html": { before: "B", after: "C" } } }));
+  await act(() => hook().undo({ readFile }));
+  await vi.waitFor(() => expect(hook().canRedo).toBe(true));
+  answer("/history/step", 200, { ok: false, conflict: { files: ["index.html"], newer: [] } });
+  await act(() => hook().redo({ readFile }));
+  expect(hook().canRedo).toBe(false);
+  expect(hook().canUndo).toBe(true);
+  expect(host.querySelector<HTMLButtonElement>('button[aria-label="Redo"]')!.disabled).toBe(true);
 });
 
 it("a claim the server refused is logged, and the write stays undoable as a change made outside", async () => {

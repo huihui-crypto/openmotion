@@ -1,10 +1,19 @@
 import { historyFailureMessage } from "./editorErrors";
 import type { Translate } from './I18n';
 import { historyEntryLabel } from './historyMessages';
+import { assetUploadMessage, parseAssetUploadMessage } from './assetUploadMessages';
 
 // Only known system messages are interpreted. Captured names, paths and server
 // details are passed through as values, never translated as interface labels.
 const TEMPLATES = [
+  'Estimated loudness: {lufs} ({change}).',
+  'Estimated loudness: {lufs} ({change}); gain limit prevents reaching target.',
+  'Estimated loudness: {lufs} ({change}); peak protection prevents reaching target.',
+  'Estimated loudness: {lufs} ({change}); target not reached.',
+  'Adjusted {count} clips: {matched} expected to reach target; {unmatched} unable to reach target.',
+  'Get the HyperFrames desktop app at {url}',
+  '"{name}" exceeds the size limit. Compress or replace the file.',
+  'Cannot add "{name}". Re-export or replace the file.',
   "Copied element info for {name}. Paste it into any AI agent",
   "{label}: no change applied",
   "Applied color grading on {count} media item",
@@ -72,6 +81,8 @@ const patterns = TEMPLATES.map(template => {
 });
 
 export function systemMessage(message: string, t: Translate): string {
+  const upload = parseAssetUploadMessage(message);
+  if (upload) return assetUploadMessage(upload, t);
   const restore = /^VERSION_NOT_RESTORABLE: (Historical files are missing, unreadable or corrupt|Cannot stage historical file): (.+)$/s.exec(message);
   if (restore) return t(restore[1] === 'Cannot stage historical file'
     ? 'Could not prepare historical files for restoration: {files}. Your current project is unchanged.'

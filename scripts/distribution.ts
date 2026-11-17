@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packagedSkills } from '../shared/workflow.ts';
 import { designSystemDocuments, designSystemRuntimeFiles } from '../packages/design-system/index.js';
-import { onboardingSourceFiles } from '../shared/onboarding-templates.ts';
+import { onboardingSourceFiles, onboardingTemplateIds } from '../shared/onboarding-templates.ts';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 
@@ -156,6 +156,7 @@ const presenterStoryFiles = [
   'library/skills/openmotion-footage-to-handpainted/SKILL.md',
   'library/skills/openmotion-giant-flip-type/SKILL.md',
   'library/skills/openmotion-glitch-logo-sting/SKILL.md',
+  'library/skills/openmotion-growth-teardown/SKILL.md',
   'library/skills/openmotion-hand-drawn-explainer/SKILL.md',
   'library/skills/openmotion-hidden-feature-demo/SKILL.md',
   'library/skills/openmotion-highlighter-notes/SKILL.md',
@@ -216,6 +217,18 @@ const presenterStoryFiles = [
   'library/skills/openmotion-whiteboard-doodle/SKILL.md',
   'library/skills/openmotion-whiteboard-marker/SKILL.md',
   'library/skills/openmotion-wireframe-style/SKILL.md',
+];
+
+const growthTeardownFiles = [
+  'library/skills/openmotion-growth-teardown/assets/brand/README.md',
+  'library/skills/openmotion-growth-teardown/assets/brand/loading-mark.svg',
+  'library/skills/openmotion-growth-teardown/assets/brand/openmotion-logo.svg',
+  'library/skills/openmotion-growth-teardown/references/research.md',
+  'library/skills/openmotion-growth-teardown/references/review.md',
+  'library/skills/openmotion-growth-teardown/references/schema.md',
+  'library/skills/openmotion-growth-teardown/scripts/build.mjs',
+  'library/skills/openmotion-growth-teardown/scripts/evidence.mjs',
+  'library/skills/openmotion-growth-teardown/scripts/score.mjs',
 ];
 
 const presenterTechFiles = [
@@ -607,10 +620,10 @@ export const distributionDocuments = [
   ...motionPackageFiles,
   ...designSystemDocuments,
   'docs/fonts.md',
-  ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix', 'openmotion-ad-script', 'openmotion-adaptive-layout', 'openmotion-ai-assistant-tour', 'openmotion-archive-collage', 'openmotion-article-illustrations', 'openmotion-aurora-gradient', 'openmotion-before-after', 'openmotion-bilingual-captions', 'openmotion-bold-type-poster', 'openmotion-bubble-field', 'openmotion-caption-styling', 'openmotion-card-carousel', 'openmotion-cards-and-text', 'openmotion-chalk-blueprint', 'openmotion-cinematic-logo', 'openmotion-clay-explainer', 'openmotion-color-pop-poster', 'openmotion-content-cover', 'openmotion-coral-title-cards', 'openmotion-corner-frames', 'openmotion-dark-premium-poster', 'openmotion-doc-promo', 'openmotion-echo-stack-type', 'openmotion-edit-to-script', 'openmotion-editorial-explainer', 'openmotion-editorial-poster', 'openmotion-editorial-webinar', 'openmotion-electric-impact-type', 'openmotion-felt-stop-motion', 'openmotion-flat-beat', 'openmotion-flat-card-explainer', 'openmotion-flat-lay-product', 'openmotion-folder-pop', 'openmotion-footage-to-handpainted', 'openmotion-giant-flip-type', 'openmotion-glitch-logo-sting', 'openmotion-hand-drawn-explainer', 'openmotion-hidden-feature-demo', 'openmotion-highlighter-notes', 'openmotion-in-hand-product', 'openmotion-ink-ribbon', 'openmotion-isometric-card-flight', 'openmotion-juicy-splash-poster', 'openmotion-light-shadow-product', 'openmotion-liquid-blob', 'openmotion-liquid-glass-logo', 'openmotion-liquid-logo', 'openmotion-livestream-clips', 'openmotion-magnet-particles', 'openmotion-manifesto-pop', 'openmotion-monochrome-magazine', 'openmotion-motion-graphic-placement', 'openmotion-multi-clips-to-reels', 'openmotion-multicam-edit', 'openmotion-mystery-box-reveal', 'openmotion-neon-outline-type', 'openmotion-nova-intro', 'openmotion-one-bit-dither', 'openmotion-orange-unfiltered', 'openmotion-paper-collage-explainer', 'openmotion-paper-diorama', 'openmotion-paper-map-journey', 'openmotion-paper-stop-motion', 'openmotion-pastel-flat-2d', 'openmotion-pixel-art-explainer', 'openmotion-pop-style', 'openmotion-premium-halo', 'openmotion-push-in-type', 'openmotion-quantum-particles', 'openmotion-red-pen-archive', 'openmotion-relight-reveal', 'openmotion-retro-flat-scene', 'openmotion-retro-print-poster', 'openmotion-ring-mask-reveal', 'openmotion-runway-rebel', 'openmotion-shortlist-shorts', 'openmotion-shot-breakdown', 'openmotion-shutter-bands', 'openmotion-smooth-wipes', 'openmotion-spec-sheet', 'openmotion-splash-float-product', 'openmotion-split-slot-type', 'openmotion-step-by-step-tutorial', 'openmotion-sticker-bounce', 'openmotion-sticker-peel', 'openmotion-storyboard-to-motion', 'openmotion-storybook-myth', 'openmotion-surreal-3d-poster', 'openmotion-talking-head-recreation', 'openmotion-time-freeze', 'openmotion-translucent-glass', 'openmotion-velocity-lines', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker', 'openmotion-wireframe-style'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
+  ...['openmotion-brandkit', 'openmotion-presenter-story', 'openmotion-design-remix', 'openmotion-ad-script', 'openmotion-adaptive-layout', 'openmotion-ai-assistant-tour', 'openmotion-archive-collage', 'openmotion-article-illustrations', 'openmotion-aurora-gradient', 'openmotion-before-after', 'openmotion-bilingual-captions', 'openmotion-bold-type-poster', 'openmotion-bubble-field', 'openmotion-caption-styling', 'openmotion-card-carousel', 'openmotion-cards-and-text', 'openmotion-chalk-blueprint', 'openmotion-cinematic-logo', 'openmotion-clay-explainer', 'openmotion-color-pop-poster', 'openmotion-content-cover', 'openmotion-coral-title-cards', 'openmotion-corner-frames', 'openmotion-dark-premium-poster', 'openmotion-doc-promo', 'openmotion-echo-stack-type', 'openmotion-edit-to-script', 'openmotion-editorial-explainer', 'openmotion-editorial-poster', 'openmotion-editorial-webinar', 'openmotion-electric-impact-type', 'openmotion-felt-stop-motion', 'openmotion-flat-beat', 'openmotion-flat-card-explainer', 'openmotion-flat-lay-product', 'openmotion-folder-pop', 'openmotion-footage-to-handpainted', 'openmotion-giant-flip-type', 'openmotion-glitch-logo-sting', 'openmotion-growth-teardown', 'openmotion-hand-drawn-explainer', 'openmotion-hidden-feature-demo', 'openmotion-highlighter-notes', 'openmotion-in-hand-product', 'openmotion-ink-ribbon', 'openmotion-isometric-card-flight', 'openmotion-juicy-splash-poster', 'openmotion-light-shadow-product', 'openmotion-liquid-blob', 'openmotion-liquid-glass-logo', 'openmotion-liquid-logo', 'openmotion-livestream-clips', 'openmotion-magnet-particles', 'openmotion-manifesto-pop', 'openmotion-monochrome-magazine', 'openmotion-motion-graphic-placement', 'openmotion-multi-clips-to-reels', 'openmotion-multicam-edit', 'openmotion-mystery-box-reveal', 'openmotion-neon-outline-type', 'openmotion-nova-intro', 'openmotion-one-bit-dither', 'openmotion-orange-unfiltered', 'openmotion-paper-collage-explainer', 'openmotion-paper-diorama', 'openmotion-paper-map-journey', 'openmotion-paper-stop-motion', 'openmotion-pastel-flat-2d', 'openmotion-pixel-art-explainer', 'openmotion-pop-style', 'openmotion-premium-halo', 'openmotion-push-in-type', 'openmotion-quantum-particles', 'openmotion-red-pen-archive', 'openmotion-relight-reveal', 'openmotion-retro-flat-scene', 'openmotion-retro-print-poster', 'openmotion-ring-mask-reveal', 'openmotion-runway-rebel', 'openmotion-shortlist-shorts', 'openmotion-shot-breakdown', 'openmotion-shutter-bands', 'openmotion-smooth-wipes', 'openmotion-spec-sheet', 'openmotion-splash-float-product', 'openmotion-split-slot-type', 'openmotion-step-by-step-tutorial', 'openmotion-sticker-bounce', 'openmotion-sticker-peel', 'openmotion-storyboard-to-motion', 'openmotion-storybook-myth', 'openmotion-surreal-3d-poster', 'openmotion-talking-head-recreation', 'openmotion-time-freeze', 'openmotion-translucent-glass', 'openmotion-velocity-lines', 'openmotion-website-launch', 'openmotion-whiteboard-doodle', 'openmotion-whiteboard-marker', 'openmotion-wireframe-style'].map(name => 'library/skills/' + name + '/agents/openai.yaml'),
   ...localReadmeResourceFiles,
   'README.md', 'README.zh-CN.md', 'CONTRIBUTING.md', 'CONTRIBUTING.zh-CN.md', 'AGENTS.md', 'CLAUDE.md', 'docs/README.md', 'repository-media.json',
-  'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md',
+  'docs/product/architecture.md', 'docs/product/changes.md', 'docs/product/media-generation-design.md', 'docs/product/studio-vision.md', 'docs/product/platform-export.md',
   'tracking/README.md', 'tracking/INTEGRATION.md', 'tracking/posthog-geoip.hog',
   'docs/agent-adapters.md', 'docs/browser-runtime.md', 'docs/design-system.md', 'docs/editor-fork.md',
   'docs/hyperframes.md', 'docs/mcp-phase1-tools.md', 'docs/model-gateway.md', 'docs/assets.md', 'docs/project-archives.md', 'docs/generation-options.md', 'docs/provider-settings.md', 'docs/local-agents.md', 'docs/openmotion-director.md', 'docs/motion-director.md',
@@ -659,7 +672,7 @@ export const distributionDocuments = [
   'library/skills/openmotion-brandkit/SKILL.md', 'library/templates/README.md',
   'library/components/README.md', 'library/components/title-reveal/README.md',
   'library/design-systems/ink-water/MOTION_DESIGN.md', 'library/brandkits/openmotion/BRANDKIT.md',
-  'docs/motion-design-examples.md', 'docs/motion-design-examples.zh-CN.md', ...motionDesignRemixFiles, ...presenterStoryFiles, ...presenterTechFiles,
+  'docs/motion-design-examples.md', 'docs/motion-design-examples.zh-CN.md', ...motionDesignRemixFiles, ...presenterStoryFiles, ...growthTeardownFiles, ...presenterTechFiles,
   'docs/skills.md', 'docs/template-catalog.md', 'docs/template-repository.md', 'docs/repository-storage.md', 'docs/test-packages.md', 'docs/templates/requirement.md',
 ];
 
@@ -685,10 +698,14 @@ export async function distributionFiles(profile: string, include: (file: string)
     'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts', 'tracking/task-ledger.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.
     'mcp-ui/template-recommendations/manifest.json', 'mcp-ui/template-recommendations/inline.fragment.html',
+    'mcp-ui/template-recommendations/project-previews/manifest.json',
+    ...onboardingTemplateIds.flatMap(id => ['webm', 'jpg'].map(extension =>
+      `mcp-ui/template-recommendations/project-previews/${id}.${extension}`)),
     // The inline Node renderer streams the welcome from this shared translation source.
     'mcp-ui/template-recommendations/i18n.ts', 'mcp-ui/template-recommendations/types.ts',
     'mcp-ui/template-recommendations/LICENSE', 'mcp-ui/template-recommendations/NOTICE.md',
     'mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/app.css',
+    'mcp-ui/template-recommendations/build/inline.js',
     'mcp-ui/template-recommendations/build/identity.json',
     'mcp-ui/template-recommendations/assets/product-promo.mp4',
     'mcp-ui/template-recommendations/assets/product-promo.jpg',

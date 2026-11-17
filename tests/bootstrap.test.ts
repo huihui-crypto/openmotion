@@ -17,13 +17,14 @@ async function fixture(run: (context: { directory: string; destination: string; 
     const destination = path.join(directory, 'new user', 'open-motion');
     const log = path.join(directory, 'commands.log');
     await mkdir(bin);
-    for (const file of ['scripts/install-motion.command', 'scripts/source-marketplace.mjs', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs',
+    for (const file of ['scripts/install-motion.command', 'scripts/source-build-state.mjs', 'scripts/inline-onboarding.mjs', 'scripts/source-marketplace.mjs', 'scripts/install-onboarding.mjs', 'scripts/codex-host-handoff.mjs', 'shared/onboarding-templates.ts', 'scripts/runtime-assets.mjs',
       'docs/install-onboarding.md', 'shared/template-config.json', 'marketplace.example.json', 'mcp-ui/template-recommendations/i18n.ts']) {
       await mkdir(path.dirname(path.join(source, file)), { recursive: true });
       await copyFile(path.join(root, file), path.join(source, file));
     }
     await writeFile(path.join(source, 'scripts/open-template-library.ts'), `import fs from 'node:fs'; fs.appendFileSync(process.env.MOTION_TEST_LOG, 'Template library prepared' + String.fromCharCode(10)); console.log(JSON.stringify({target:'templates',projectCreated:false,previewUrl:'http://127.0.0.1:4173/?templates=1&embed=1'}));`);
     await writeFile(path.join(source, 'workspace.ts'), `export class WorkspaceStore { directory = '/isolated/test-workspace'; }`);
+    await writeFile(path.join(source, 'package-lock.json'), '{}');
     await writeFile(path.join(source, 'package.json'), JSON.stringify({ type: 'module', version: '0.0.1' }));
     // No remote catalog or template assets in this isolated checkout: exercise the unavailable-catalog boundary.
     const commands = {
@@ -55,13 +56,13 @@ test('remote entry point builds a fresh checkout before registering and checking
     assert.ok(commands.indexOf('npm ci --include=dev') < commands.indexOf('npm run build:studio'));
     assert.ok(commands.indexOf('npm run build:studio') < commands.indexOf('codex plugin marketplace add'));
     assert.match(commands, /codex plugin add openmotion@openmotion-local\ncodex plugin list --marketplace openmotion-local\nMCP check/);
-    assert.match(result.stderr, /ONBOARDING_PENDING.*HOST_CONTROL_UNAVAILABLE/);
+    assert.match(result.stderr, /MCP_ACTIVATION: blocked.*HOST_CONTROL_UNAVAILABLE/);
     const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
     assert.equal(onboarding.hostSessionVerified, false);
     assert.equal(onboarding.hostHandoff.status, 'host_action_required');
     assert.equal(onboarding.hostHandoff.presentationVerified, false);
     assert.equal(onboarding.installationStatus, 'installed');
-    assert.equal(onboarding.onboardingStatus, 'host_action_required');
+    assert.equal(onboarding.onboardingStatus, 'awaiting_host_delivery');
     assert.equal(onboarding.instructions, undefined);
     assert.match(await readFile(onboarding.detailsFile, 'utf8'), /Installation-success reply/);
     assert.equal(JSON.parse(await readFile(onboarding.detailsFile, 'utf8')).catalog.source, 'unavailable');
@@ -81,7 +82,7 @@ test('source setup without a calling chat reports that boundary without invoking
       env: { ...env, CODEX_THREAD_ID: '', CODEX_SESSION_ID: '' }, encoding: 'utf8',
     });
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stderr, /ONBOARDING_PENDING.*CURRENT_CHAT_UNKNOWN/);
+    assert.match(result.stderr, /MCP_ACTIVATION: blocked.*CURRENT_CHAT_UNKNOWN/);
     const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
     assert.equal(onboarding.installationStatus, 'installed');
     assert.equal(onboarding.hostHandoff.reason, 'CURRENT_CHAT_UNKNOWN');
@@ -96,6 +97,7 @@ for (const threadId of ['', '11111111-1111-4111-8111-111111111111']) test('prepa
     // Exercise the prepared-but-undelivered protocol without rendering a widget,
     // starting a real preview or sending any message to the developer's chat.
     await writeFile(path.join(env.MOTION_TEST_SOURCE!, 'scripts/inline-onboarding.mjs'), `import fs from 'node:fs/promises'; import path from 'node:path'; import {createHash} from 'node:crypto';
+export { onboardingPresentationInstructions } from ${JSON.stringify(path.join(root, 'scripts/inline-onboarding.mjs'))};
 export async function prepareInlineOnboarding({output, language}) { await fs.mkdir(path.dirname(output), {recursive:true}); await fs.writeFile(output, 'verified cards'); return {status:'prepared', path:output, sha256:createHash('sha256').update('verified cards').digest('hex'), language}; }`);
     const result = spawnSync('bash', [path.join(root, 'install.sh')], {
       env: { ...env, MOTION_DATA_DIR: path.join(env.MOTION_TEST_SOURCE!, 'data'), CODEX_THREAD_ID: threadId, CODEX_SESSION_ID: '' }, encoding: 'utf8',
@@ -103,11 +105,12 @@ export async function prepareInlineOnboarding({output, language}) { await fs.mkd
     assert.equal(result.status, 0, result.stderr);
     assert.doesNotMatch(await readFile(log, 'utf8'), /codex queue/);
     assert.match(result.stderr, /same installation turn/);
-    assert.match(result.stderr, /publish.*permitted visualization directory/);
+    assert.match(result.stderr, /[Pp]ublish.*permitted visualization directory/);
     const onboarding = JSON.parse(result.stdout.slice(result.stdout.indexOf('\n{\n') + 1).split('\n[OpenMotion]')[0]);
     assert.equal(onboarding.inlinePresentation.status, 'prepared');
     assert.equal(onboarding.onboardingComplete, false);
-    assert.equal(onboarding.onboardingStatus, 'awaiting_host_delivery');
+    assert.equal(onboarding.onboardingStatus, 'awaiting_host_delivery', 'Presentation acceptance must remain separate from current-chat activation');
+    assert.equal(onboarding.hostHandoff.automaticActivation, 'blocked');
     assert.equal(onboarding.callback, undefined);
     assert.equal(onboarding.preview.status, 'ready');
   });

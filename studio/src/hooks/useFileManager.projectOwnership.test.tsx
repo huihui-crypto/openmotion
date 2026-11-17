@@ -275,7 +275,7 @@ describe("useFileManager uploads", () => {
     expect(showToast).toHaveBeenCalledWith("Added clip.mp4, Media checking is unavailable. The file was added, but playback has not been verified.", "info");
   });
 
-  it("says why each upload was not added", async () => {
+  it("names invalid uploads without exposing validation diagnostics", async () => {
     const { added, showToast } = await uploadClip({
       invalid: [
         { name: "clip.mp4", reason: "no supported video stream found" },
@@ -285,7 +285,15 @@ describe("useFileManager uploads", () => {
 
     expect(added).toEqual([]);
     expect(showToast).toHaveBeenCalledWith(
-      "Not added: clip.mp4 (No playable video found. Export a video file and try again.), song.mp3 (No playable audio found. Export an audio file and try again.)",
+      'Cannot add "clip.mp4, song.mp3". Re-export or replace the file.',
+      "error",
+    );
+  });
+
+  it("asks users to change oversized files instead of retrying them", async () => {
+    const { showToast } = await uploadClip({ skipped: ["large.mp4"] });
+    expect(showToast).toHaveBeenCalledWith(
+      '"large.mp4" exceeds the size limit. Compress or replace the file.', "error",
     );
   });
 });

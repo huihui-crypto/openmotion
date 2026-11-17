@@ -4,9 +4,12 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
 import { runFile } from './runtime-assets.mjs';
+import { onboardingPresentationInstructions } from './inline-onboarding.mjs';
 import { prepareCodexHostHandoff } from './codex-host-handoff.mjs';
-import { selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
+import { onboardingTemplateIds, recommendationTemplateIds, selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
+import { installationFallbackWelcome, isLanguage } from '../mcp-ui/template-recommendations/i18n.ts';
 
 export async function installationInstructions(appRoot) {
   const guide = await readFile(path.join(appRoot, 'docs/install-onboarding.md'), 'utf8');
@@ -105,44 +108,116 @@ export async function prepareInstallationFlow(options) {
     prepareInstallationOnboarding(options), prepareInstallationPreview(options),
   ]);
   let hostHandoff;
-  if ((options.host || 'codex') === 'codex' && onboarding.inlinePresentation?.status !== 'prepared') {
+  if ((options.host || 'codex') === 'codex') {
     hostHandoff = await prepareCodexHostHandoff({ dataDirectory: options.dataDirectory,
       expectedVersion: options.expectedVersion || JSON.parse(await readFile(path.join(options.appRoot, 'package.json'), 'utf8')).version,
-      codex: options.codex, templateIds: options.templateIds, language: onboarding.inlinePresentation?.language || options.language });
+      expectedResourceUri: onboarding.inlinePresentation?.resourceUri,
+      requirePresentation: onboarding.inlinePresentation?.status !== 'prepared',
+      codex: options.codex, request: options.hostRequest, templateIds: options.templateIds,
+      language: onboarding.inlinePresentation?.language || options.language });
   }
+  const language = onboarding.inlinePresentation?.language || options.language || process.env.OPENMOTION_ONBOARDING_LANGUAGE || 'en';
   return { ...onboarding, installationStatus: 'installed', applicationRoot: options.appRoot,
+    welcomeMarkdown: installationFallbackWelcome(isLanguage(language) ? language : 'en'),
     dataDirectory: options.dataDirectory, preview,
     ...(hostHandoff ? { hostHandoff } : {}),
     onboardingStatus: preview.status !== 'ready' ? 'preview_unavailable'
-      : onboarding.inlinePresentation?.status === 'prepared' ? 'awaiting_host_delivery' : hostHandoff?.status || 'awaiting_host_delivery',
+      : 'awaiting_host_delivery',
     onboardingComplete: false, hostSessionVerified: hostHandoff?.hostSessionVerified || false };
 }
 
+// Keep the chat, workspace and three selections fixed across the queued refresh.
+export async function persistInstallationOnboarding(result, directory) {
+  const detailsFile = path.join(directory, `onboarding-${randomUUID()}.json`);
+  const saved = { ...result, detailsFile, ...(result.hostHandoff?.threadId ? { recovery: {
+    command: process.execPath,
+    args: ['--experimental-strip-types', path.join(result.applicationRoot, 'scripts/install-onboarding.mjs'),
+      result.applicationRoot, '--resume', detailsFile, '--verify-only', '--summary'],
+  } } : {}) };
+  await mkdir(directory, { recursive: true });
+  await writeFile(detailsFile, JSON.stringify(saved, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
+  return saved;
+}
+
+export async function resumeInstallationOnboarding(saved, options = {}) {
+  const appRoot = options.appRoot || fileURLToPath(new URL('../', import.meta.url));
+  assert(saved.installationStatus === 'installed' && saved.onboardingComplete === false, 'Use an incomplete installation receipt');
+  assert(typeof saved.applicationRoot === 'string' && realpathSync(saved.applicationRoot) === realpathSync(appRoot),
+    'Resume with the original installed application');
+  const threadId = options.threadId ?? process.env.CODEX_THREAD_ID ?? process.env.CODEX_SESSION_ID;
+  const savedThreadId = saved.hostHandoff?.threadId
+    || saved.hostHandoff?.hostRequests?.find(item => item.method === 'mcpServerStatus/list')?.params?.threadId;
+  assert(threadId && savedThreadId === threadId, 'Resume onboarding in its original chat');
+  assert(typeof saved.dataDirectory === 'string' && path.isAbsolute(saved.dataDirectory), 'The saved workspace must be absolute');
+  const args = saved.hostHandoff.presentation.arguments;
+  const requirePresentation = saved.inlinePresentation?.status === 'native_required';
+  const allowed = saved.inlinePresentation?.status === 'prepared' ? recommendationTemplateIds : onboardingTemplateIds;
+  assert(Array.isArray(args.templateIds) && args.templateIds.length === 3 && new Set(args.templateIds).size === 3
+    && args.templateIds.every(id => allowed.includes(id)), 'Preserve three distinct curated template IDs or explicitly prepared builtin IDs');
+  let presentation;
+  if (['prepared', 'native_required'].includes(saved.inlinePresentation?.status)) {
+    const { loadTemplatePresentation } = await import('../shared/mcp-template-recommendations.ts');
+    presentation = loadTemplatePresentation({ applicationRoot: appRoot, directory: path.join(appRoot, 'mcp-ui/template-recommendations') });
+    assert(saved.inlinePresentation.resourceVersion === presentation.resourceVersion, 'The saved card resource changed');
+  }
+  const welcomeDelivered = options.welcomeDelivered || saved.welcomeDelivered || false;
+  const hostHandoff = await prepareCodexHostHandoff({ ...options, threadId, verifyOnly: true, welcomeDelivered, requirePresentation,
+    dataDirectory: saved.dataDirectory, templateIds: args.templateIds, language: args.language,
+    expectedResourceUri: presentation?.uri,
+    expectedVersion: JSON.parse(await readFile(path.join(appRoot, 'package.json'), 'utf8')).version });
+  return { ...saved, hostHandoff, welcomeDelivered,
+    welcomeMarkdown: welcomeDelivered ? '' : installationFallbackWelcome(isLanguage(args.language) ? args.language : 'en'),
+    ...(welcomeDelivered && saved.recovery ? { recovery: { ...saved.recovery,
+      args: saved.recovery.args.includes('--welcome-delivered') ? saved.recovery.args : [...saved.recovery.args, '--welcome-delivered'] } } : {}),
+    inlinePresentation: { ...saved.inlinePresentation, presentation: hostHandoff.presentation,
+      ...(welcomeDelivered ? { welcomeMarkdown: '' } : {}) },
+    onboardingStatus: saved.preview?.status === 'ready' ? 'awaiting_host_delivery' : 'preview_unavailable',
+    hostSessionVerified: hostHandoff.hostSessionVerified, onboardingComplete: false };
+}
+
+export function installationSummary(result) {
+  const lines = [];
+  const { hostHandoff, preview, inlinePresentation } = result;
+  if (hostHandoff) lines.push('MCP_ACTIVATION: ' + hostHandoff.automaticActivation
+    + (hostHandoff.reason ? ' (' + hostHandoff.reason + ')' : '')
+    + '. Separate from installation and welcome/card delivery.'
+    + (hostHandoff.hostSessionVerified ? ' Reuse this verified read; do not repeat it.' : ' If native tools are available, verify the expected workspace once; otherwise retain the activation blocker.'));
+  if (!result.onboardingComplete) {
+    lines.push('ONBOARDING_PENDING: ' + result.onboardingStatus
+      + '. Installation is registered; presentation remains unverified. '
+      + onboardingPresentationInstructions(inlinePresentation?.status));
+  }
+  if (hostHandoff?.status === 'refresh_requested') lines.push('After this tool step, run recovery.command/recovery.args once to verify the queued refresh; do not reload or prepare again. This does not block the prepared HTML presentation.');
+  if (preview?.status !== 'ready') lines.push('LIBRARY_UNAVAILABLE: ' + (preview?.warning || 'No prepared library URL')
+    + '. Installation remains installed. Do not claim the library is open; report the actual result.');
+  return lines.join('\n');
+}
+
 if (process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))) {
-  const appRoot = path.resolve(process.argv[2] || fileURLToPath(new URL('../', import.meta.url)));
-  if (process.argv[3] === '--check-contract') {
+  const { values, positionals } = parseArgs({ allowPositionals: true, options: {
+    summary: { type: 'boolean' }, 'check-contract': { type: 'boolean' }, resume: { type: 'string' },
+    'verify-only': { type: 'boolean' }, 'welcome-delivered': { type: 'boolean' },
+  } });
+  assert(positionals.length <= 1, 'Pass one application root');
+  const appRoot = path.resolve(positionals[0] || fileURLToPath(new URL('../', import.meta.url)));
+  if (values['check-contract']) {
     await installationInstructions(appRoot);
   } else {
-    const defaults = JSON.parse(await readFile(path.join(appRoot, 'shared/template-config.json'), 'utf8'));
-    const options = { appRoot, dataDirectory: process.env.MOTION_DATA_DIR, templateEnvironment: process.env.MOTION_TEMPLATE_ENV || defaults.environment };
-    const result = await prepareInstallationFlow(options);
-    const { hostHandoff, preview } = result;
-    // Keep the decision and handoff visible instead of burying them after a long
-    // quoted success contract. The full contract remains available for the Agent.
-    if (process.argv.includes('--summary')) {
-      const detailsFile = path.join(appRoot, '.artifacts/install', `onboarding-${Date.now()}-${process.pid}.json`);
-      await mkdir(path.dirname(detailsFile), { recursive: true });
-      await writeFile(detailsFile, JSON.stringify(result, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-      if (!result.onboardingComplete) console.error('ONBOARDING_PENDING: ' + (hostHandoff?.reason || result.onboardingStatus)
-        + '. Installation is registered; welcome/cards delivery remains unverified. '
-        + (result.inlinePresentation?.status === 'prepared'
-          ? 'Continue in this same installation turn: initialize the browser, finish checks and publish the verified document in this chat\'s permitted visualization directory before opening the library. Prefer the direct IAB route in docs/install-onboarding.md: load preview.previewUrl in a hidden tab while preparing cards, then reveal that loaded tab and obtain its page state in one call; do not reopen or inspect it again. Complete mandatory browser bookkeeping next, then immediately write inlinePresentation.welcomeMarkdown as normal final reply text followed by the published contentReference on its own line. The welcome streams as text; the document contains cards only. '
-          : result.inlinePresentation?.status === 'native_required'
-            ? 'Show the exact prepared references with the compatible native presentation Tool in this conversation and onboarding:false; verify both images and full videos. Then stream inlinePresentation.welcomeMarkdown once as ordinary final reply text, outside the cards-only App. The native cards precede the final text. Refresh stale MCP discovery through the supported host action when needed. Do not replace inline cards with a right-hand browser page or resample the selection. '
-            : 'Open the library and report the required host action. ')
-        + 'Do not enqueue a user message, defer to another turn or send a separate success reply.');
-      if (preview.status !== 'ready') console.error('ONBOARDING_PENDING: ' + preview.warning);
-      console.log(JSON.stringify({ ...result, instructions: undefined, catalog: undefined, detailsFile }, null, 2));
+    assert(!values['verify-only'] || values.resume, 'Use --resume RECEIPT with --verify-only to preserve the prepared selection');
+    assert(!values['welcome-delivered'] || values.resume, 'Use --welcome-delivered only with an installation receipt');
+    let result;
+    if (values.resume) {
+      assert(path.isAbsolute(values.resume), 'Use an absolute installation receipt path');
+      result = await resumeInstallationOnboarding(JSON.parse(await readFile(values.resume, 'utf8')),
+        { appRoot, welcomeDelivered: values['welcome-delivered'] });
+    } else {
+      const defaults = JSON.parse(await readFile(path.join(appRoot, 'shared/template-config.json'), 'utf8'));
+      const options = { appRoot, dataDirectory: process.env.MOTION_DATA_DIR, templateEnvironment: process.env.MOTION_TEMPLATE_ENV || defaults.environment };
+      result = await persistInstallationOnboarding(await prepareInstallationFlow(options), path.join(appRoot, '.artifacts/install'));
+    }
+    if (values.summary) {
+      console.error(installationSummary(result));
+      console.log(JSON.stringify({ ...result, instructions: undefined, catalog: undefined }, null, 2));
     } else console.log(JSON.stringify(result, null, 2));
   }
 }

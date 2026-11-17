@@ -192,6 +192,33 @@ function noteResponse(filename, text) {
   return Response.json({ type: 'file', path: filename, encoding: 'base64', size: bytes.length, content: bytes.toString('base64') });
 }
 
+test('the prepared 0.0.1 descriptions are selected from the exact candidate source', async t => {
+  const f = await fixture(t, '0.0.1'); await rm(path.join(f.build, 'release-notes.md'));
+  const body = await prepareCandidateNotes(f.build, { env: { MOTION_VERSION: '0.0.1', MOTION_SOURCE_SHA: f.candidate.sourceCommit }, fetcher: async url => {
+    const parsed = new URL(url), filename = parsed.pathname.split('/contents/')[1];
+    assert.equal(parsed.searchParams.get('ref'), f.candidate.sourceCommit);
+    assert(filename.startsWith('docs/CHANGELOG/v0.0.1/'));
+    return noteResponse(filename, await readFile(new URL('../' + filename, import.meta.url), 'utf8'));
+  } });
+  assert(body.includes('# OpenMotion 0.0.1') && body.includes('templates: prod'));
+  assert(body.includes('## English') && body.includes('## 简体中文'));
+  assert(body.includes('@openmotion/app@0.0.1') && body.includes('0.6.x'));
+  assert(body.includes(f.candidate.tgzSHA256));
+});
+
+for (const [version, previous] of [['0.0.1', 'v0.6.7'], ['0.0.2', 'v0.0.1']]) test(`${version} automatic notes select the previous publication series correctly`, async t => {
+  const f = await fixture(t, version); await rm(path.join(f.build, 'release-notes.md'));
+  const base = 'a'.repeat(40);
+  const body = await prepareCandidateNotes(f.build, { env: { MOTION_VERSION: version, MOTION_SOURCE_SHA: f.candidate.sourceCommit }, fetcher: async url => {
+    if (url.includes('/contents/')) return new Response('', { status: 404 });
+    if (url.includes('/releases?')) return Response.json(['v0.6.7', 'v0.0.1', 'v0.0.3'].map(tag_name => ({ tag_name, prerelease: false, draft: false })));
+    if (url.includes('/git/ref/')) { assert(url.endsWith(previous)); return Response.json({ object: { type: 'commit', sha: base } }); }
+    assert(url.includes(`/compare/${base}...${f.candidate.sourceCommit}`));
+    return Response.json({ status: 'ahead', total_commits: 0, commits: [] });
+  } });
+  assert(body.includes(`Baseline: ${previous} (${base})`));
+});
+
 test('stable candidates freeze exact-source bilingual notes and publication reuses them unchanged', async t => {
   const f = await fixture(t);
   await rm(path.join(f.build, 'release-notes.md'));

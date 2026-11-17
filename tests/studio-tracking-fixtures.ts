@@ -1,6 +1,8 @@
 /** Representative payloads from the existing Studio producers, including private values that must be removed. */
 export const studioTrackingFixtures: Record<string, Record<string, unknown>> = {
   session_start: {}, studio_session_start: { has_project: true },
+  studio_io_action: { action: 'recheck_render', attempt_id: '11111111-1111-4111-8111-111111111111', filename: 'PRIVATE_SOURCE.mp4' },
+  studio_io_result: { action: 'recheck_render', attempt_id: '11111111-1111-4111-8111-111111111111', outcome: 'success', state_after: 'complete', error_message: 'PRIVATE_MESSAGE' },
   preview_first_frame: { duration_ms: 842.5, composition_seconds: 12.5, clip_count: 8, media_clip_count: 5, studio_version: '0.9.7' },
   studio_render_start: { fps: 29.97, quality: 'standard', format: 'mp4', resolution: 'landscape', composition: 'PRIVATE_SOURCE.html' },
   render_start: { fps: 60, quality: 'high', format: 'webm', resolution: '1080p' },

@@ -1,5 +1,5 @@
-import type { Model } from '../../../shared/gateway';
-import type { GenerationOption } from '../../../shared/generation-options';
+import { modelReferenceLimit, type Model } from '../../../shared/gateway';
+import { resolveGenerationParameters, usesInputImageRatio, type GenerationOption } from '../../../shared/generation-options';
 import { Popover } from '../components/ui/Popover';
 import { Select } from '../components/ui/Select';
 import { Slider } from '../components/ui/Slider';
@@ -8,17 +8,28 @@ import { useI18n } from '../i18n/I18n';
 
 export type ParameterDraft = { values: Record<string, unknown>; advanced: string };
 export const emptyParameters: ParameterDraft = { values: {}, advanced: '{}' };
-export function requestParameters(draft: ParameterDraft): Record<string, unknown> {
+export function requestParameters(draft: ParameterDraft, model?: Model, hasInputImage = false): Record<string, unknown> {
   const extra = JSON.parse(draft.advanced);
   if (!extra || typeof extra !== 'object' || Array.isArray(extra)) throw new Error('Model parameters must be a JSON object');
+  const values = { ...draft.values };
+  // Retain the inactive text-to-video choice in the editor, but keep explicit JSON instructions for validation.
+  if (model && parameterInputImageRatio(model, draft, hasInputImage)) delete values.ratio;
   // Quick controls are explicit overrides; deleting a quick override restores advanced/default values.
-  return { ...extra, ...draft.values };
+  const parameters = { ...extra, ...values };
+  if (model) resolveGenerationParameters(model, parameters, hasInputImage);
+  return parameters;
 }
-export function GenerationParameters({ model, draft, onChange }: { model: Model; draft: ParameterDraft; onChange: (draft: ParameterDraft) => void }) {
+export function parameterInputImageRatio(model: Model, draft: ParameterDraft, hasInputImage: boolean): boolean {
+  let parameters = draft.values;
+  try { parameters = requestParameters(draft); } catch { /* Keep the reference constraint visible while JSON is being edited. */ }
+  return modelReferenceLimit(model) > 0 && usesInputImageRatio(model, hasInputImage, parameters);
+}
+export function GenerationParameters({ model, draft, hasInputImage = false, onChange }: { model: Model; draft: ParameterDraft; hasInputImage?: boolean; onChange: (draft: ParameterDraft) => void }) {
   const { t } = useI18n();
   let extra: Record<string, unknown> = {};
   try { extra = requestParameters({ ...draft, values: {} }); } catch { /* The raw editor remains editable; submission reports parse errors through Toast. */ }
-  const fields = model.generationOptions?.fields ?? [];
+  const inputImageRatio = parameterInputImageRatio(model, draft, hasInputImage);
+  const fields = (model.generationOptions?.fields ?? []).filter(field => !inputImageRatio || field.key !== 'ratio');
   const value = (field: GenerationOption) => draft.values[field.key] ?? extra[field.key] ?? model.defaults?.[field.key] ?? field.default;
   const label = (field: GenerationOption) => {
     const v = value(field), option = field.choices?.find(c => c.value === v);
@@ -33,13 +44,14 @@ export function GenerationParameters({ model, draft, onChange }: { model: Model;
     Object.assign(values, field.choices?.find(c => c.value === value)?.requires);
     onChange({ ...draft, values });
   };
-  const summary = fields.filter(f => f.kind !== 'text' && f.key !== 'seed' && f.presentation !== 'count' && value(f) !== undefined).slice(0, 3).map(label).join(' · ');
+  const summary = [...(inputImageRatio ? [t('Follows first frame')] : []), ...fields.filter(f => f.kind !== 'text' && f.key !== 'seed' && f.presentation !== 'count' && value(f) !== undefined).map(label)].slice(0, 3).join(' · ');
   const constraints = Object.assign({}, ...fields.map(f => f.choices?.find(c => c.value === value(f))?.requires)) as Record<string, string | number>;
   const count = fields.find(f => f.presentation === 'count');
   return <div className="om-generation-settings">
     <Popover side="top" align="start" aria-label={t('Generation settings')} className="om-generation-popover" trigger={<button className="om-nav-item om-generation-summary"><RemixIcon name="equalizer-line" size={17} /><span>{summary || t('Generation settings')}</span><RemixIcon name="arrow-down-s-line" size={15} /></button>}>
       <div className="om-creation-row"><strong>{t('Generation settings')}</strong><button className="om-nav-item" onClick={() => onChange(emptyParameters)}>{t('Reset')}</button></div>
       <p className="om-eyebrow">{model.label}</p>
+      {inputImageRatio && <p className="om-muted">{t('Aspect ratio follows the first frame.')}</p>}
       {model.generationOptions?.delivery === 'prompt' && <p className="om-muted">{t('Creative preferences sent to Codex. The Agent chooses the final output settings.')}</p>}
       {!fields.length && <p className="om-muted">{t('This model uses provider-specific parameters. Add them in Advanced parameters.')}</p>}
       <div className="om-generation-fields">{fields.map(field => <div className="om-generation-field" key={field.key}>

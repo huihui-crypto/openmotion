@@ -24,14 +24,29 @@ const button = (label: string) => [...container.querySelectorAll('button')].find
 it('lists every curated skill with its upstream repository', () => {
   act(() => root.render(<Host />));
   expect(container.querySelectorAll('.om-skill-gallery-card')).toHaveLength(motionSkills.length);
-  expect(motionSkills).toHaveLength(121);
+  expect(motionSkills).toHaveLength(122);
   expect(motionSkills[0].id).toBe('motionmaxxing');
+  expect(motionSkills[1].id).toBe('openmotion-growth-teardown');
   for (const skill of motionSkills) if (skill.repository) expect(skill.repository).toMatch(/^https:\/\/github\.com\/[\w.-]+\/[\w.-]+(\/tree\/main\/[\w.-]+)?$/);
   // Skills without an upstream repository are OpenMotion Library Skills (library/skills/<id>).
   for (const skill of motionSkills) if (!skill.repository) expect(skill.id).toMatch(/^openmotion-[a-z0-9-]+$/);
-  expect(motionSkills.filter(skill => !skill.repository)).toHaveLength(96);
-  expect(motionSkills.slice(1, 11).every(skill => skill.category === 'Talking-head')).toBe(true);
+  expect(motionSkills.filter(skill => !skill.repository)).toHaveLength(97);
+  expect(motionSkills.slice(2, 12).every(skill => skill.category === 'Talking-head')).toBe(true);
   expect(new Set(motionSkills.map(skill => skill.id)).size).toBe(motionSkills.length);
+});
+
+it('presents the growth teardown as an OpenMotion skill', async () => {
+  const write = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: write } });
+  act(() => root.render(<Host />));
+  act(() => button('Growth reverse-engineering').click());
+  expect(container.querySelector('.om-skill-source')!.textContent).toContain('OpenMotion skill');
+  expect(container.querySelector('.om-skill-source a, a.om-skill-source')).toBeNull();
+  await act(async () => button('Copy for Agent').click());
+  const text = write.mock.calls[0][0] as string;
+  expect(text).toContain('Make a video with the OpenMotion "Growth Teardown" skill.');
+  expect(text).toContain('Source: OpenMotion skill');
+  expect(text).toContain('growth-teardown Skill');
 });
 
 it('filters by category and search', () => {
@@ -152,6 +167,8 @@ it('localizes every Skills string and instruction in all supported languages', a
   const { languages } = await import('../i18n/messages');
   const placeholders = (text: string) => [...text.matchAll(/\{\w+\}/g)].map(match => match[0]).sort();
   const sources = Object.keys(skillsUi['zh-CN']);
+  // Skills authored in this repository show the "OpenMotion skill" source label instead of an upstream repository.
+  if (motionSkills.some(skill => !skill.repository)) expect(sources).toContain('OpenMotion skill');
   for (const { locale } of languages.filter(language => language.locale !== 'en')) {
     const ui = (skillsUi as Record<string, Record<string, string>>)[locale];
     const instructions = (prompts as Record<string, Record<string, string>>)[locale];

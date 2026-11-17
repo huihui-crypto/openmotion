@@ -30,3 +30,11 @@ export function compareReleaseVersions(left, right) {
   }
   return 0;
 }
+
+export function comparePublicationVersions(left, right) {
+  const order = compareReleaseVersions(left, right);
+  // The published 0.6.x line is historical; the current release series restarts at 0.0.1.
+  const historical = version => version.startsWith('0.6.');
+  if (historical(left) !== historical(right)) return historical(left) ? -1 : 1;
+  return order;
+}

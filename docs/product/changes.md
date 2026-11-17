@@ -3,9 +3,17 @@
 ## 2026-11-17: Add 96 single-style library Skills and their Skills-page cards
 
 - Add 96 Library Skills, one written style recipe each: 10 talking-head overlays, 15 narrated explainers, 35 product promos, 12 product-ad and shopping styles, 10 brand and cover pieces, 2 motion effects and 12 editing methods. Each states its look, motion rules with timings, required inputs, what to avoid and review checks; skills that need generated stills or clips route discovery through `openmotion_media_use` and generation through `openmotion_assets_use` with consent.
-- The Studio Skills page lists all 96 as cards with an 8-second OpenMotion sample cover (rendered with HyperFrames, under 450 KB each) and localized copy in all 11 languages. Three categories are added (Talking-head, Product ads, Editing) and the analytics `skill_category` enum is extended to match. Talking-head cards follow the first card.
+- The Studio Skills page lists all 96 as cards with an 8-second OpenMotion sample cover (rendered with HyperFrames, under 450 KB each) and localized copy in all 11 languages. Three categories are added (Talking-head, Product ads, Editing) and the analytics `skill_category` enum is extended to match. Talking-head cards follow the first two cards (Remove the AI look, Growth Teardown).
 - All are recipes/drafts: covers are OpenMotion samples with invented content, not runs on user material, and no executable template is claimed.
 - The standalone installer, the positive distribution list and package tests include the new Skills; `npm run check` validates Library Skill frontmatter.
+
+## 2026-11-17: Add the Growth Teardown library Skill
+
+- Add optional [`openmotion-growth-teardown`](../../library/skills/openmotion-growth-teardown/SKILL.md): name a company, research its dated growth moves and metric points with sources, and generate an editable nine-scene HyperFrames film (map, three plays with real evidence, plays to copy).
+- Films are branded with the OpenMotion wordmark (intro and outro) and mark (every headline); the Skill carries an unchanged copy of the two design-system brand files for standalone installs.
+- Includes a research method, the `growth.json` contract and validator, an evidence collector (page screenshots, video thumbnails and thumbnail walls, favicons), drawn evidence cards and a deterministic cue-synchronized score with no third-party audio.
+- List it on the Studio Skills page as an OpenMotion skill (no upstream repository) under Explainers, with a cover excerpt rendered by the Skill and copy in all eleven interface languages.
+- Library content only: not registered as an MCP resource and not a new core production route. Local Higgsfield, Lovable and Cursor runs exercised research, generation and rendering; creative acceptance remains with the user.
 
 ## 2026-11-17: Play a bounded preview for large final videos in chat
 

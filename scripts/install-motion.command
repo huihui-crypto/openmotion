@@ -43,13 +43,24 @@ fi
 # Read only: detect an active/foreign source conflict before downloading dependencies.
 openmotion_stage source-preflight node "$openmotion_root/scripts/source-marketplace.mjs" "$openmotion_root" --check
 
-# Git checkouts omit studio/build; release ZIPs already contain the editor.
+# Source checkouts need matching inputs and output bytes; sealed ZIPs retain
+# their prebuilt editor. A stale build never changes the selected checkout.
+openmotion_build_needed=false
 if [ ! -f "$openmotion_root/studio/build/index.html" ]; then
-  echo '首次从源码安装：下载锁定依赖并构建编辑器。'
+  openmotion_build_needed=true
+elif [ -e "$openmotion_root/.git" ] && ! node "$openmotion_root/scripts/source-build-state.mjs" --check; then
+  openmotion_build_needed=true
+fi
+if [ "$openmotion_build_needed" = true ]; then
+  echo '准备与当前源码匹配的编辑器。'
   (
     cd "$openmotion_root"
-    openmotion_stage dependencies npm ci --include=dev
+    if ! node scripts/source-build-state.mjs --dependencies-current; then
+      openmotion_stage dependencies npm ci --include=dev
+      node scripts/source-build-state.mjs --record-dependencies
+    fi
     openmotion_stage studio-build npm run build:studio
+    node scripts/source-build-state.mjs --record
   )
 fi
 

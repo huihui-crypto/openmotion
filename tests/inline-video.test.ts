@@ -67,7 +67,7 @@ test('the final UI declares embedded media without binding editor calls to a com
   const list: any = await rpc({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, store);
   const preview = list.result.tools.find((tool: any) => tool.name === 'openmotion_open_preview');
   assert.equal(preview._meta, undefined);
-  const resource: any = await rpc({ jsonrpc: '2.0', id: 2, method: 'resources/read', params: { uri: 'ui://openmotion/inline-video/v1/player.html' } }, store);
+  const resource: any = await rpc({ jsonrpc: '2.0', id: 2, method: 'resources/read', params: { uri: 'ui://openmotion/inline-video/v2/player.html' } }, store);
   assert.deepEqual(resource.result.contents[0]._meta.ui.csp.resourceDomains, ['data:', 'blob:']);
   assert.match(resource.result.contents[0].mimeType, /profile=mcp-app/);
   assert.ok(resource.result.contents[0].text.includes('openmotion_get_project'));

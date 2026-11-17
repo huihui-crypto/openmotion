@@ -140,3 +140,88 @@ it('distinguishes explicit unsupported capability from unknown and reports faile
   await act(async () => Array.from(container.querySelectorAll('button')).find(b => b.textContent === 'Sync models')!.click());
   expect(props.onError).toHaveBeenCalledWith('Catalogue unavailable'); expect(generate).not.toHaveBeenCalled();
 });
+
+const firstFrame = [{ name: 'Portrait', reference: { assetId: 'portrait', versionId: 'first-version' } }];
+const cloudVideo = (modelId = 'wan-2.7'): Model => ({
+  id: `opendesign:${modelId}`, provider: 'opendesign', modelId, label: 'Cloud video', modality: 'video', source: 'live',
+  mode: 'text-to-video', maxInputImages: 1, defaults: { ratio: '16:9', duration: 5 },
+  generationOptions: { delivery: 'provider', fields: [{ key: 'ratio', label: 'Aspect ratio', kind: 'choice', presentation: 'ratio',
+    choices: ['16:9', '9:16', 'adaptive'].map(value => ({ value, label: value })) }] },
+});
+
+it.each(['wan-2.7', 'doubao-seedance-2-5-260628'])('shows first-frame geometry and excludes inherited ratio when submitting %s', async modelId => {
+  const selected = cloudVideo(modelId);
+  loadGateway.mockResolvedValue(cloudState([selected])); generate.mockResolvedValue({ job: { id: 'i2v-job' } });
+  await act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'video', model: selected.id, prompt: 'Walk forward', references: firstFrame }} />));
+  expect(container.textContent).toContain('Aspect ratio follows the first frame.');
+  expect(container.querySelector('.om-generation-summary')!.textContent).toContain('Follows first frame');
+  expect(container.querySelector('.om-generation-summary')!.textContent).not.toContain('16:9');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
+  expect(document.querySelector('.om-generation-ratios')).toBeNull();
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ parameters: {}, references: firstFrame.map(item => item.reference) }));
+});
+
+it('holds the text-to-video quick choice while a first frame is attached and restores it after removal', async () => {
+  const selected = cloudVideo();
+  loadGateway.mockResolvedValue(cloudState([selected])); generate.mockResolvedValue({ job: { id: 'i2v-job' } });
+  let update!: ComponentProps<typeof AssetComposer>['setDraft'];
+  function Harness() {
+    const [draft, setDraft] = useState<AssetDraft>({ modality: 'video', model: selected.id, prompt: 'Walk forward', references: [] });
+    update = setDraft;
+    return <AssetComposer {...props} draft={draft} setDraft={setDraft} />;
+  }
+  await act(async () => root.render(<Harness />));
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
+  const ratio = () => Array.from(document.querySelectorAll<HTMLButtonElement>('.om-generation-ratios button')).find(button => button.textContent === '9:16');
+  await act(async () => ratio()!.click());
+  expect(ratio()!.getAttribute('aria-pressed')).toBe('true');
+  await act(async () => update(current => ({ ...current, references: firstFrame })));
+  expect(ratio()).toBeUndefined();
+  expect(container.textContent).toContain('Remove it to restore your text-to-video ratio.');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate.mock.calls[0][0].parameters).toEqual({});
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-asset-references .om-badge')!.click());
+  expect(container.textContent).not.toContain('Aspect ratio follows the first frame.');
+  expect(container.querySelector('.om-generation-summary')!.textContent).toContain('9:16');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
+  expect(ratio()!.getAttribute('aria-pressed')).toBe('true');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate.mock.calls[1][0]).toEqual(expect.objectContaining({ parameters: { ratio: '9:16' }, references: [] }));
+});
+
+it('rejects explicit fixed-ratio JSON without discarding it or submitting a paid request', async () => {
+  const selected = cloudVideo(); loadGateway.mockResolvedValue(cloudState([selected]));
+  await act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'video', model: selected.id, prompt: 'Walk forward', parameters: { ratio: '16:9', seed: 7 }, references: firstFrame }} />));
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate).not.toHaveBeenCalled();
+  expect(props.onError).toHaveBeenCalledExactlyOnceWith('First-frame video follows the input image ratio. Remove parameters.ratio or set it to "adaptive".');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-generation-summary')!.click());
+  expect(JSON.parse(document.querySelector<HTMLTextAreaElement>('textarea[aria-label="Model parameters"]')!.value)).toEqual({ ratio: '16:9', seed: 7 });
+  expect(props.setDraft).not.toHaveBeenCalled();
+});
+
+it('recognizes a provider-native first frame in advanced JSON and leaves unrelated models unchanged', async () => {
+  const selected = cloudVideo();
+  const other = { ...selected, id: 'opendesign:other-video', modelId: 'other-video' };
+  loadGateway.mockResolvedValue(cloudState([selected, other])); generate.mockResolvedValue({ job: { id: 'other-job' } });
+  const parameters = { images: [{ role: 'first_frame', url: 'https://example.test/portrait.png' }], ratio: '16:9' };
+  const draft: AssetDraft = { modality: 'video', model: selected.id, prompt: 'Walk forward', parameters, references: [] };
+  await act(async () => root.render(<AssetComposer {...props} draft={draft} />));
+  expect(container.textContent).toContain('Aspect ratio follows the first frame.');
+  await act(async () => container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.click());
+  expect(generate).not.toHaveBeenCalled();
+  await act(async () => root.render(<AssetComposer {...props} draft={{ ...draft, model: other.id }} />));
+  expect(container.textContent).not.toContain('Aspect ratio follows the first frame.');
+});
+
+it('keeps unsupported account reference drafts blocked without promising first-frame behavior', async () => {
+  const selected = { ...cloudVideo(), id: 'account:wan-2.7', provider: 'account', maxInputImages: 0 };
+  loadGateway.mockResolvedValue({ models: [selected], status: { providers: [{ id: 'account', available: true }], routes: {} } });
+  await act(async () => root.render(<AssetComposer {...props} draft={{ modality: 'video', model: selected.id, prompt: 'Walk forward', references: firstFrame }} />));
+  expect(container.textContent).toContain('This model cannot use asset references');
+  expect(container.textContent).not.toContain('Aspect ratio follows the first frame.');
+  expect(container.querySelector('.om-generation-summary')!.textContent).not.toContain('Follows first frame');
+  expect(container.querySelector<HTMLButtonElement>('.om-creation-submit-button')!.disabled).toBe(true);
+  expect(generate).not.toHaveBeenCalled();
+});

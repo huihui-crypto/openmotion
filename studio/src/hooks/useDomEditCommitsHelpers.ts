@@ -255,9 +255,9 @@ export async function writePreparedContent(
   try {
     await writeProjectFile(targetPath, preparedContent, patchedContent);
     return { content: preparedContent, failed: false };
-  } catch (error) {
+  } catch {
     showToast(
-      `Saved, but couldn't finish updating ${targetPath}: ${getErrorDetail(error)}`,
+      "Some changes were saved, but other changes remain incomplete.",
       "error",
     );
     return { content: patchedContent, failed: true };

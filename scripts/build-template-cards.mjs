@@ -8,6 +8,7 @@ const applicationRoot = fileURLToPath(new URL('../', import.meta.url));
 const directory = path.join(applicationRoot, 'mcp-ui/template-recommendations');
 const sourceInputs = [
   'mcp-ui/template-recommendations/app.ts',
+  'mcp-ui/template-recommendations/native.ts',
   'mcp-ui/template-recommendations/i18n.ts',
   'mcp-ui/template-recommendations/app.css',
   'mcp-ui/template-recommendations/types.ts',
@@ -19,7 +20,7 @@ const sourceInputs = [
   'packages/design-system/studio/feedback.css',
   'packages/design-system/studio/template-cards.css',
 ].sort();
-const buildOutputs = ['mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/app.css'].sort();
+const buildOutputs = ['mcp-ui/template-recommendations/build/app.js', 'mcp-ui/template-recommendations/build/inline.js', 'mcp-ui/template-recommendations/build/app.css'].sort();
 const identityPath = 'mcp-ui/template-recommendations/build/identity.json';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 
@@ -73,7 +74,7 @@ export async function buildTemplateCards() {
     logLevel: 'warn',
     build: {
       lib: {
-        entry: path.join(directory, 'app.ts'),
+        entry: path.join(directory, 'native.ts'),
         name: 'OpenMotionTemplateCards',
         formats: ['iife'],
         fileName: () => 'app.js',
@@ -84,6 +85,14 @@ export async function buildTemplateCards() {
       sourcemap: false,
       cssCodeSplit: false,
       rollupOptions: { output: { inlineDynamicImports: true } },
+    },
+  });
+  await build({
+    configFile: false, root: applicationRoot, logLevel: 'warn',
+    build: {
+      lib: { entry: path.join(directory, 'app.ts'), name: 'OpenMotionTemplateCards', formats: ['iife'], fileName: () => 'inline.js' },
+      outDir: path.join(directory, 'build'), emptyOutDir: false,
+      minify: 'esbuild', sourcemap: false, cssCodeSplit: false,
     },
   });
   const styles = await Promise.all(['packages/design-system/tokens.css', 'packages/design-system/studio/feedback.css',

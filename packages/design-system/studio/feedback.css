@@ -13,6 +13,26 @@
 .motion-error-notice-details [role=status] { display: block; font-size: 11px; overflow-wrap: anywhere; }
 .motion-error-notice-compact { padding: 0; border: 0; background: transparent; font-size: 11px; }
 
+.hf-toast-viewport {
+  position: absolute;
+  top: calc(var(--motion-space-64) - var(--motion-space-24));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--motion-space-8);
+  box-sizing: border-box;
+  width: min(calc(420px + 2 * var(--motion-space-24)), 100%);
+  padding: var(--motion-space-24);
+  max-height: calc(100dvh - var(--motion-space-64) + var(--motion-space-24));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  pointer-events: none;
+}
+.hf-toast-viewport:empty { display: none; }
+.hf-toast-viewport > * { flex-shrink: 0; max-width: 100%; pointer-events: auto; }
+
 .hf-toast-action {
   pointer-events: auto;
   display: inline-flex;
@@ -28,6 +48,18 @@
 .hf-toast-action:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .hf-toast-action:disabled { opacity: .5; cursor: default; }
 
+.hf-toast-surface,
+[data-motion-ui] .motion-inline-toast {
+  padding: var(--motion-space-8) var(--motion-space-16);
+  border: 0;
+  border-radius: var(--motion-radius-xl);
+  background: var(--motion-strong);
+  color: var(--motion-panel);
+  box-shadow: var(--motion-shadow-lg);
+  font: var(--motion-weight-regular) var(--motion-text-sm)/var(--motion-space-20) var(--motion-font-sans);
+  overflow-wrap: anywhere;
+}
+
 [data-motion-ui] .motion-inline-toast {
   position: fixed;
   inset: auto var(--motion-space-16) var(--motion-space-16);
@@ -36,12 +68,6 @@
   width: fit-content;
   max-width: calc(100% - 2 * var(--motion-space-16));
   margin: 0 auto;
-  padding: var(--motion-space-10) var(--motion-space-16);
-  border: 1px solid var(--motion-border);
-  border-radius: var(--motion-radius-lg);
-  background: var(--motion-panel);
-  color: var(--motion-text);
-  font: var(--motion-text-sm)/var(--motion-leading-body) var(--motion-font-sans);
   pointer-events: none;
 }
 [data-motion-ui] .motion-inline-toast[hidden] { display: none; }

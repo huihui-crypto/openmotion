@@ -67,5 +67,5 @@ export type PersistDomEditOperations = (
 export type CommitDomAttributeBatch = (
   selection: DomEditSelection,
   operations: PatchOperation[],
-  options: { label: string; prepareContent?: (html: string) => string; validateContent?: (html: string) => void },
+  options: { label: string; onError?: (error: unknown) => void; prepareContent?: (html: string) => string; validateContent?: (html: string) => void },
 ) => Promise<boolean>;

@@ -6,9 +6,11 @@ import { errorNoticeMessage, type ErrorContext } from './errorNoticeMessage';
 import './errorNotice.css';
 import { useToast } from '../../hooks/useToast';
 import { StudioToastViewport } from '../StudioToastViewport';
+import { redactDiagnostic } from '../../../../scripts/diagnostic-redaction.mjs';
 
-export function ErrorNotice({ message, context = 'operation', compact = false, action, onDismiss }: {
+export function ErrorNotice({ message, context = 'operation', compact = false, action, onDismiss, diagnostic }: {
   message: string;
+  diagnostic?: string;
   context?: ErrorContext;
   compact?: boolean;
   action?: { label: string; run: () => void; busy?: boolean };
@@ -20,8 +22,9 @@ export function ErrorNotice({ message, context = 'operation', compact = false, a
   useEffect(() => { recordBrowserDiagnostic('operation_error', message); }, [message]);
   const toast = useToast();
   const summary = errorNoticeMessage(message, context);
+  const details = diagnostic === undefined ? message : redactDiagnostic(diagnostic);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(message); toast.showToast('Copied!', 'info', 'feedback'); }
+    try { await navigator.clipboard.writeText(details); toast.showToast('Copied!', 'info', 'feedback'); }
     catch { toast.showToast('Copy failed. Select the details to copy them.', 'error', 'feedback'); }
   };
   return <div className={`motion-error-notice${compact ? ' motion-error-notice-compact' : ''}`}>
@@ -34,7 +37,7 @@ export function ErrorNotice({ message, context = 'operation', compact = false, a
       <button type="button" aria-label={t(expanded ? 'Hide error details' : 'Error details')} aria-expanded={expanded} aria-controls={id} onClick={() => setExpanded(value => !value)}>{t(expanded ? 'Hide error details' : 'Error details')}</button>
     </div>
     {expanded && <div id={id} className="motion-error-notice-details">
-      <pre tabIndex={0} aria-label={t('Error details')}>{message}</pre>
+      <pre tabIndex={0} aria-label={t('Error details')}>{details}</pre>
       <button type="button" onClick={() => void copy()}>{t('Copy error information')}</button>
     </div>}
     <StudioToastViewport {...toast} />

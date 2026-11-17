@@ -15,7 +15,7 @@ import type { AssetChatSummary, AssetTaskMode } from './assetTasks';
 import { AssetConversation } from './AssetConversation';
 import { AssetGenerationCard, creationKinds } from './AssetCreationVisuals';
 import { ModelAvatar } from './settingsPrimitives';
-import { GenerationParameters, emptyParameters, requestParameters, type ParameterDraft } from './GenerationParameters';
+import { GenerationParameters, emptyParameters, parameterInputImageRatio, requestParameters, type ParameterDraft } from './GenerationParameters';
 import { notifyProvidersChanged } from './useProviderDirectory';
 import { useWorkspaceChrome } from './WorkspaceFrame';
 export interface AssetDraft { modality: Modality; prompt: string; model?: string; parameters?: Record<string, unknown>; target?: { asset: LibraryAsset; versionId: string }; references: { reference: AssetReference; name: string }[] }
@@ -61,12 +61,13 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
   };
   const invalidReferences = draft.references.length > 0 && (maximumReferences === 0 || draft.references.length > maximumReferences);
   const parameters = selected ? parameterDrafts[selected.id] ?? emptyParameters : emptyParameters;
+  const inputImageRatio = selected && parameterInputImageRatio(selected, parameters, draft.references.length > 0);
   const kind = creationKinds.find(k => k.id === draft.modality)!;
   const latest = jobs.find(job => job.id === taskIds.direct);
   const submit = async () => {
     if (!selected || !draft.prompt.trim() || busy) return; setBusy(true);
     try {
-      const parsed = requestParameters(parameters);
+      const parsed = requestParameters(parameters, selected, draft.references.length > 0);
       const result = await assetRequest<{ job: GenerationJob }>({ action: 'generate', requestId: crypto.randomUUID(), modality: draft.modality, prompt: draft.prompt, model: selected.id, mode: selected.mode, parameters: parsed,
         ...(draft.target ? { assetId: draft.target.asset.id, parentVersionId: draft.target.versionId } : {}), references: draft.references.map(r => r.reference) });
       if (mounted.current) {
@@ -104,8 +105,9 @@ export function AssetComposer({ active, draft, setDraft, agentReferences, setAge
       <div className="om-creation-prompt"><label className="om-eyebrow" htmlFor="asset-creation-prompt"><RemixIcon name="pen-nib-line" size={14} />{t(selected?.mode === 'text-to-speech' ? 'Speech text' : 'Your idea')}</label><textarea id="asset-creation-prompt" maxLength={20000} aria-label={t('Asset prompt')} placeholder={t(selected?.mode === 'text-to-speech' ? 'Write the words you want spoken.' : kind.hint)} value={draft.prompt} onChange={e => setDraft({ ...draft, prompt: e.target.value })} />{references}<div className="om-creation-prompt-footer"><span className="om-eyebrow">{t(draft.references.length ? 'References stay linked to their versions' : 'Start with a few words. Make it your own.')}</span><span className="om-eyebrow">{draft.prompt.length.toLocaleString()} / 20k</span></div></div>
       {!draft.prompt && selected?.mode !== 'text-to-speech' && <div className="om-creation-ideas" aria-label={t('Try an idea')}>{kind.ideas.map(idea => <button key={idea} className="om-nav-item" onClick={() => setDraft({ ...draft, prompt: t(idea + ' prompt') })}><RemixIcon name="add-line" size={13} />{t(idea)}</button>)}</div>}
       {unknownReferences || cloudModelMissing ? <p className="om-muted" role="status">{unknownReferences && t('Image editing capability is unknown. Sync models to check reference support.')} <button className="om-button" disabled={syncing} onClick={() => void syncModels()}>{t(syncing ? 'Working…' : 'Sync models')}</button></p> : draft.references.length > 0 && <p className="om-muted">{t(maximumReferences ? draft.modality === 'video' ? 'This video model uses one image as its first frame.' : 'This model edits up to {count} image references.' : 'This model cannot use asset references. Choose an image model that supports editing, or remove the references.', { count: maximumReferences })}</p>}
+      {inputImageRatio && <p className="om-muted" role="status">{t('Aspect ratio follows the first frame.')} {t('Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.')}</p>}
 
-    </div><div className="om-creation-submit">{selected && <GenerationParameters key={selected.id} model={selected} draft={parameters} onChange={value => { setParameterDrafts(current => ({ ...current, [selected.id]: value })); try { setDraft({ ...draft, model: selected.id, parameters: requestParameters(value) }); } catch { /* Keep invalid JSON in the local editor until corrected. */ } }} />}<button className="om-button om-creation-submit-button" data-primary disabled={busy || !selected || !draft.prompt.trim() || invalidReferences} onClick={() => void submit()}><RemixIcon name="sparkling-fill" size={19} />{t(busy ? 'Submitting your idea…' : kind.action)}<RemixIcon name="arrow-right-line" size={18} /></button><p className="om-creation-save-note"><RemixIcon name="stack-line" size={13} />{t('Saved automatically to your library')}</p><p className="om-eyebrow om-creation-billing">{t('Model usage is billed to your configured account.')}</p></div>
+    </div><div className="om-creation-submit">{selected && <GenerationParameters key={selected.id} model={selected} draft={parameters} hasInputImage={draft.references.length > 0} onChange={value => { setParameterDrafts(current => ({ ...current, [selected.id]: value })); try { setDraft({ ...draft, model: selected.id, parameters: requestParameters(value, selected, draft.references.length > 0) }); } catch { /* Keep invalid JSON or conflicting parameters in the local editor until corrected. */ } }} />}<button className="om-button om-creation-submit-button" data-primary disabled={busy || !selected || !draft.prompt.trim() || invalidReferences} onClick={() => void submit()}><RemixIcon name="sparkling-fill" size={19} />{t(busy ? 'Submitting your idea…' : kind.action)}<RemixIcon name="arrow-right-line" size={18} /></button><p className="om-creation-save-note"><RemixIcon name="stack-line" size={13} />{t('Saved automatically to your library')}</p><p className="om-eyebrow om-creation-billing">{t('Model usage is billed to your configured account.')}</p></div>
     </>}
   </aside>;
 }

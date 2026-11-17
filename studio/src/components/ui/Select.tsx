@@ -54,6 +54,9 @@ export function Select({
       disabled={disabled}
       items={options}
       onValueChange={(next) => {
+        // Replacing a controlled option set may briefly clear Base UI's value.
+        // This control commits actual options only, never the string "null".
+        if (next == null) return;
         const chosen = String(next);
         if (chosen === value) return;
         onCommit(chosen);

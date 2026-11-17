@@ -1,5 +1,7 @@
 /** Browser-safe public asset contract. No dependency on Studio or the application server. */
 import { providerIconFiles } from './provider-icons.js';
+import { platformIconFiles } from './platform-icons.js';
+export { platformIcons } from './platform-icons.js';
 export { providerIcons, modelBrandId } from './provider-icons.js';
 export const designSystemBase = '/design-system';
 export const designSystemAsset = (name) => `${designSystemBase}/${name}`;
@@ -27,6 +29,7 @@ export const publicDesignFiles = Object.freeze([
   'fonts/Albert-Sans-OFL.txt', 'fonts/IBM-Plex-Mono-OFL.txt', 'fonts/NOTICES.txt',
   'remix-icon-LICENSE.txt', 'remix-icon-NOTICE.txt',
   ...providerIconFiles, 'providers/sources.json', 'providers/NOTICE.md',
+  ...platformIconFiles, 'platforms/sources.json', 'platforms/NOTICE.md', 'platforms/CC0-LICENSE.txt', 'platforms/remix-icon-LICENSE.txt',
   'providers/lobe-icons-LICENSE.txt', 'providers/cherry-ui-LICENSE.txt',
 ]);
 
@@ -36,7 +39,7 @@ export const designSystemDocuments = Object.freeze([
 ]);
 
 export const designSystemRuntimeFiles = Object.freeze([
-  ...publicDesignFiles, 'index.js', 'metadata.js', 'provider-icons.js', 'package.json', 'tailwind.css', 'inline-feedback.ts',
+  ...publicDesignFiles, 'index.js', 'metadata.js', 'provider-icons.js', 'platform-icons.js', 'package.json', 'tailwind.css', 'inline-feedback.ts',
   'studio/theme.css', 'studio/tokens.css', 'studio/palette-reset.css',
 ]);
 

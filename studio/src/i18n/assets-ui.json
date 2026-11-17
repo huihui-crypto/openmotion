@@ -317,6 +317,64 @@
     "Image to video": "图生视频",
     "Check original task": "查询原任务",
     "Checking original task…": "正在查询原任务…",
-    "Image editing capability is unknown. Sync models to check reference support.": "尚未确认此模型是否支持图片编辑。请同步模型以检查参考图支持。"
+    "Image editing capability is unknown. Sync models to check reference support.": "尚未确认此模型是否支持图片编辑。请同步模型以检查参考图支持。",
+    "Follows first frame": "跟随首帧",
+    "Aspect ratio follows the first frame.": "画面比例跟随首帧。",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "添加首帧后，固定比例选项不可用。移除首帧可恢复文生视频的比例选择。",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "图生视频的画面比例跟随首帧。请删除 parameters.ratio，或将其设为 \"adaptive\"。"
+  },
+  "ja": {
+    "Follows first frame": "最初のフレームに合わせる",
+    "Aspect ratio follows the first frame.": "縦横比は最初のフレームに合わせます。",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "最初のフレームがある場合、固定の縦横比は選べません。削除するとテキスト動画の縦横比設定に戻ります。",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "最初のフレームを使う動画の縦横比は入力画像に合わせます。parameters.ratio を削除するか、\"adaptive\" に設定してください。"
+  },
+  "ko": {
+    "Follows first frame": "첫 프레임에 맞춤",
+    "Aspect ratio follows the first frame.": "화면 비율은 첫 프레임을 따릅니다.",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "첫 프레임이 첨부되면 고정 비율을 선택할 수 없습니다. 제거하면 텍스트 동영상의 비율 선택이 복원됩니다.",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "첫 프레임을 사용하는 동영상은 입력 이미지의 비율을 따릅니다. parameters.ratio를 삭제하거나 \"adaptive\"로 설정하세요."
+  },
+  "de": {
+    "Follows first frame": "Wie das erste Bild",
+    "Aspect ratio follows the first frame.": "Das Seitenverhältnis richtet sich nach dem ersten Bild.",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "Mit einem ersten Bild sind feste Seitenverhältnisse nicht verfügbar. Entfernen Sie es, um die Auswahl für Text-zu-Video wiederherzustellen.",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "Videos mit einem ersten Bild übernehmen dessen Seitenverhältnis. Entfernen Sie parameters.ratio oder setzen Sie es auf \"adaptive\"."
+  },
+  "fr": {
+    "Follows first frame": "Selon la première image",
+    "Aspect ratio follows the first frame.": "Le format suit celui de la première image.",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "Les formats fixes sont indisponibles lorsqu’une première image est jointe. Retirez-la pour retrouver votre choix texte-vers-vidéo.",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "La vidéo reprend le format de la première image. Supprimez parameters.ratio ou définissez-le sur \"adaptive\"."
+  },
+  "ru": {
+    "Follows first frame": "По первому кадру",
+    "Aspect ratio follows the first frame.": "Соотношение сторон определяется первым кадром.",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "При добавленном первом кадре фиксированные пропорции недоступны. Удалите его, чтобы восстановить выбор пропорций для видео из текста.",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "Видео с первым кадром использует пропорции входного изображения. Удалите parameters.ratio или задайте \"adaptive\"."
+  },
+  "es": {
+    "Follows first frame": "Según el primer fotograma",
+    "Aspect ratio follows the first frame.": "La relación de aspecto sigue al primer fotograma.",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "Las proporciones fijas no están disponibles con un primer fotograma adjunto. Elimínelo para recuperar la proporción de texto a vídeo.",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "El vídeo utiliza la proporción de la imagen inicial. Elimine parameters.ratio o establézcalo en \"adaptive\"."
+  },
+  "pt-BR": {
+    "Follows first frame": "Conforme o primeiro quadro",
+    "Aspect ratio follows the first frame.": "A proporção segue o primeiro quadro.",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "As proporções fixas ficam indisponíveis com um primeiro quadro anexado. Remova-o para restaurar a proporção de texto para vídeo.",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "O vídeo usa a proporção da imagem inicial. Remova parameters.ratio ou defina-o como \"adaptive\"."
+  },
+  "it": {
+    "Follows first frame": "Come il primo fotogramma",
+    "Aspect ratio follows the first frame.": "Le proporzioni seguono il primo fotogramma.",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "Le proporzioni fisse non sono disponibili con un primo fotogramma allegato. Rimuovilo per ripristinare la scelta per il video da testo.",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "Il video usa le proporzioni dell’immagine iniziale. Rimuovi parameters.ratio o impostalo su \"adaptive\"."
+  },
+  "tr": {
+    "Follows first frame": "İlk kareye göre",
+    "Aspect ratio follows the first frame.": "En boy oranı ilk kareyi izler.",
+    "Fixed ratio choices are unavailable while a first frame is attached. Remove it to restore your text-to-video ratio.": "İlk kare eklendiğinde sabit oranlar kullanılamaz. Metinden video oranını geri yüklemek için ilk kareyi kaldırın.",
+    "First-frame video follows the input image ratio. Remove parameters.ratio or set it to \"adaptive\".": "İlk kareli video, giriş görüntüsünün oranını kullanır. parameters.ratio değerini kaldırın veya \"adaptive\" olarak ayarlayın."
   }
 }

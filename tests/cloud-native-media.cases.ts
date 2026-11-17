@@ -4,7 +4,7 @@ import path from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { providerAdapters } from '../gateway/providers.ts';
-import { resumableJob } from '../shared/gateway.ts';
+import { resumableJob, type GenerationJob, type Model } from '../shared/gateway.ts';
 import { mediaBytes } from './media-fixtures.ts';
 import { fixture } from './fixtures.ts';
 import { gatewayFor } from '../gateway/service.ts';
@@ -24,6 +24,7 @@ const catalogue = [
   { model: 't2v-only', kind: 'video', capabilities: {} },
   { model: 'wide-edit', kind: 'image', capabilities: { edits: true, max_input_images: 20 } },
   { model: 'multi-input-video', kind: 'video', capabilities: { max_input_images: 2 } },
+  ...['wan-2.7', 'doubao-seedance-2-5-260628'].map(model => ({ model, kind: 'video', capabilities: { max_input_images: 1, ratios: { values: ['16:9', 'adaptive'], default: '16:9' } } })),
 ];
 function service(store: any) { return new Phase1Service(store, pluginRoot, { origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined,
   openProject: async () => {}, mutation: async task => task(), cancel: async () => {} }); }
@@ -83,9 +84,9 @@ test('Cloud image editing uploads every library reference and submits their asse
   await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
   await gateway.listModels({ provider: 'opendesign', refresh: true });
   const a = await libraryRef(store, 'a.png', 'red'), b = await libraryRef(store, 'b.png', 'blue');
-  const job = await finish(store, (await gateway.submit({ library: { references: [a, b] }, model: 'opendesign:edit-image', modality: 'image', prompt: 'make the plate red', parameters: { quality: 'low' } })).id);
+  const job = await finish(store, (await gateway.submit({ library: { references: [a, b] }, model: 'opendesign:edit-image', modality: 'image', prompt: 'make the plate red', parameters: { quality: 'low', ratio: '16:9' } })).id);
   assert.equal(job.state, 'completed', job.error);
-  assert.deepEqual(submits, [['/api/v1/media/images/edits', { quality: 'low', model: 'edit-image', prompt: 'make the plate red', images: ['ma_0', 'ma_1'] }]]);
+  assert.deepEqual(submits, [['/api/v1/media/images/edits', { quality: 'low', ratio: '16:9', model: 'edit-image', prompt: 'make the plate red', images: ['ma_0', 'ma_1'] }]]);
   assert.deepEqual(calls.filter(c => !c.includes('/models') && !c.includes('/tasks/')), ['POST /api/v1/media/uploads', 'PUT bucket', 'POST /api/v1/media/uploads/ma_0/commit',
     'POST /api/v1/media/uploads', 'PUT bucket', 'POST /api/v1/media/uploads/ma_1/commit', 'POST /api/v1/media/images/edits']);
   assert.deepEqual(job.references!.map(r => r.path), [`asset:${a.assetId}/${a.versionId}`, `asset:${b.assetId}/${b.versionId}`]);
@@ -120,6 +121,77 @@ test('Cloud image-to-video uploads the first frame and keeps the video timeout a
   assert.match(source, /job\.modality === 'video' \? 30 : 15\) \* 60_000/);
   await gateway.close();
 }));
+
+test('Cloud rejects explicit first-frame ratios through MCP before reference resolution or provider requests', () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  const calls = cloud(gateway, () => assert.fail('invalid first-frame ratio must not submit'));
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  await gateway.listModels({ provider: 'opendesign', refresh: true }); calls.length = 0;
+  // These references do not exist: ratio validation must fail before opening them.
+  const references = [{ assetId: randomUUID(), versionId: randomUUID() }];
+  for (const modelId of ['wan-2.7', 'doubao-seedance-2-5-260628']) {
+    await assert.rejects(api.call('openmotion_assets_use', { action: 'generate', requestId: `bad-ratio-${modelId.replaceAll('.', '-')}`, model: `opendesign:${modelId}`,
+      modality: 'video', prompt: 'slow push', references, parameters: { ratio: '16:9' } }), /First-frame video.*Remove parameters.ratio.*adaptive/);
+    await assert.rejects(gateway.submit({ library: {}, model: `opendesign:${modelId}`, modality: 'video', prompt: 'hosted first frame',
+      parameters: { ratio: '16:9', images: [{ asset_id: 'ma_existing', role: 'first_frame' }] } }), /First-frame video/);
+  }
+  assert.deepEqual(calls, []); assert.equal((await gateway.listJobs()).length, 0);
+  await gateway.close();
+}));
+
+test('Cloud first-frame video accepts omitted or adaptive ratios despite saved text-to-video defaults', () => fixture(async store => {
+  const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;
+  const submits: [string, any][] = []; cloud(gateway, (p, body) => submits.push([p, body]));
+  await gateway.configureProvider('opendesign', { apiKey: 'cloud-key', baseUrl: 'https://cloud.example' });
+  await gateway.listModels({ provider: 'opendesign', refresh: true });
+  const ref = await libraryRef(store, 'first-frame.png', 'red');
+  for (const modelId of ['wan-2.7', 'doubao-seedance-2-5-260628']) {
+    await gateway.registerModel({ provider: 'opendesign', modelId, label: modelId, modality: 'video', mode: 'text-to-video', defaults: { ratio: '16:9', duration: 5 } });
+    for (const ratio of [undefined, 'adaptive']) {
+      const parameters = ratio ? { ratio } : {};
+      const input = { action: 'generate', requestId: `${modelId.replaceAll('.', '-')}-${ratio ?? 'omitted'}`, model: `opendesign:${modelId}`, modality: 'video', prompt: 'slow push', references: [ref], parameters };
+      const queued = (await api.call('openmotion_assets_use', input)).job;
+      const completed = await finish(store, queued.id);
+      assert.equal(completed.state, 'completed', completed.error);
+      assert.deepEqual(submits.at(-1), ['/api/v1/media/videos/tasks', { duration: 5, ...parameters, model: modelId, prompt: 'slow push', images: [{ asset_id: `ma_${submits.filter(([, body]) => body.images).length - 1}`, role: 'first_frame' }] }]);
+      assert.equal((await api.call('openmotion_assets_use', input)).job.id, queued.id);
+      assert.equal(completed.model.defaults?.ratio, '16:9');
+    }
+    const textOnly = await finish(store, (await gateway.submit({ library: {}, model: `opendesign:${modelId}`, modality: 'video', prompt: 'text only' })).id);
+    assert.equal(textOnly.state, 'completed', textOnly.error);
+    assert.deepEqual(submits.at(-1), ['/api/v1/media/videos/tasks', { ratio: '16:9', duration: 5, model: modelId, prompt: 'text only' }]);
+  }
+  assert.equal(submits.length, 6);
+  await gateway.close();
+}));
+
+test('Cloud adapter protects queued and raw first-frame requests before reading or uploading a reference', async () => {
+  const model: Model = { id: 'opendesign:wan-2.7', provider: 'opendesign', modelId: 'wan-2.7', label: 'Wan', modality: 'video', mode: 'text-to-video', source: 'live' };
+  const job = { id: 'queued-before-upgrade', model, modality: 'video', prompt: 'slow push', parameters: { ratio: '16:9' } } as GenerationJob;
+  let calls = 0;
+  const context = { key: 'fixture-only', baseUrl: 'https://cloud.example', signal: new AbortController().signal, progress: async () => {},
+    fetcher: async () => { calls++; throw new Error('unexpected network request'); } };
+  await assert.rejects(providerAdapters.opendesign.generate(job, { ...context, references: [{ file: '/missing-first-frame.png', mimeType: 'image/png', bytes: 10 }] }), /First-frame video/);
+  await assert.rejects(providerAdapters.opendesign.generate({ ...job, parameters: { ...job.parameters, images: [{ asset_id: 'ma_existing', role: 'first_frame' }] } }, context), /First-frame video/);
+  assert.equal(calls, 0);
+});
+
+test('Cloud polling of an accepted first-frame task ignores new submission validation and never uploads or resubmits', async () => {
+  const model: Model = { id: 'opendesign:wan-2.7', provider: 'opendesign', modelId: 'wan-2.7', label: 'Wan', modality: 'video', mode: 'text-to-video', source: 'live' };
+  const job = { id: 'accepted-before-upgrade', remoteId: 'accepted-task', model, modality: 'video', prompt: 'slow push', parameters: { ratio: '16:9' } } as GenerationJob;
+  const calls: string[] = [];
+  const result = await providerAdapters.opendesign.generate(job, {
+    key: 'fixture-only', baseUrl: 'https://cloud.example', signal: new AbortController().signal, progress: async () => {}, pollMs: 0,
+    references: [{ file: '/missing-first-frame.png', mimeType: 'image/png', bytes: 10 }],
+    fetcher: async (url, init = {}) => {
+      const pathname = new URL(String(url)).pathname; calls.push(`${init.method ?? 'GET'} ${pathname}`);
+      assert.equal(init.method ?? 'GET', 'GET');
+      return pathname.endsWith('/content') ? new Response(mp4) : Response.json({ status: 'succeeded' });
+    },
+  });
+  assert.deepEqual(result, [mp4]);
+  assert.deepEqual(calls, ['GET /api/v1/media/videos/tasks/accepted-task', 'GET /api/v1/media/videos/tasks/accepted-task/content']);
+});
 
 test('Cloud speech timestamps stay on the job and reach the MCP status result', () => fixture(async store => {
   const api = service(store), gateway = gatewayFor(store); gateway.options.detect = async () => []; gateway.options.pollMs = 1;

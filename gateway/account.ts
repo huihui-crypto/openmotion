@@ -11,7 +11,7 @@ import type { EventFields } from '../tracking/core.ts';
 import { accountErrorKinds, accountStages, type omEvents } from '../tracking/events.ts';
 import { readSettings, writeSettings } from './settings-storage.ts';
 import { registeredProvider } from '../shared/provider-registry.ts';
-import { modelDefaults } from '../shared/generation-options.ts';
+import { resolveGenerationParameters } from '../shared/generation-options.ts';
 
 const execute = promisify(execFile);
 const consoleUrl = registeredProvider('account')!.website!;
@@ -463,8 +463,8 @@ export class OpenDesignAccount {
   }
   /** `reference` is the job's snapshotted input image; it turns an image job into an edit of that image. */
   async generate(job: GenerationJob, directory: string, signal: AbortSignal, progress: (phase: string, id?: string) => Promise<void>, reference?: string) {
+    const kind = job.modality, params = resolveGenerationParameters(job.model, job.parameters, !!reference);
     if (job.providerOrigin !== await this.identity() || (await this.summary()).state !== 'signed-in') throw new Error(jobMessages.accountChangedBeforeSubmit);
-    const kind = job.modality, params = { ...modelDefaults(job.model), ...job.parameters };
     const music = kind === 'audio' && job.model.mode === 'text-to-audio';
     if (reference && kind !== 'image') throw new Error('Account reference images are supported for image editing only');
     const allowed = kind === 'image' ? ['aspect_ratio', 'resolution', 'quality', 'size'] : kind === 'video' ? ['ratio', 'resolution', 'duration', 'generate_audio'] : music ? ['duration'] : ['voice'];

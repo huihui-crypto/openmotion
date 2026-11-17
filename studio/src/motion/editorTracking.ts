@@ -258,11 +258,21 @@ export function importErrorCategory(reason: string): ImportErrorCategory {
   if (/ffprobe (failed to read|returned unreadable)/.test(reason)) return 'unreadable';
   return 'other';
 }
-export function reportAssetImport(input: { projectId: string | null; entryPoint?: ImportEntryPoint; requested: number; added: number; category?: ImportErrorCategory }) {
+export function reportAssetImport(input: { projectId: string | null; entryPoint?: ImportEntryPoint; requested: number; added: number; failed?: number; unknown?: number; pending?: number; category?: ImportErrorCategory }) {
   const requested = clampCount(input.requested), added = Math.min(requested, clampCount(input.added));
+  const pending = Math.min(requested - added, clampCount(input.pending ?? 0));
+  const reportedUnknown = Math.min(requested - added - pending, clampCount(input.unknown ?? 0));
+  // Existing callers without uncertainty fields retain their confirmed-result
+  // semantics. Explicit counts never turn an unaccounted result into failure.
+  const defaultFailed = input.unknown === undefined && input.pending === undefined ? requested - added : 0;
+  const failed = Math.min(requested - added - pending - reportedUnknown, clampCount(input.failed ?? defaultFailed));
+  const unknown = requested - added - pending - failed;
+  const outcome = added === requested ? 'success' : unknown || pending
+    ? added || failed ? 'partial' : 'unknown' : added ? 'partial' : 'failure';
   void trackMotion('studio_asset_import_result', {
-    outcome: added === requested ? 'success' : added ? 'partial' : 'failure', entry_point: input.entryPoint ?? 'other',
-    requested_count: requested, added_count: added, failed_count: requested - added,
+    outcome, entry_point: input.entryPoint ?? 'other',
+    requested_count: requested, added_count: added, failed_count: failed,
+    ...(unknown ? { unknown_count: unknown } : {}), ...(pending ? { pending_count: pending } : {}),
     ...(input.category && added < requested ? { error_category: input.category } : {}), ...projectFields(input.projectId),
   });
 }

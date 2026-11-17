@@ -123,23 +123,31 @@ describe("Studio export tracking", () => {
     expect(JSON.stringify(sent.mock.calls)).not.toContain("someone");
   });
 
-  it("reports a lost progress stream and a cancel as their own terminal states", async () => {
+  it("keeps a lost progress stream unknown and reports its recovered completion once", async () => {
     stubServer(() => Response.json({ jobId: "job-1", status: "rendering" }));
     const mounted = await mount();
-    await act(async () => {
-      await mounted.api().startRender({ origin: "header" });
-    });
+    await act(async () => { await mounted.api().startRender({ origin: "header" }); });
+    const request = events("studio_export_request_result")[0];
     await act(async () => source?.onerror?.());
-    expect(events("studio_export_result")).toEqual([expect.objectContaining({ job_state: "failed", error_code: "CONNECTION_LOST" })]);
+    expect(events("studio_export_result")).toEqual([]);
+    const fetchMock = globalThis.fetch as unknown as ReturnType<typeof vi.fn>;
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST" && String(init.body).includes('requestId'))!;
+    const requestId = JSON.parse(String(post[1].body)).requestId;
+    fetchMock.mockResolvedValue(Response.json({ renders: [{ id: "job-1", nativeJobId: "job-1", requestId,
+      filename: "result.mp4", createdAt: 1, status: "complete", progress: 100 }] }));
+    await act(async () => { await mounted.api().recheckRender("job-1"); });
+    await act(async () => { await mounted.api().recheckRender("job-1"); });
+    expect(events("studio_export_request_result")).toHaveLength(1);
+    expect(events("studio_export_result")).toEqual([expect.objectContaining({ export_id: request.export_id, job_state: "completed" })]);
+  });
 
-    sent.mockClear();
-    stubServer(() => Response.json({ jobId: "job-2", status: "rendering" }));
-    await act(async () => {
-      await mounted.api().startRender({ origin: "header" });
-    });
-    await act(async () => {
-      await mounted.api().cancelRender("job-2");
-    });
+  it("reports cancellation only after the renderer confirms it", async () => {
+    stubServer(() => Response.json({ jobId: "job-2", status: "rendering" }), true, "cancelling");
+    const mounted = await mount();
+    await act(async () => { await mounted.api().startRender({ origin: "header" }); });
+    await act(async () => { await mounted.api().cancelRender("job-2"); });
+    expect(events("studio_export_result")).toEqual([]);
+    await progress("cancelled");
     expect(events("studio_export_result")).toEqual([expect.objectContaining({ job_state: "cancelled" })]);
     expect(events("studio_export_result")[0]).not.toHaveProperty("error_code");
   });
@@ -186,8 +194,8 @@ describe("Studio export tracking", () => {
     expect(events("studio_export_request_result")).toEqual([expect.objectContaining({ outcome: "accepted", fps: "30" })]);
   });
 
-  it("reports a rejected request with its category and no terminal result", async () => {
-    stubServer(() => Response.json({ error: "FFmpeg not found at /opt/private/bin" }, { status: 503 }));
+  it("distinguishes a definite rejection from an uncertain response without inventing a terminal result", async () => {
+    stubServer(() => Response.json({ error: "FFmpeg not found at /opt/private/bin" }, { status: 400 }));
     const mounted = await mount();
     await act(async () => {
       await mounted.api().startRender({ origin: "export_panel" });
@@ -197,11 +205,30 @@ describe("Studio export tracking", () => {
       await mounted.api().startRender({ origin: "export_panel" });
     });
     expect(events("studio_export_request_result").map((event) => [event.outcome, event.error_code])).toEqual([
-      ["rejected", "SERVICE_UNAVAILABLE"],
-      ["rejected", "SERVER_UNREACHABLE"],
+      ["rejected", "REQUEST_REJECTED"],
+      ["unknown", "SERVER_UNREACHABLE"],
     ]);
     expect(events("studio_export_result")).toEqual([]);
     expect(JSON.stringify(sent.mock.calls)).not.toMatch(/private|ECONNREFUSED/);
+  });
+
+  it("preserves one export identity when the request receipt is lost and found in history", async () => {
+    let requestId = "";
+    stubServer(() => {
+      const calls = (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      requestId = JSON.parse(String(calls.find(([, init]) => init?.method === "POST" && String(init.body).includes('requestId'))![1].body)).requestId;
+      return Promise.reject(new TypeError("response lost"));
+    });
+    const mounted = await mount();
+    await act(async () => { await mounted.api().startRender({ origin: "header" }); });
+    const [request] = events("studio_export_request_result");
+    expect(request.outcome).toBe("unknown");
+    expect(events("studio_export_result")).toEqual([]);
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(Response.json({ renders: [{ id: "recovered", nativeJobId: "recovered", requestId,
+      filename: "result.mp4", createdAt: 1, status: "complete", progress: 100 }] }));
+    await act(async () => { await mounted.api().recheckRender(mounted.api().jobs[0].id); });
+    expect(events("studio_export_request_result")).toHaveLength(1);
+    expect(events("studio_export_result")).toEqual([expect.objectContaining({ export_id: request.export_id, job_state: "completed" })]);
   });
 
   it("refuses to start without FFmpeg and says so once per attempt", async () => {

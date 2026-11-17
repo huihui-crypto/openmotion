@@ -321,7 +321,7 @@ describe("useDomEditPersist", () => {
     );
     expect(params.reloadPreview).toHaveBeenCalledTimes(1);
     expect(params.showToast).toHaveBeenCalledWith(
-      "Saved, but couldn't finish updating index.html: disk full",
+      "Some changes were saved, but other changes remain incomplete.",
       "error",
     );
   });

@@ -46,7 +46,7 @@ export async function candidateFixture(t, branch = 'main', options = {}) {
     status: 'passed', templateEnvironment, platform, version, sourceCommit: commit, tgzSHA256: candidate.tgzSHA256,
     registryColdInstall: 'passed', nativePreparation: 'passed', repeatSetup: 'passed', resources: 'passed', mcpTools: manifest.mcp.tools.length, skills: manifest.skills.length,
   });
-  await writeJSON(path.join(directory, 'npm-publication.json'), { tgzSHA256: candidate.tgzSHA256, previousLatest: '0.5.0' });
+  await writeJSON(path.join(directory, 'npm-publication.json'), { tgzSHA256: candidate.tgzSHA256, previousLatest: '0.6.3' });
   await writeJSON(path.join(directory, 'test-promotion.json'), { version, tgzSHA256: candidate.tgzSHA256, action: inputs.action, publicationRun: publicationEnv.GITHUB_RUN_ID, status: 'already-promoted' });
   return { work, root, build, directory, candidate, inputs, provenance, app, pkg, manifest, authorization, env: publicationEnv };
 }

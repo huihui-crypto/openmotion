@@ -46,6 +46,20 @@ it('only runs an explicitly provided action and prevents repeat clicks while bus
   expect(retry).toHaveBeenCalledOnce();
 });
 
+it('uses optional redacted diagnostic context for details and copying without replacing the actual error summary', async () => {
+  const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
+  act(() => root.render(<ErrorNotice context="export" message="ENOENT: required clip not found" diagnostic={'Project: demo\nTask: task-1\nStage: Encoding frame 24/100\nError: ENOENT\nAuthorization: Bearer private-credential\nPath: /tmp/redaction-fixture/private/project.html\napi_key=private-key'} />));
+  expect(host.textContent).toContain('A required file is missing');
+  expect(host.textContent).not.toContain('Project: demo');
+  act(() => button('Error details').click());
+  expect(host.querySelector('pre')?.textContent).toContain('Task: task-1');
+  await act(async () => button('Copy error information').click());
+  expect(copy.mock.calls[0][0]).toContain('Encoding frame 24/100');
+  expect(copy.mock.calls[0][0]).not.toContain('private-credential');
+  expect(copy.mock.calls[0][0]).not.toContain('private-key');
+  expect(copy.mock.calls[0][0]).not.toContain('/tmp/redaction-fixture');
+});
+
 it('keeps details selectable when clipboard permission is denied', async () => {
   vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new Error('denied'));
   act(() => root.render(<ErrorNotice message="unknown diagnostic" />));
