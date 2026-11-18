@@ -72,9 +72,9 @@
     "Product promos from shot recipes.": "用镜头配方做产品宣传片。",
     "Follow its product-promo workflow: capture real product pages, pick shot recipe cards, storyboard, cut to the beat with sound design and check every frame. Build it as native OpenMotion HTML instead of Remotion.": "照它的产品宣传片流程：截取真实产品页面、挑选镜头配方卡、分镜、按节拍剪辑并配音效、逐帧检查。用 OpenMotion 原生 HTML 实现，不用 Remotion。",
     "A promo for my product built from real page screenshots": "用真实页面截图做一支产品宣传片",
-    "Product promos": "产品宣传",
-    "Explainers": "讲解视频",
-    "Brand & covers": "品牌与封面",
+    "Product promos": "科技产品发布",
+    "Explainers": "知识讲解",
+    "Brand & covers": "品牌活动与封面",
     "Motion techniques": "动效技巧",
     "Studio and lifestyle product shots.": "棚拍和生活场景产品图。",
     "Follow its product-photoshoot modes (studio, lifestyle, hero banner, floating/splash, seasonal variation) to generate product stills, then animate them into a short product reel with camera moves and captions.": "照它的产品拍摄模式（棚拍、生活场景、首屏横幅、悬浮/飞溅、季节变体）生成产品图，再加镜头运动和字幕做成一段产品短片。",
@@ -118,7 +118,7 @@
     "A lit 3D product turntable or scene with smooth camera paths": "一段带光照的 3D 产品转台或场景，镜头平滑移动",
     "A particle effect such as confetti bursts or an ambient background": "一段粒子效果，例如彩纸迸发或氛围背景",
     "You get": "做出来的是",
-    "Product promo": "产品宣传片",
+    "Product promo": "新功能上线短片",
     "Listing video": "电商详情视频",
     "Faceless explainer": "无人出镜讲解",
     "Brand intro": "品牌片头",
@@ -154,7 +154,7 @@
     "After": "改后",
     "Remove the AI look from motion": "动效去 AI 味",
     "When a motion video looks templated or AI-made and you want it to feel designer-made": "做好的动效片看着像模板、有 AI 味，想改得像设计师做的",
-    "When launching a product or feature and you have real page screenshots": "新产品、新功能上线，手上有真实页面截图，要做宣传片",
+    "When launching a product or feature and you have real page screenshots": "新产品、新功能上线，手上有真实页面截图",
     "When you have a product and need studio, lifestyle and banner shots in one reel": "有一个实物产品，需要棚拍、生活场景、横幅几种画面",
     "When listing a product on Amazon, Taobao or another store": "商品要上架亚马逊、淘宝等电商平台，需要详情页视频",
     "When you want to explain a topic or tell a story without filming anyone": "要讲清一个知识点或讲个故事，但不想真人出镜",
@@ -190,9 +190,8 @@
     "How Lovable grew in its first two years": "Lovable 头两年是怎么增长的",
     "Growth reverse-engineering": "增长逆向拆解",
     "OpenMotion skill": "OpenMotion Skill",
-    "Talking-head": "口播包装",
-    "Product ads": "商品与带货",
-    "Editing": "剪辑方法"
+    "Product ads": "消费品带货",
+    "Talking-head & editing": "口播与剪辑"
   },
   "ja": {
     "Skills": "Skills",
@@ -385,9 +384,8 @@
     "How Lovable grew in its first two years": "Lovable は最初の2年でどう成長したか",
     "Growth reverse-engineering": "成長のリバースエンジニアリング",
     "OpenMotion skill": "OpenMotion の Skill",
-    "Talking-head": "トーキングヘッド",
     "Product ads": "商品広告",
-    "Editing": "編集メソッド"
+    "Talking-head & editing": "トーク・編集"
   },
   "ko": {
     "Skills": "Skills",
@@ -580,9 +578,8 @@
     "How Lovable grew in its first two years": "Lovable은 첫 2년 동안 어떻게 성장했나",
     "Growth reverse-engineering": "성장 역설계",
     "OpenMotion skill": "OpenMotion Skill",
-    "Talking-head": "토킹헤드",
     "Product ads": "상품 광고",
-    "Editing": "편집 방법"
+    "Talking-head & editing": "토킹헤드·편집"
   },
   "ru": {
     "Skills": "Skills",
@@ -775,9 +772,8 @@
     "How Lovable grew in its first two years": "Как Lovable рос в первые два года",
     "Growth reverse-engineering": "Обратный разбор роста",
     "OpenMotion skill": "Skill OpenMotion",
-    "Talking-head": "Видео с ведущим",
     "Product ads": "Реклама товаров",
-    "Editing": "Монтаж"
+    "Talking-head & editing": "Ведущий и монтаж"
   },
   "de": {
     "Skills": "Skills",
@@ -970,9 +966,8 @@
     "How Lovable grew in its first two years": "Wie Lovable in den ersten zwei Jahren gewachsen ist",
     "Growth reverse-engineering": "Wachstum rückwärts analysiert",
     "OpenMotion skill": "OpenMotion-Skill",
-    "Talking-head": "Sprechervideos",
     "Product ads": "Produktwerbung",
-    "Editing": "Schnitt"
+    "Talking-head & editing": "Sprecher & Schnitt"
   },
   "fr": {
     "Skills": "Skills",
@@ -1165,9 +1160,8 @@
     "How Lovable grew in its first two years": "Comment Lovable a grandi pendant ses deux premières années",
     "Growth reverse-engineering": "Rétro-ingénierie de la croissance",
     "OpenMotion skill": "Skill OpenMotion",
-    "Talking-head": "Face caméra",
     "Product ads": "Pubs produit",
-    "Editing": "Montage"
+    "Talking-head & editing": "Face caméra et montage"
   },
   "es": {
     "Skills": "Skills",
@@ -1360,9 +1354,8 @@
     "How Lovable grew in its first two years": "Cómo creció Lovable en sus dos primeros años",
     "Growth reverse-engineering": "Ingeniería inversa del crecimiento",
     "OpenMotion skill": "Skill de OpenMotion",
-    "Talking-head": "Presentador a cámara",
     "Product ads": "Anuncios de producto",
-    "Editing": "Edición"
+    "Talking-head & editing": "Presentador y edición"
   },
   "pt-BR": {
     "Skills": "Skills",
@@ -1555,9 +1548,8 @@
     "How Lovable grew in its first two years": "Como a Lovable cresceu nos dois primeiros anos",
     "Growth reverse-engineering": "Engenharia reversa do crescimento",
     "OpenMotion skill": "Skill do OpenMotion",
-    "Talking-head": "Apresentador",
     "Product ads": "Anúncios de produto",
-    "Editing": "Edição"
+    "Talking-head & editing": "Apresentador e edição"
   },
   "it": {
     "Skills": "Skill",
@@ -1750,9 +1742,8 @@
     "How Lovable grew in its first two years": "Come è cresciuta Lovable nei primi due anni",
     "Growth reverse-engineering": "Reverse engineering della crescita",
     "OpenMotion skill": "Skill di OpenMotion",
-    "Talking-head": "Presentatore in camera",
     "Product ads": "Annunci prodotto",
-    "Editing": "Montaggio"
+    "Talking-head & editing": "Presentatore e montaggio"
   },
   "tr": {
     "Skills": "Skill’ler",
@@ -1945,8 +1936,7 @@
     "How Lovable grew in its first two years": "Lovable ilk iki yılında nasıl büyüdü",
     "Growth reverse-engineering": "Büyümede tersine mühendislik",
     "OpenMotion skill": "OpenMotion Skill’i",
-    "Talking-head": "Kamera karşısı",
     "Product ads": "Ürün reklamları",
-    "Editing": "Kurgu"
+    "Talking-head & editing": "Kamera karşısı ve kurgu"
   }
 }

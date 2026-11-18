@@ -31,7 +31,9 @@ it('lists every curated skill with its upstream repository', () => {
   // Skills without an upstream repository are OpenMotion Library Skills (library/skills/<id>).
   for (const skill of motionSkills) if (!skill.repository) expect(skill.id).toMatch(/^openmotion-[a-z0-9-]+$/);
   expect(motionSkills.filter(skill => !skill.repository)).toHaveLength(97);
-  expect(motionSkills.slice(2, 12).every(skill => skill.category === 'Talking-head')).toBe(true);
+  // The upstream Skills keep their place right after the first two; presenter-style cards are spread out, never side by side.
+  expect(motionSkills.slice(2, 26).every(skill => skill.repository)).toBe(true);
+  expect(motionSkills.some((skill, i) => i > 0 && skill.category === 'Talking-head & editing' && motionSkills[i - 1].category === 'Talking-head & editing')).toBe(false);
   expect(new Set(motionSkills.map(skill => skill.id)).size).toBe(motionSkills.length);
 });
 
