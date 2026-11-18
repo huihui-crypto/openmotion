@@ -1,3 +1,4 @@
+import { loadLibrarySkills, assertSkillIds } from '../../shared/library-skill-catalog.ts';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { lstat, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
@@ -82,7 +83,9 @@ export async function buildTemplatePublication(root, commit, { origin = publicOr
       uploads.push({ key: `${prefix}/${id}/hosted-files.json`, body: hostedManifestPath, contentType: 'application/json; charset=utf-8', cache: 'public, max-age=31536000, immutable', immutable: true });
     }
     for (const [sha256, body] of objectFiles) uploads.push({ key: `${catalogRoot}/objects/${sha256}`, body, contentType: contentType(body), cache: 'public, max-age=31536000, immutable', immutable: true, object: true });
-    const catalog = { ...sourceCatalog, commit, baseUrl, objectBaseUrl, hosted: { schemaVersion: 1, commit, source: 'openmotion-r2', baseUrl, objectBaseUrl } };
+    const skills = await loadLibrarySkills(root, false);
+    assertSkillIds(skills, sourceCatalog.templateIds);
+    const catalog = { ...sourceCatalog, skills, commit, baseUrl, objectBaseUrl, hosted: { schemaVersion: 1, commit, source: 'openmotion-r2', baseUrl, objectBaseUrl } };
     const catalogPath = path.join(staging, 'catalog.json');
     await writeFile(catalogPath, jsonBytes(catalog));
     uploads.push({ key: `${prefix}/catalog.json`, body: catalogPath, contentType: 'application/json; charset=utf-8', cache: 'public, max-age=31536000, immutable', immutable: true });

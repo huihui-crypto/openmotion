@@ -1,3 +1,5 @@
+import { templateCatalogFor } from './prism-templates.ts';
+import { loadLibrarySkills, skillUsage } from './shared/library-skill-catalog.ts';
 import { legacyToolName, publicToolName } from './shared/public-names.mjs';
 import { compareVideos } from './shared/video-compare.ts';
 import { existsSync } from 'node:fs';
@@ -220,6 +222,8 @@ export async function callTool(name: string, args: Record<string, unknown> = {},
   }
   if (name === 'motion_apply_template') {
     if (typeof args.templateId !== 'string') throw new Error('需要 templateId');
+    if ((await loadLibrarySkills()).some(skill => skill.id === args.templateId)) throw new Error(skillUsage);
+    if (!templates.some(template => template.id === args.templateId)) await templateCatalogFor(store.directory).get(args.templateId);
     const template = findTemplate(args.templateId);
     const sessionId = typeof args.sessionId === 'string' ? args.sessionId : store.selectedProjectId === undefined ? store.projectCatalog().activeSessionId! : store.projectCatalog().sessions!.find(session => session.artifacts.some(artifact => artifact.projectId === store.projectId))!.id;
     await store.session(sessionId);

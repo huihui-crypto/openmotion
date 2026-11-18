@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths:
       - 'library/templates/**'
+      - 'library/skills/**'
+      - 'studio/src/motion/skillCatalog.ts'
+      - 'shared/library-skill-catalog.ts'
       - '.github/scripts/publish-template-catalog.mjs'
       - '.github/workflows/publish-template-catalog.yml'
   workflow_dispatch:
