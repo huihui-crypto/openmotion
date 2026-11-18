@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: '26.11.1'
       - name: Fetch catalog LFS sources only
-        run: git lfs pull --include="library/templates/catalog/**" --exclude=""
+        run: git lfs pull --include="library/templates/catalog/**,library/skills/**" --exclude=""
       - name: Publish the content-addressed main catalog
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_RELEASES_AK }}

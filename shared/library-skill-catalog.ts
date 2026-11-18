@@ -2,7 +2,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export type LibrarySkill = { id: string; kind: 'skill'; title: string; description: string; tags: string[]; repository?: string; license?: string; instructions: string; files: string[]; localSource?: string };
+export type LibrarySkill = { id: string; kind: 'skill'; title: string; description: string; tags: string[]; repository?: string; license?: string; instructions: string; files: string[]; objects?: SkillObject[]; localSource?: string };
+export type SkillObject = { path: string; bytes: number; sha256: string };
 const root = fileURLToPath(new URL('../', import.meta.url));
 export const skillUsage = 'Read openmotion_get_template(templateId) and follow SKILL.md. When a new project is needed, use openmotion_create_project with projectType=natural_language. Skills are instructions, not copyable projects.';
 

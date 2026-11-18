@@ -238,11 +238,10 @@ export class TemplateCatalog {
     const snapshot = await this.refresh();
     const skill = (await this.skills(snapshot)).find(item => item.id === id);
     if (skill) {
-      const commit = skill.localSource ? undefined : snapshot.hosted?.commit;
-      // Hosted/npm installs have no library files; pin supporting files to the published commit (LFS media via the media host).
-      const fileUrls = commit ? Object.fromEntries(skill.files.map(file => [file, `https://${/\.(mp4|motion)$/i.test(file) ? 'media.githubusercontent.com/media' : 'raw.githubusercontent.com'}/nexu-io/openmotion/${commit}/library/skills/${skill.id}/${file}`])) : undefined;
-      return { ...skill, ...(fileUrls ? { fileUrls } : {}), motionDocument: { path: skill.localSource ? path.join(skill.localSource, 'SKILL.md') : 'SKILL.md', content: skill.instructions }, source: this.source,
-        workflowGuide: { workflow: 'skill', nextStep: fileUrls ? skillUsage + ' Supporting files are not installed locally: download the ones SKILL.md references from fileUrls into your working directory, keeping their relative paths, before running scripts or reading references.' : skillUsage } };
+      // Hosted/npm installs have no library files; publish them as hash-verified objects like template sources.
+      const objects = skill.localSource ? undefined : skill.objects?.map(file => ({ ...file, url: `${snapshot.hosted!.objectBaseUrl}/${file.sha256}` }));
+      return { ...skill, ...(objects ? { objects } : {}), motionDocument: { path: skill.localSource ? path.join(skill.localSource, 'SKILL.md') : 'SKILL.md', content: skill.instructions }, source: this.source,
+        workflowGuide: { workflow: 'skill', nextStep: objects ? skillUsage + ' Supporting files are not installed locally: download the ones SKILL.md references from objects[].url into your working directory at objects[].path, and check bytes and sha256 before running scripts or reading references.' : skillUsage } };
     }
     const template: EditableTemplate | undefined = this.templates(snapshot).find(item => item.id === id);
     if (!template) throw new Error('模板不存在，请重新获取模板目录');

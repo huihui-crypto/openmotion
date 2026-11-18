@@ -82,9 +82,15 @@ export async function buildTemplatePublication(root, commit, { origin = publicOr
       await writeFile(hostedManifestPath, jsonBytes(hostedManifest));
       uploads.push({ key: `${prefix}/${id}/hosted-files.json`, body: hostedManifestPath, contentType: 'application/json; charset=utf-8', cache: 'public, max-age=31536000, immutable', immutable: true });
     }
-    for (const [sha256, body] of objectFiles) uploads.push({ key: `${catalogRoot}/objects/${sha256}`, body, contentType: contentType(body), cache: 'public, max-age=31536000, immutable', immutable: true, object: true });
     const skills = await loadLibrarySkills(root, false);
     assertSkillIds(skills, sourceCatalog.templateIds);
+    // Skill supporting files share the content-addressed object store used by template sources.
+    for (const skill of skills) {
+      const files = await walk(path.join(root, 'library/skills', skill.id));
+      skill.objects = files.map(file => ({ path: file.relative, bytes: file.bytes, sha256: file.sha256 })).sort((a, b) => a.path.localeCompare(b.path));
+      for (const file of files) objectFiles.set(file.sha256, file.absolute);
+    }
+    for (const [sha256, body] of objectFiles) uploads.push({ key: `${catalogRoot}/objects/${sha256}`, body, contentType: contentType(body), cache: 'public, max-age=31536000, immutable', immutable: true, object: true });
     const catalog = { ...sourceCatalog, skills, commit, baseUrl, objectBaseUrl, hosted: { schemaVersion: 1, commit, source: 'openmotion-r2', baseUrl, objectBaseUrl } };
     const catalogPath = path.join(staging, 'catalog.json');
     await writeFile(catalogPath, jsonBytes(catalog));
@@ -191,7 +197,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       work = await mkdtemp(path.join(os.tmpdir(), 'openmotion-template-release-'));
       source = path.join(work, 'source');
       await runFile('git', ['worktree', 'add', '--detach', source, commit], { cwd: root, env: { ...process.env, GIT_LFS_SKIP_SMUDGE: '1' } });
-      await runFile('git', ['lfs', 'pull', '--include=library/templates/catalog/**', '--exclude='], { cwd: source });
+      await runFile('git', ['lfs', 'pull', '--include=library/templates/catalog/**,library/skills/**', '--exclude='], { cwd: source });
     }
     console.log(JSON.stringify(await publishTemplateCatalog(source, { mode, version, commit, promote, endpoint: process.env.MOTION_R2_ENDPOINT, bucket: process.env.MOTION_R2_BUCKET, origin: process.env.MOTION_INSTALL_PUBLIC_ORIGIN }), null, 2));
   } finally {

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Phase1Service } from '../phase1.ts';
 import { WorkspaceStore } from '../workspace.ts';
 import test from 'node:test';
@@ -65,15 +66,18 @@ test('uncarded Skills use frontmatter and hosted publication preserves instructi
   await writeFile(path.join(templateRoot, 'template.json'), JSON.stringify(record));
   const built = await buildTemplatePublication(root, manifest.commit);
   t.after(() => rm(built.staging, { recursive: true, force: true }));
-  assert.deepEqual(built.catalog.skills, skills);
-  const request = async (url: any) => new Response(JSON.stringify(String(url).endsWith('/template.json') ? record : manifest));
+  assert.deepEqual(built.catalog.skills.map(({ objects: _objects, ...skill }: { objects?: unknown }) => skill), skills);
+  const request = async (url: any) => new Response(JSON.stringify(String(url).endsWith('/template.json') ? record : built.catalog));
   const hosted = await loadHostedCatalog(request as typeof fetch);
   const catalog = new TemplateCatalog(root, { source: 'hosted', fetch: request as typeof fetch });
   const detail = await catalog.detail('uncarded');
   assert.equal(detail.instructions, skills[0].instructions);
   assert.equal(detail.localSource, undefined);
-  assert.equal(detail.fileUrls?.['references/example.md'], `https://raw.githubusercontent.com/nexu-io/openmotion/${'a'.repeat(40)}/library/skills/uncarded/references/example.md`);
-  assert.match(detail.workflowGuide.nextStep, /fileUrls/);
+  const object = detail.objects?.find((file: { path: string }) => file.path === 'references/example.md');
+  assert.equal(object?.sha256, createHash('sha256').update('reference').digest('hex'));
+  assert.equal(object?.url, `${hosted.objectBaseUrl}/${object?.sha256}`);
+  assert(built.uploads.some(upload => upload.object && upload.key.endsWith('/objects/' + object?.sha256)));
+  assert.match(detail.workflowGuide.nextStep, /sha256/);
   await assert.rejects(catalog.get('uncarded'), /Skills are instructions/);
-  assert.deepEqual(restoreHostedCatalog(JSON.parse(serializeHostedCatalog(hosted)), request as typeof fetch).skills, skills);
+  assert.deepEqual(restoreHostedCatalog(JSON.parse(serializeHostedCatalog(hosted)), request as typeof fetch).skills, hosted.skills);
 });
