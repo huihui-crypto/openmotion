@@ -1,5 +1,6 @@
 import { publicProviderConnection, type DirectoryModel, type ModelKind, type ProviderConnection, type ProviderDirectory } from '../shared/provider-directory.ts';
 import { isGatewayProvider, isMediaProvider, registeredProvider } from '../shared/provider-registry.ts';
+import { accountMediaState } from './account-media.ts';
 import type { ModelGateway } from './service.ts';
 
 export async function providerDirectory(gateway: ModelGateway): Promise<ProviderDirectory> {
@@ -11,7 +12,7 @@ export async function providerDirectory(gateway: ModelGateway): Promise<Provider
   }));
   const official: ProviderConnection = { ...registeredProvider('account')!,
     custom: false, configured: account.state === 'signed-in', enabled: account.state === 'signed-in', available: account.state === 'signed-in',
-    credentialSource: account.state === 'signed-in' ? 'account' : 'none', reason: account.state === 'signed-in' ? 'Included with your account' : account.state === 'reauth-required' ? 'OpenDesign sign-in expired; sign in again to use your account models' : 'Sign in to use your account models', website: account.consoleUrl };
+    credentialSource: account.state === 'signed-in' ? 'account' : 'none', reason: accountMediaState(account).reason, website: account.consoleUrl };
   const models: DirectoryModel[] = [];
   for (let offset: number | null = 0; offset !== null;) {
     const page = await gateway.listModels({ offset, limit: 100 });

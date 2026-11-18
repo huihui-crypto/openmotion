@@ -21,9 +21,11 @@ export type Model = {
 };
 export type Agent = { id: string; label: string; installed: boolean; authenticated: boolean;
   imageGeneration: boolean; available: boolean; reason: string };
+/** Advisory hints for signed-in accounts only; absent for signed-out or expired sessions. */
+export type AccountMediaEntitlement = { mediaEntitlement: 'included' | 'not-included' | 'unknown'; plan?: string; hasBalance?: boolean };
 export type ProviderState = { id: ProviderId; label: string; enabled: boolean; configured: boolean;
   available: boolean; credentialSource: 'stored' | 'environment' | 'local-agent' | 'account' | 'none';
-  verification: 'unverified' | 'verified' | 'rejected'; reason: string; checkedAt?: number; baseUrl?: string };
+  verification: 'unverified' | 'verified' | 'rejected'; reason: string; checkedAt?: number; baseUrl?: string } & Partial<AccountMediaEntitlement>;
 export type GatewayStatus = { providers: ProviderState[]; agents: Agent[];
   routes: Partial<Record<Modality, string>>;
   capabilities: { modality: Modality; available: boolean; modelIds: string[]; selectedModelId?: string }[] };

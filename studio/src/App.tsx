@@ -1,3 +1,5 @@
+import { TimelineCaptionActions } from './motion/TimelineCaptionActions';
+import { TimelineCaptionsMenu } from './motion/TimelineCaptionsMenu';
 import { useOwnPreviewIframe, usePreviewIframeStore } from "./player/store/previewIframeStore";
 import { buildProjectApiPath } from "./utils/projectRouting";
 import { Fragment, useState, useCallback, useRef, useMemo, useEffect, type SetStateAction } from "react";
@@ -487,13 +489,15 @@ export function StudioApp({ readOnlyPreview = false, readOnlyPreviewReason, reso
   const timelineToolbar = useMemo(
     () => (
       <TimelineToolbar
+        leftActions={<TimelineCaptionActions onAddToTimeline={handleAddAssetAtPlayhead} />}
+        rightActions={<TimelineCaptionsMenu />}
         domEditSession={toolbarSession}
         onResizeElement={timelineEditing.handleTimelineElementResize}
         onSplitElement={timelineEditing.handleTimelineElementSplit}
         onSplitAtPlayhead={timelineEditing.handleSplitAtPlayhead}
       />
     ),
-    [toolbarSession, timelineEditing.handleTimelineElementSplit, timelineEditing.handleSplitAtPlayhead, timelineEditing.handleTimelineElementResize],
+    [handleAddAssetAtPlayhead, toolbarSession, timelineEditing.handleTimelineElementSplit, timelineEditing.handleSplitAtPlayhead, timelineEditing.handleTimelineElementResize],
   );
   const handleExport = useCallback(() => {
     void previewPersistence

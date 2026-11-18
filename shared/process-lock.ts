@@ -21,7 +21,7 @@ async function retryBusy<T>(work: () => Promise<T>): Promise<T> {
 }
 async function ownerOf(filename: string): Promise<Owner | null | undefined> {
   try {
-    const owner = JSON.parse(await readFile(filename, 'utf8'));
+    const owner = JSON.parse(await retryBusy(() => readFile(filename, 'utf8')));
     return Number.isSafeInteger(owner?.pid) && owner.pid > 0 && typeof owner.token === 'string' && /^[0-9a-f-]{36}$/.test(owner.token) ? owner : null;
   } catch (error) {
     if (error instanceof SyntaxError) return null;
@@ -40,7 +40,7 @@ export async function withProcessLock<T>(filename: string, work: () => Promise<T
       catch (error) {
         const code = (error as NodeJS.ErrnoException).code!;
         if (code !== 'EEXIST' && !(process.platform === 'win32' && busyCodes.has(code))) throw error;
-        const owner = await retryBusy(() => ownerOf(filename));
+        const owner = await ownerOf(filename);
         if (owner === null) throw new Error(`Lock has no verifiable owner: ${filename}. Close all OpenMotion processes before removing this legacy lock. For an empty workspace.lock, run scripts/recover-workspace-lock.ts --data-dir with this workspace directory to inspect offline recovery.`);
         if (owner && !alive(owner.pid)) {
           await withProcessLock(filename + '.reclaim', async () => {

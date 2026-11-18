@@ -30,3 +30,13 @@ A user-sent “yes / 好 / 就这个” after one named recommendation accepts t
 Carry the accepted ID, source and requirements until the user explicitly changes the selection. A directly editable source can use `projectType=template`; a reference-only source requires recreation, not a different template. Sample experiences retain the accepted content, motion and native duration; unrelated workspace branding is not a request to adapt them.
 
 A native recommendation card identifies the exact ID in this chat's corresponding result. Its Recreate template button only prepares a composer draft; it does not submit a task or authorize creation/export. Draft preparation is not project creation evidence. Presentation itself remains read-only.
+
+## First-run delivery
+
+Applies to the first successful delivery of an accepted onboarding recommendation, whether it continued as a template or a recreation.
+
+For a successful first-run delivery, keep the editable OpenMotion page open on the right. The final reply contains, in order, one concise completion sentence and the contextual next-step invitation below. Use plain Markdown. Keep screenshots and verification evidence in local records; omit editor screenshots, ZIPs, duplicate project links and checklists unless requested. The selected final-video preview follows [shared delivery](production.md#choose-one-final-video-preview), including host-native embedding; additional downloads still depend on the requested scope. HTML wrappers such as `<details>` and `<summary>` are not part of the reply format.
+
+After the completion sentence, generate one brief, natural sentence in the user's language asking what video they want to make next and introducing three ways to start: choose an existing template, send a video link to recreate, or describe their requirements for an original video. Adapt the wording to the conversation; this is a behavior instruction, not a fixed script. If the user already supplied their next request, acknowledge or continue that request instead of asking again. Otherwise wait for their choice before starting another video. This invitation belongs only to the first successful experience delivery, not follow-up edits or exports.
+
+If a host lacks browser/panel capability, provide the project URL and briefly state that the page could not be opened automatically. Report any material delivery limitation before inviting new work. If the project cannot be created or does not load and play, or a requested export fails, preserve the editable project and report the concrete failure without a success statement or next-step invitation. If tools are unavailable, carry this selected template/defaults/project scope into a continuation without asking the user to choose again.

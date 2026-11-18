@@ -118,7 +118,15 @@ if (args[0] === 'login') {
   if (scenario === 'billing-401') { console.error('Error: fetch billing summary: API request failed with status 401: invalid_api_key'); process.exit(1); }
   if (scenario === 'billing-502') { console.error('Error: fetch billing summary: API request failed with status 502'); process.exit(1); }
   if (scenario === 'billing-403-text') { console.error('Error: fetch billing summary: API request failed with status 403: rate-limited by edge'); process.exit(1); }
-  json(scenario === 'billing-free' ? { membershipTier: null, balanceUsd: '0.00' } : { membershipTier: 'pro', balanceUsd: '12.50' });
+  const summaries = {
+    'billing-free': { membershipTier: null, balanceUsd: '0.00' },
+    'billing-go': { membershipTier: ' Go ', balanceUsd: '0.00' },
+    'billing-plus': { membershipTier: 'PLUS', balanceUsd: '0.00' },
+    'billing-topup': { membershipTier: 'free', balanceUsd: '1.2345' },
+    'billing-malformed': { membershipTier: 'free', balanceUsd: 'invalid' },
+    'billing-missing': { membershipTier: 'go' },
+  };
+  json(summaries[scenario] ?? { membershipTier: 'pro', balanceUsd: '12.50' });
 } else if (args[0] === 'model') json({ source: 'remote', data: [{ id: 'language-one', enabled: true }, { id: 'disabled-one', enabled: false }] });
 // The connector reports speech and music models as `audio_speech` / `audio_music`.
 // Only `fixture-image` publishes `edits`; `fixture-image-basic` generates without input images.

@@ -511,13 +511,13 @@ describe("useTimelineClipDrag — trim guide and preview frame", () => {
     h.unmount();
   });
 
-  it("snaps a trimmed edge to the ruler's grid line when no clip edge is near", () => {
+  it("follows the pointer past ruler lines when no media edge is near", () => {
     const h = trimAEndBesideB();
     h.movePointer(152); // 3.52s, 2px from the 3.5s line (0.25s apart at 100px/s)
     expect(h.getResizingClip()).toMatchObject({
-      snapTime: 3.5,
-      snapType: "grid",
-      previewDuration: 3.5,
+      snapTime: null,
+      snapType: null,
+      previewDuration: 3.52,
     });
     h.unmount();
   });

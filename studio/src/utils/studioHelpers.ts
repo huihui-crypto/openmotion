@@ -364,7 +364,7 @@ async function probeDroppedAssetDuration(
   assetPath: string,
   kind: TimelineAssetKind,
 ): Promise<number> {
-  if (kind === "image") return 3;
+  if (kind === "image" || kind === "text") return 3;
 
   const media = document.createElement(kind === "video" ? "video" : "audio");
   media.preload = "metadata";
@@ -439,7 +439,7 @@ export async function resolveDroppedAssetDimensions(
   assetPath: string,
   kind: TimelineAssetKind,
 ): Promise<{ width: number; height: number } | null> {
-  if (kind === "audio") return null;
+  if (kind === "audio" || kind === "text") return null;
   const src = buildProjectApiPath(projectId, `/preview/${encodeUrlPath(assetPath)}`);
 
   if (kind === "image") {

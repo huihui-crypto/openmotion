@@ -216,6 +216,7 @@ export function useShadowPreviewReload({
     (gen: number) => {
       const promotable = shadowReadyToPromote(gen);
       if (!promotable || heldOrStale(gen)) return;
+      logReload("perf-shadow-promote", {gen});
       const { shadow, pending } = promotable;
       stopPendingShadow();
       // The live frame kept playing, stopped at the end or was seeked while the shadow loaded.
@@ -256,6 +257,7 @@ export function useShadowPreviewReload({
       if (gen == null || gen !== shadowGenRef.current) return;
       const register = () => {
         if (gen !== shadowGenRef.current) return;
+        logReload("perf-shadow-adapter", {gen});
         pendingCommitRef.current = { gen, commit };
         promoteWhenReady(gen);
       };
@@ -290,6 +292,7 @@ export function useShadowPreviewReload({
   const onShadowReadyChange = useCallback(
     (gen: number, ready: boolean) => {
       if (gen !== shadowGenRef.current) return;
+      logReload("perf-shadow-painted", {gen, ready});
       visuallyReadyGenRef.current = ready ? gen : null;
       if (ready) promoteWhenReady(gen);
     },
@@ -333,6 +336,7 @@ export function useShadowPreviewReload({
 
   const beginShadowReload = useCallback(
     (url: string) => {
+      logReload("perf-shadow-start");
       retry.started();
       shadowGenRef.current += 1;
       const gen = shadowGenRef.current;

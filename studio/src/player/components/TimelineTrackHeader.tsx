@@ -26,6 +26,7 @@ import { AutomationLaneHeaderRow, PropertyGroupHeaderRow } from "./trackHeaderLa
 import { useMemo } from "react";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { TimelineTrackControls } from "./TimelineTrackControls";
+import type { TrackIdentity } from './timelineTrackIdentity';
 
 /** Accent rail + inset marking a row as a group MEMBER, matching the level-2
  *  nesting its `aria-level` already reports. */
@@ -42,6 +43,7 @@ export function gutterFill(base: string, isGroupMember: boolean): string {
 }
 
 interface TimelineTrackHeaderProps {
+  identity?: TrackIdentity;
   /** The track's real key: a FRACTIONAL z-order sort value. Routes callbacks;
    *  never shown or announced. */
   trackNumber: number;
@@ -87,6 +89,7 @@ interface TimelineTrackHeaderProps {
 
 // fallow-ignore-next-line complexity
 export function TimelineTrackHeader({
+  identity,
   trackNumber,
   trackDisplayNumber,
   trackLabel,
@@ -297,7 +300,7 @@ export function TimelineTrackHeader({
     >
       {mvp ? (
         <div className="motion-track-controls-row" style={{ height: TRACK_H }}>
-          <TimelineTrackControls elements={trackElements} track={trackNumber} number={trackDisplayNumber}
+          <TimelineTrackControls identity={identity} elements={trackElements} track={trackNumber} number={trackDisplayNumber}
             label={trackLabel} hidden={isTrackHidden} audioOnly={isAudioOnly} toggleHidden={onToggleTrackHidden}>
             {disclosable && <LaneToggleButton name={laneOwnerName} isExpanded={isExpanded}
               lanesId={lanesId} onToggle={onToggleClipExpanded} />}

@@ -28,4 +28,4 @@ Dense multi-shot work, unfamiliar visual mechanisms and movement under requested
 
 Hard-cut verification and edit dependencies from the shared [fidelity checks](../../openmotion-production/references/reference-video.md#check-fidelity-and-edit-dependencies) apply during default creation. Comparison during default creation stays within the single focused preview pass in [delivery](verify.md#1-default-delivery).
 
-For an explicitly requested visual revision, compare affected frames with the reference and apply the shared bounded repair: when two consecutive fixes for the same issue do not visibly reduce the difference, change the approach once; if that also fails, record the issue in the working notes and move on.
+An explicitly requested visual revision follows [requested review or revision](verify.md#3-requested-visual-review-or-revision).

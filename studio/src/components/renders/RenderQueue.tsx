@@ -132,7 +132,8 @@ function resolvedDimensions(
 // render time — e.g. 1080p on a 1080×1080 square or 1080p on a 1280×720 comp
 // (1.5× isn't integer).
 function scaleApplies(scale: RenderScale, dims: CompositionDimensions | null | undefined): boolean {
-  if (scale === "auto" || dims == null) return true;
+  if (scale === "auto") return true;
+  if (dims == null) return false;
   const preset = resolveResolution(scale, dims);
   if (preset === "auto") return true;
   const target = CANVAS_DIMENSIONS[preset];
@@ -215,6 +216,7 @@ function FormatExportButton({
   const [format, setFormat] = useState<"mp4" | "webm" | "mov" | "gif">(persisted.format);
   const [quality, setQuality] = useState<"draft" | "standard" | "high">(persisted.quality);
   const [resolution, setResolution] = useState<RenderScale>("auto");
+  const effectiveResolution = scaleApplies(resolution, compositionDimensions) ? resolution : "auto";
   const [requestedFps, setFps] = useState<24 | 30 | 60>(persisted.fps);
   const fps = resolveRenderFps(format, requestedFps);
   const [gpu, setGpu] = useState(persisted.gpu);
@@ -242,7 +244,9 @@ function FormatExportButton({
           onRecheck={onRecheckFfmpeg}
         />
       )}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="om-handoff-summary"><RemixIcon name="file-video-line" size={20} /><div className="min-w-0"><span className="text-step-12 font-medium">{format.toUpperCase()}</span><p className="text-step-11 text-text-3">{scaleOptionLabel(effectiveResolution, compositionDimensions, t, mvp)} · {fps} fps</p></div></div>
+      <details open={!mvp || undefined}><summary className="om-disclosure-summary">{t("Export settings")}<RemixIcon name="arrow-down-s-line" size={14} /></summary>
+      <div className="grid grid-cols-2 gap-2 py-2">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-1">
             <span className="text-step-10 text-text-4">{t("Format")}</span>
@@ -264,7 +268,7 @@ function FormatExportButton({
           <span className="text-step-10 text-text-4">{t("Resolution")}</span>
           <Select
             label={t("Resolution")}
-            value={resolution}
+            value={effectiveResolution}
             options={SCALE_OPTION_ORDER.map((value) => ({
               value,
               label: scaleOptionLabel(value, compositionDimensions, t, mvp),
@@ -323,6 +327,7 @@ function FormatExportButton({
           }}
         />
       )}
+      </details>
       <Button
         variant="primary"
         size="md"
@@ -335,7 +340,7 @@ function FormatExportButton({
           // double-click in the same frame from enqueueing two renders.
           if (exportBlocked) return;
           trackStudioClick("export_panel", "start_export", projectId, clickMethod(event));
-          const outputResolution = resolveResolution(resolution, compositionDimensions);
+          const outputResolution = resolveResolution(effectiveResolution, compositionDimensions);
           trackStudioEvent("render_start", { format, quality, resolution: outputResolution, fps });
           void startConfiguredRender(onStartRender, {
             format,

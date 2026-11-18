@@ -17,7 +17,7 @@ describe("media types", () => {
   });
 
   it("still refuses files that are not media", () => {
-    for (const path of ["notes.pdf", "font.woff2", "grade.cube", "clip.m4v.txt", "flac"]) {
+    for (const path of ["notes.pdf", "grade.cube", "clip.m4v.txt", "flac"]) {
       expect(getTimelineAssetKind(path)).toBeNull();
       expect(isMediaFile(path)).toBe(false);
     }
@@ -30,4 +30,9 @@ describe("media types", () => {
       expect(MEDIA_EXT.test(path)).toBe(kinds > 0);
     }
   });
+});
+
+it("treats a font as a text insertion without treating it as playable media", () => {
+  expect(getTimelineAssetKind("font.woff2")).toBe("text");
+  expect(isMediaFile("font.woff2")).toBe(false);
 });

@@ -9,8 +9,8 @@ test('installation onboarding routes only to existing Skills', async () => {
   const script = await readFile(new URL('../scripts/install-motion.command', import.meta.url), 'utf8');
   assert.match(script, /scripts\/install-onboarding\.mjs/);
   const contract = await readFile(new URL('../docs/install-onboarding.md', import.meta.url), 'utf8');
-  assert.match(contract, /directly editable sources use openmotion-template-to-video/);
-  assert.match(contract, /references use openmotion-recreate/);
+  assert.match(contract, /When `hasHtmlProject` is true, use `openmotion-template-to-video` to reuse the editable source/);
+  assert.match(contract, /Use `openmotion-recreate` only when the source has no editable project/);
   await access(new URL('../skills/openmotion-recreate/SKILL.md', import.meta.url));
   await access(new URL('../skills/openmotion-template-to-video/SKILL.md', import.meta.url));
   const guide = new URL('../docs/usage.md', import.meta.url);

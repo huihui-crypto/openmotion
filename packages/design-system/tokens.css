@@ -4,6 +4,7 @@
   --motion-font-sans: "Albert Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --motion-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
   --motion-font-display: "Albert Sans", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --motion-media-action-bg: color-mix(in srgb, var(--motion-neutral-n11) 95%, transparent);
   --motion-tooltip-bg: var(--motion-neutral-n11);
   --motion-tooltip-fg: var(--motion-neutral-n0);
   --motion-text-xs: 11px;

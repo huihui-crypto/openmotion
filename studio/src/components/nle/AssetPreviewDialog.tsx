@@ -1,6 +1,8 @@
 import { Dialog } from "@base-ui/react/dialog";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useI18n } from "../../i18n/I18n";
+import { useToast } from "../../hooks/useToast";
+import { StudioToastViewport } from "../StudioToastViewport";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { Button, IconButton, Tooltip } from "../ui";
 import { VolumeControl } from "../../player/components/VolumeControl";
@@ -17,28 +19,28 @@ export function AssetPreviewDialog({ url, kind, name, onClose, onAdd }: {
   const { t } = useI18n();
   const [open, setOpen] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [addFailed, setAddFailed] = useState(false);
+  const { toasts, showToast, dismissToast } = useToast();
   const busy = useRef(false);
   const add = async () => {
     if (!onAdd || busy.current) return;
     busy.current = true;
     setAdding(true);
-    setAddFailed(false);
     try {
       if (await onAdd() === false) throw new Error("Add failed");
       onClose();
     } catch {
-      setAddFailed(true);
+      showToast("Failed to add media");
     } finally {
       busy.current = false;
       setAdding(false);
     }
   };
   const audioMode = kind === "audio";
-  return <Dialog.Root open={open} onOpenChange={setOpen} onOpenChangeComplete={next => { if (!next) onClose(); }}>
+  return <><Dialog.Root open={open} onOpenChange={setOpen} onOpenChangeComplete={next => { if (!next) onClose(); }}>
     <Dialog.Portal>
       <Dialog.Backdrop forceRender className="hf-overlay-backdrop fixed inset-0 z-140 bg-media-preview-scrim" />
       <Dialog.Popup aria-label={t("Preview: {name}", { name })} aria-describedby={undefined}
+        data-feedback-modal
         data-preview-kind={kind}
         className={`fixed top-1/2 left-1/2 z-150 flex ${audioMode ? "motion-asset-audio-preview h-[min(280px,85dvh)] w-[min(640px,90vw)]" : "h-[min(600px,85dvh)] w-[min(800px,90vw)]"} -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl border border-border bg-surface text-text-1 shadow-menu outline-none`}
         onKeyDown={event => event.stopPropagation()}>
@@ -52,11 +54,10 @@ export function AssetPreviewDialog({ url, kind, name, onClose, onAdd }: {
             <Dialog.Close render={<IconButton className="shrink-0" aria-label={t("Close preview")} icon={<RemixIcon name="close-line" size={16} />} />} />
           </div>
         </div>
-        {addFailed && <p role="alert" className="shrink-0 px-3 pb-2 text-step-12 text-danger-ink">{t("Failed to add media")}</p>}
         <DialogMedia key={`${kind}:${url}`} url={url} kind={kind} name={name} />
       </Dialog.Popup>
     </Dialog.Portal>
-  </Dialog.Root>;
+  </Dialog.Root><StudioToastViewport toasts={toasts} dismissToast={dismissToast} /></>;
 }
 
 function DialogMedia({ url, kind, name }: { url: string; kind: "video" | "audio" | "image"; name: string }) {

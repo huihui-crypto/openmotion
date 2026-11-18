@@ -7,7 +7,7 @@ import { requireNativeRuntime } from '../scripts/npm-runtime.mjs';
 import { pluginRoot } from '../hyperframes.ts';
 import { readLibraryAsset } from './asset-read.ts';
 
-export async function assetOperation(store: WorkspaceStore, args: any, importProject?: (input: any) => Promise<any>, tracking?: OmTracking) {
+export async function assetOperation(store: WorkspaceStore, args: any, importProject?: (input: any, options?: { receiptName: string; reusePinnedContent: boolean }) => Promise<any>, tracking?: OmTracking) {
   const library = new AssetLibrary(store), gateway = gatewayFor(store, tracking);
   if (args.action === 'list') return library.list(args);
   if (args.action === 'read') return readLibraryAsset(library, args);
@@ -40,7 +40,8 @@ export async function assetOperation(store: WorkspaceStore, args: any, importPro
     if (!importProject || !args.projectId || !args.requestId) throw new Error('Explicit projectId and requestId are required');
     const { asset, version, filename } = await library.resolve({ assetId: args.assetId, versionId: args.versionId });
     return importProject({ projectId: args.projectId, requestId: args.requestId,
-      items: [{ itemId: `library-${asset.id}-${version.id}`, sourcePath: filename, name: version.name ?? version.filename, expectedSha256: version.sha256 }] });
+      items: [{ itemId: `library-${asset.id}-${version.id}`, sourcePath: filename, name: args.name ?? asset.name ?? version.name ?? version.filename, expectedSha256: version.sha256 }] },
+      { receiptName: args.name ?? version.name ?? version.filename, reusePinnedContent: true });
   }
   throw new Error('Unknown asset operation');
 }

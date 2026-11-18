@@ -52,6 +52,7 @@ export function FileManagerProvider({
     handleCreateFolder,
     handleDeleteFile,
     handleRenameFile,
+    handleRenameAsset,
     handleDuplicateFile,
     handleMoveFile,
     handleImportFiles,
@@ -59,6 +60,7 @@ export function FileManagerProvider({
     compositions,
     assets,
     fontAssets,
+    assetNames,
   },
   children,
 }: {
@@ -100,6 +102,7 @@ export function FileManagerProvider({
       handleCreateFolder,
       handleDeleteFile,
       handleRenameFile,
+      handleRenameAsset,
       handleDuplicateFile,
       handleMoveFile,
       handleImportFiles,
@@ -107,6 +110,7 @@ export function FileManagerProvider({
       compositions,
       assets,
       fontAssets,
+      assetNames,
     }),
     [
       editingFile,
@@ -142,6 +146,7 @@ export function FileManagerProvider({
       handleCreateFolder,
       handleDeleteFile,
       handleRenameFile,
+      handleRenameAsset,
       handleDuplicateFile,
       handleMoveFile,
       handleImportFiles,
@@ -149,6 +154,7 @@ export function FileManagerProvider({
       compositions,
       assets,
       fontAssets,
+      assetNames,
     ],
   );
   return <FileManagerContext value={stable}>{children}</FileManagerContext>;

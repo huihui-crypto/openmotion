@@ -1,3 +1,4 @@
+import { formatTemplatePrompt } from '../shared/template-prompts.ts';
 import { Window } from 'happy-dom';
 import { onboardingTemplateIds, selectOnboardingTemplateIds } from '../shared/onboarding-templates.ts';
 import test from 'node:test';
@@ -142,14 +143,15 @@ test('reference recommendations keep exact catalog identities without builtin cr
     assert.equal(card.durationSeconds, Number(record.entry.original.durationSeconds));
   }
   assert.match(result.selectionGuide, /openmotion_get_template/);
-  assert.match(result.selectionGuide, /openmotion-recreate/);
+  assert.match(result.selectionGuide, /If hasHtmlProject is true, follow openmotion-template-to-video/);
+  assert.match(result.selectionGuide, /openmotion-recreate only for reference-only sources/);
   const bootstrap = JSON.parse(presentation.content.text.match(/window\.__OPENMOTION_TEMPLATE_CARDS__=(.*?);<\/script>/s)![1]) as TemplateCardsBootstrap;
   assert(readRecommendation(result, bootstrap));
   for (const card of result.cards) for (const language of ['zh', 'en', 'ja', 'ko', 'fr', 'es', 'pt'] as const) {
     const prompt = recreationPrompt(card, language);
     assert(prompt.includes(card.templateId));
-    assert.match(prompt, /openmotion_get_template/);
-    assert.match(prompt, /openmotion-recreate/);
+    assert.equal(prompt, formatTemplatePrompt({ id: card.templateId, title: card.title }, language === 'pt' ? 'pt-br' : language));
+    assert.doesNotMatch(prompt, /openmotion-recreate/);
   }
   const injected = structuredClone(result);
   Object.assign(injected.cards[0], { createArgs: { projectType: 'template', templateId: selected[0] } });

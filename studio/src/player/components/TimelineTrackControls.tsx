@@ -9,11 +9,13 @@ import { VisibilityButton } from './TimelineTrackPlainHeader';
 import { TimelineTrackAudioControls } from './TimelineTrackAudioControls';
 import type { TimelineEditCallbacks } from './timelineCallbacks';
 import type { TimelineElement } from '../store/timelineElement';
+import { trackKind, type TrackIdentity } from './timelineTrackIdentity';
 
-export function TimelineTrackControls({ elements, track, number, label, hidden, audioOnly, toggleHidden, children }: {
+export function TimelineTrackControls({ elements, track, number, label, hidden, audioOnly, toggleHidden, children, identity }: {
   elements: readonly TimelineElement[]; track: number; number: number | null; label: string;
   hidden: boolean; audioOnly: boolean; toggleHidden: TimelineEditCallbacks['onToggleTrackHidden'];
   children?: ReactNode;
+  identity?: TrackIdentity;
 }) {
   const { t } = useI18n();
   const edits = useTimelineEditContextOptional();
@@ -30,15 +32,13 @@ export function TimelineTrackControls({ elements, track, number, label, hidden, 
     catch (error) { shell?.showToast(error instanceof Error ? error.message : 'Changes could not be saved.', 'error'); }
     finally { running.current = false; setBusy(false); }
   };
-  const kind = audioOnly ? 'music-2-line' :
-    elements.length && elements.every(element => element.text || /^(h[1-6]|p|span|strong)$/.test(element.tag)) ? 'text' :
-    elements.length && elements.every(element => element.tag === 'img') ? 'image-line' : 'film-line';
+  const kind = identity?.kind || trackKind(elements), code = identity?.code || `${kind}${number || 1}`;
   const name = t('Track {number}' , { number: number ?? '' });
   const lockLabel = t(locked ? 'Unlock track' : 'Lock track');
   return <div className="motion-track-controls" aria-label={name}
     onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}>
-    <Tooltip label={`${name} · ${label}`} wrap><span className="motion-track-kind" aria-label={name}>
-      <RemixIcon name={kind} size={16} />
+    <Tooltip label={`${code} · ${t(identity?.label || 'Track')} · ${label}`} wrap><span className="motion-track-kind motion-track-badge" data-track-kind={kind} aria-label={`${code} · ${t(identity?.label || 'Track')}`}>
+      {code}
     </span></Tooltip>
     <Tooltip label={lockLabel} wrap><button type="button" aria-label={`${lockLabel} · ${name}`}
       aria-pressed={locked} disabled={disabled || !edits.onSetElementsAttributeQuiet}

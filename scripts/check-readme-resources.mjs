@@ -10,6 +10,8 @@ export const resourceDocuments = [
   'docs/motion-design-examples.md', 'docs/motion-design-examples.zh-CN.md',
   'docs/collections/README.md', 'docs/collections/README.zh-CN.md',
 ];
+// This repository-owned chart is refreshed daily, so it has no fixed content hash.
+const dailyChartSource = 'srcset="https://raw.githubusercontent.com/nexu-io/openmotion/readme-charts/star-history.svg"';
 const remote = /^(?:https?:)?\/\//i;
 
 export async function checkDocument(file, mediaURLs = new Set(), mediaSizes = new Map()) {
@@ -20,7 +22,7 @@ export async function checkDocument(file, mediaURLs = new Set(), mediaSizes = ne
     const url = match.slice(1).find(Boolean);
     const embedded = Boolean(match[1] || match[2]);
     const media = /\.(?:mp4|webm|mov|gif|png|jpe?g|svg|woff2?|ttf|mp3|wav)(?:[?#]|$)/i.test(url);
-    assert(!(remote.test(url) && (embedded || media) && !mediaURLs.has(url)), `${file}: external display/media dependency: ${url}`);
+    assert(!(remote.test(url) && (embedded || media) && !mediaURLs.has(url) && match[0] !== dailyChartSource), `${file}: external display/media dependency: ${url}`);
     if (embedded && remote.test(url)) {
       assert(!(mediaSizes.get(url) > 5_000_000), `${file}: embedded image exceeds GitHub's 5 MB proxy limit; use a smaller display version and retain the original download: ${url}`);
     }

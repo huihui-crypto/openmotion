@@ -88,3 +88,15 @@ it("ignores a slow metadata response after switching projects", async () => {
   });
   expect(container.querySelector("[data-assets-list]")?.textContent).not.toContain("picture.svg");
 });
+
+it('searches the readable project name while keeping the original media path', async () => {
+  const path = 'assets/imported/820c4903-b493-48e8-84b3-7252d365727a.jpg';
+  await act(async () => root.render(<AssetsTab projectId="p" assets={[path]} assetNames={{ [path]: 'Dia wallpaper' }} />));
+  const input = container.querySelector<HTMLInputElement>('input[aria-label="Search assets"]')!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'wallpaper');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  expect(container.querySelector('[data-assets-list]')?.textContent).toContain('Dia wallpaper');
+  expect(container.querySelector('img')?.src).toContain(path);
+});

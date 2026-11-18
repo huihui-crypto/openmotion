@@ -1,6 +1,6 @@
 import * as tracking from './pageTracking';
 import { Tooltip } from "../components/ui/Tooltip";
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 import type { AccountSummary } from '../../../shared/provider-directory';
 import { RemixIcon } from '../icons/RemixIcons';
 import { useI18n } from '../i18n/I18n';
@@ -10,6 +10,13 @@ import { gatewayRequest } from './gatewayClient';
 import { GITHUB_REPOSITORY } from './githubRepository';
 import { notifyProvidersChanged } from './useProviderDirectory';
 import { SettingsError, SettingsLoading } from './settingsPrimitives';
+
+function subscriptionUrl(consoleUrl: string) {
+  const url = new URL(consoleUrl + '/dashboard');
+  url.search = new URLSearchParams({ billing: 'plan', od_origin: 'openmotion', od_entry_source: 'openmotion_manage_subscription',
+    od_entry_id: crypto.randomUUID(), od_entry_at: new Date().toISOString() }).toString();
+  return url.href;
+}
 
 export function useAccountSummary() {
   const [account, updateAccount] = useState<AccountSummary | null>(null), [error, setError] = useState(false);
@@ -31,6 +38,10 @@ export function AccountSettings({ subscription = false, openProviders }: { subsc
   const { t } = useI18n(), state = useAccountSummary(), toast = useToast();
   const [busy, setBusy] = useState(false), [refreshing, setRefreshing] = useState(false), [lastState, setLastState] = useState<string>();
   const signedIn = state.account?.state === 'signed-in';
+  function manageSubscription(event: MouseEvent<HTMLAnchorElement>) {
+    if (event.detail === 0 && event.button === 0) event.currentTarget.href = subscriptionUrl(state.account!.consoleUrl);
+    tracking.reportSettingsClick('account', 'manage_subscription');
+  }
   useEffect(() => {
     if (signedIn) void state.refresh(true);
   }, [signedIn, state.refresh]);
@@ -70,7 +81,7 @@ export function AccountSettings({ subscription = false, openProviders }: { subsc
       <section className="om-settings-section"><div className="om-settings-row"><h2 className="om-subtitle">{t('Subscription & usage')}</h2>{signedIn && <Tooltip label={t('Refresh account')} wrap><button className="motion-icon-button" aria-label={t('Refresh account')} disabled={refreshing} aria-busy={refreshing} onClick={() => void refreshBilling()}><RemixIcon name={refreshing ? 'loader-4-line' : 'refresh-line'} size={17} className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} /></button></Tooltip>}</div>
         {!(signedIn && account.billingUnavailable) && <div className="om-account-metrics"><div className="om-card"><span className="om-muted">{t('Current plan')}</span><h3 className="om-title">{signedIn && account.plan ? account.plan === 'free' ? t('Free plan') : account.plan : '—'}</h3><p className="om-muted">{t(signedIn ? 'Managed by OpenDesign' : 'Sign in to view your plan')}</p></div><div className="om-card"><span className="om-muted">{t('Available balance')}</span><h3 className="om-title">{signedIn && account.balance != null ? `$${account.balance}` : '—'}</h3><p className="om-muted">{t(signedIn ? 'Account credits in USD' : 'Sign in to view usage')}</p></div></div>}
         {signedIn && account.billingUnavailable && <div className="om-settings-row"><p className="om-muted">{t(account.billingError?.status === 403 ? "The billing service declined this request. Open Manage subscription to check your plan in OpenDesign." : "Couldn't load your plan and balance. Account models are unaffected and can be used as usual.")}</p><button className="om-button" disabled={refreshing} aria-busy={refreshing} onClick={() => void refreshBilling()}><RemixIcon name={refreshing ? 'loader-4-line' : 'refresh-line'} size={15} className={refreshing ? 'animate-spin motion-reduce:animate-none' : undefined} />{t('Refresh')}</button></div>}
-        {signedIn && <a className="om-button" href={account.consoleUrl + '/dashboard?billing=plan'} target="_blank" rel="noreferrer" onClick={() => tracking.reportSettingsClick('account', 'manage_subscription')}>{t('Manage subscription')}<RemixIcon name="external-link-line" size={15} /></a>}
+        {signedIn && <a className="om-button" href={subscriptionUrl(account.consoleUrl)} target="_blank" rel="noreferrer" onPointerDown={event => { event.currentTarget.href = subscriptionUrl(account.consoleUrl); }} onClick={manageSubscription} onAuxClick={event => { if (event.button === 1) manageSubscription(event); }}>{t('Manage subscription')}<RemixIcon name="external-link-line" size={15} /></a>}
       </section>
       <section className="om-card om-settings-row"><div><h2 className="om-subtitle">{t('Your models, your choice')}</h2><p className="om-muted">{t('Use account models or connect your own API keys. Choose a default for each capability.')}</p></div><button className="om-button" onClick={openProviders}>{t('Model providers')}<RemixIcon name="arrow-right-line" size={15} /></button></section>
     </>}

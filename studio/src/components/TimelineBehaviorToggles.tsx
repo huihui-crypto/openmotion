@@ -19,7 +19,7 @@ export function TimelineBehaviorToggles() {
   return <>
           <Tooltip
             side="bottom"
-            label={t("Snapping ({value0})", { value0: keyHint("timelineSnap", keys) })}
+            label={`${t("Snapping ({value0})", { value0: keyHint("timelineSnap", keys) })} · ${t("Hold ⌘ / Ctrl to drag freely")}`}
           >
             <button
               type="button"

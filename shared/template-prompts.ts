@@ -1,4 +1,6 @@
-// Template instructions shared by the Studio and connection-page catalogs.
+import { catalogLocale } from './template-locale.ts';
+
+// Template instructions shared by catalogs and conversation recommendation cards.
 export const templatePrompts: Record<string, string> = {
   "en": "Instructions: Use the OpenMotion plugin. If it is not installed, follow {installUrl} to install and connect it, then continue.\nSelected template: {name} ({id})\nCreative brief: Adapt the template using my requirements and attachments. Preserve its main motion and style by default, and deliver HTML and MP4.\nMy requirements:\n",
   "zh-CN": "使用说明：请使用 OpenMotion 插件。如未安装，请按 `{installUrl}` 安装并接入后继续。\n指定模板：{name}（{id}）\n创作要求：基于模板，结合我的要求和附件创作，默认保留主要动效与风格，并交付 HTML 和 MP4。\n我的要求：\n",
@@ -12,3 +14,10 @@ export const templatePrompts: Record<string, string> = {
   "tr": "Talimatlar: OpenMotion eklentisini kullanın. Yüklü değilse {installUrl} adresindeki talimatlarla kurup bağlayın, ardından devam edin.\nSeçilen şablon: {name} ({id})\nYaratıcı brief: Şablonu isteklerime ve eklerime göre uyarlayın. Varsayılan olarak ana hareketleri ve stili koruyun; HTML ve MP4 teslim edin.\nİsteklerim:\n",
   "pt-br": "Instruções: Use o plugin OpenMotion. Se ainda não estiver instalado, siga {installUrl} para instalar e conectar, depois continue.\nModelo selecionado: {name} ({id})\nBriefing criativo: Adapte o modelo com base nos meus requisitos e anexos. Por padrão, preserve os principais movimentos e o estilo e entregue HTML e MP4.\nMeus requisitos:\n"
 };
+
+/** Shared creation brief; source capabilities are resolved after the user submits it. */
+export function formatTemplatePrompt(template: { id: string; title: string }, locale = 'zh-CN'): string {
+  const message = templatePrompts[catalogLocale(Object.keys(templatePrompts), locale, 'en')];
+  const values = { installUrl: 'https://github.com/nexu-io/openmotion', name: template.title, id: template.id };
+  return message.replace(/\{(installUrl|name|id)\}/g, (_, key: keyof typeof values) => values[key]);
+}

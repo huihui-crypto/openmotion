@@ -1,7 +1,13 @@
 // @vitest-environment jsdom
 import { expect, it } from "vitest";
 import { importedFontFaceCssFor, injectPreviewImportedFont } from "../../utils/studioFontHelpers";
-import { importedFontFaceCss, type ImportedFontAsset } from "./fontAssets";
+import { fontFamilyFromAssetPath, importedFontFaceCss, type ImportedFontAsset } from "./fontAssets";
+
+it("derives labels from both encoded paths and literal percent filenames", () => {
+  expect(fontFamilyFromAssetPath("assets/My%20Font-Regular.ttf")).toBe("My Font");
+  expect(fontFamilyFromAssetPath("assets/50% off.ttf")).toBe("50% off");
+  expect(fontFamilyFromAssetPath("assets/Font%E0%A4.ttf")).toBe("Font%E0%A4");
+});
 
 const face = (file: string, extra: Partial<ImportedFontAsset> = {}): ImportedFontAsset => ({
   family: "Poppins",

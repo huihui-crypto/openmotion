@@ -1,3 +1,4 @@
+import { motionApi } from '../motion/useWorkspace';
 import { useI18n } from "../i18n/I18n";
 import { importValidationMessage } from "../i18n/importMessages";
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -82,6 +83,7 @@ export function useFileManager({
     compositions,
     assets,
     fontAssets,
+    assetNames,
   } = useFileTree({ projectId, projectIdRef });
   // Counts Studio already holds, for bucketed project-scale fields. Unknown until the tree loads.
   useEffect(() => {
@@ -430,6 +432,29 @@ export function useFileManager({
     [refreshFileTree, showToast],
   );
 
+  const handleRenameAsset = useCallback(async (assetPath: string, name: string) => {
+    const pid = projectIdRef.current;
+    if (!pid) return;
+    try {
+      await editorSave.flushPendingSave();
+      const current = await motionApi<{ revision: string; currentVersionId: string }>('/phase1/call', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'openmotion_get_project', arguments: { projectId: pid } }),
+      });
+      if (projectIdRef.current !== pid) return;
+      await motionApi('/phase1/call', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'openmotion_edit_project', arguments: { projectId: pid, requestId: crypto.randomUUID(),
+          expectedRevision: current.revision, expectedVersionId: current.currentVersionId, files: [], assetNames: [{ path: assetPath, name }] } }),
+      });
+      reportEdit('asset_rename', 'assets', true, pid);
+      if (projectIdRef.current === pid) await refreshFileTree();
+    } catch (error) {
+      reportEdit('asset_rename', 'assets', false, pid);
+      showToast(t("Couldn't rename {path}: {message}", { path: assetNames?.[assetPath] ?? assetPath, message: (error as Error).message }), 'error');
+    }
+  }, [editorSave.flushPendingSave, refreshFileTree, showToast, t, assetNames]);
+
   const handleRenameFile = useCallback(
     async (oldPath: string, newPath: string) => {
       const pid = projectIdRef.current;
@@ -612,6 +637,7 @@ export function useFileManager({
     handleCreateFolder,
     handleDeleteFile,
     handleRenameFile,
+    handleRenameAsset,
     handleDuplicateFile,
     handleMoveFile,
     handleImportFiles,
@@ -621,5 +647,6 @@ export function useFileManager({
     compositions,
     assets,
     fontAssets,
+    assetNames,
   };
 }

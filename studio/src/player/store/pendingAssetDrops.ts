@@ -21,7 +21,7 @@ export function beginPendingAssetDrop(
   duration?: number,
 ): string {
   const id = generateId();
-  duration ??= getTimelineAssetKind(assetPath) === "image" ? 3 : undefined;
+  duration ??= ["image", "text"].includes(getTimelineAssetKind(assetPath) ?? "") ? 3 : undefined;
   usePlayerStore.setState((state) => {
     const kind = getTimelineAssetKind(assetPath);
     // Resolve known collisions before the first paint, in the displayed row.

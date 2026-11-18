@@ -5,11 +5,15 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { usePlayerStore, type TimelineElement } from "../../player/store/playerStore";
 import { useAssetPreviewStore } from "../../utils/assetPreviewStore";
-import { AssetCard } from "./AssetCard";
+import { AssetCard, FontRow } from "./AssetCard";
 import { AudioRow } from "./AudioRow";
 import { InlineAssetRename } from "./InlineAssetRename";
 import { I18nProvider } from "../../i18n/I18n";
 import { TIMELINE_ASSET_MIME } from "../../utils/timelineAssetDrop";
+
+// These tests exercise names and row actions; audition and peak loading have
+// their own media-aware suites, so this mount must not fetch audio metadata.
+vi.mock("../../hooks/useAudioAssetPreview", () => ({ useAudioAssetPreview: () => ({ playing: false, pending: false, duration: 0, time: 0, toggle: vi.fn() }) }));
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -52,10 +56,10 @@ describe("inline asset rename", () => {
     });
     return { input, host, rename, done };
   }
-  it("saves on blur in the original directory", () => {
+  it("saves a display name on blur even without a resolved caption", () => {
     const { input, rename, done } = setup("new.mp4");
     act(() => input.blur());
-    expect(rename).toHaveBeenCalledWith("assets/video.mp4", "assets/new.mp4");
+    expect(rename).toHaveBeenCalledWith("assets/video.mp4", "new.mp4");
     expect(done).toHaveBeenCalledOnce();
   });
   it("commits Enter once even if followed by blur", () => {
@@ -71,14 +75,14 @@ describe("inline asset rename", () => {
     expect(rename).not.toHaveBeenCalled();
     expect(done).toHaveBeenCalledOnce();
   });
-  it("restores empty names and blocks path traversal", () => {
+  it("restores empty names and blocks control characters", () => {
     const empty = setup("   ");
     act(() => empty.input.blur());
     expect(empty.rename).not.toHaveBeenCalled();
     expect(empty.done).toHaveBeenCalledOnce();
     act(() => root?.unmount());
     root = null;
-    const invalid = setup("../other.mp4");
+    const invalid = setup("bad\u0001name");
     act(() => invalid.input.blur());
     expect(invalid.rename).not.toHaveBeenCalled();
     expect(invalid.done).not.toHaveBeenCalled();
@@ -138,6 +142,52 @@ describe("AssetCard click behavior", () => {
     expect(useAssetPreviewStore.getState().previewAsset).toBe("assets/logo.png");
     expect(useAssetPreviewStore.getState().previewProjectId).toBe("p1");
   });
+
+  it("adds from the thumbnail without opening preview or revealing a used clip", async () => {
+    const add = vi.fn().mockResolvedValue(true);
+    usePlayerStore.getState().setElements([clip({ id: "existing", src: "assets/logo.png" })]);
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used onAddAssetToTimeline={add} />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    const PointerCtor = window.PointerEvent ?? MouseEvent;
+    await act(async () => {
+      button.dispatchEvent(new PointerCtor("pointerdown", { bubbles: true, clientX: 5, clientY: 5 }));
+      button.dispatchEvent(new PointerCtor("pointerup", { bubbles: true, clientX: 5, clientY: 5 }));
+      button.click();
+    });
+    expect(add).toHaveBeenCalledExactlyOnceWith("assets/logo.png");
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+    expect(usePlayerStore.getState().selectedElementId).toBeNull();
+  });
+
+  it.each([false, new Error("Internal failure")])("keeps quick add retryable after failure: %s", async result => {
+    let finish!: () => void;
+    const add = vi.fn(() => new Promise<boolean>((resolve, reject) => {
+      finish = () => result instanceof Error ? reject(result) : resolve(result);
+    }));
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used={false} onAddAssetToTimeline={add} />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    act(() => { button.click(); button.click(); });
+    expect(add).toHaveBeenCalledOnce();
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    await act(async () => finish());
+    expect(button.disabled).toBe(false);
+    expect(document.querySelector('.hf-toast-viewport [role="alert"]')?.textContent).toBe("Failed to add media");
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+    act(() => button.click());
+    expect(add).toHaveBeenCalledTimes(2);
+    await act(async () => finish());
+  });
+
+  it("only offers quick add when insertion is available and leaves thumbnail dragging intact", () => {
+    const host = mount(<AssetCard {...cardProps} asset="assets/logo.png" used={false} />);
+    expect(host.querySelector('button[aria-label="Add at playhead"]')).toBeNull();
+    const setData = vi.fn();
+    const event = new Event("dragstart", { bubbles: true });
+    Object.defineProperty(event, "dataTransfer", { value: { setData, effectAllowed: "none" } });
+    act(() => host.querySelector('[draggable="true"]')!.dispatchEvent(event));
+    expect(setData).toHaveBeenCalledWith(TIMELINE_ASSET_MIME, JSON.stringify({ path: "assets/logo.png" }));
+  });
 });
 
 describe("AudioRow click behavior", () => {
@@ -153,7 +203,7 @@ describe("AudioRow click behavior", () => {
     const rows = [...host.querySelectorAll('.motion-audio-row')];
     expect(rows).toHaveLength(names.length);
     rows.forEach((row, index) => {
-      expect(row.textContent).toBe(`${names[index]}2s`);
+      expect(row.textContent).toBe(`${names[index]}Unused00:02`);
       expect(row.getAttribute('aria-label')).toContain(names[index]);
       expect(row.querySelector('button')?.getAttribute('aria-label')).toContain(names[index]);
     });
@@ -206,6 +256,74 @@ it('renames audio in its caption, saves on blur, and does not activate preview w
   });
   expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
   act(() => input.blur());
-  expect(rename).toHaveBeenCalledWith('assets/music.wav', 'assets/music 111.wav');
+  expect(rename).toHaveBeenCalledWith('assets/music.wav', 'music 111.wav');
   expect(host.querySelector('input')).toBeNull();
+});
+
+describe("row quick insertion", () => {
+  it.each([
+    ["font", false], ["image", false], ["image", true], ["audio", false], ["audio", true],
+  ] as const)("dismisses failed quick-add feedback without activating the %s row (used=%s)", async (kind, used) => {
+    const add = vi.fn().mockResolvedValue(false);
+    const copy = vi.fn();
+    const asset = kind === "font" ? "assets/AlbertSans.ttf" : kind === "audio" ? "assets/music.mp3" : "assets/logo.png";
+    usePlayerStore.getState().setElements([clip({ id: "existing", src: asset })]);
+    useAssetPreviewStore.getState().setPreviewAsset("assets/other.png", "p1");
+    const props = { asset, used, onCopy: copy, copyFeedback: null, onAddAssetToTimeline: add };
+    const host = mount(kind === "font" ? <FontRow {...props} /> : kind === "audio" ? <AudioRow {...props} projectId="p1" /> : <AssetCard {...props} projectId="p1" />);
+    await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!.click());
+    const dismiss = document.querySelector<HTMLButtonElement>('.hf-toast-viewport button[aria-label="Dismiss error"]')!;
+    expect(dismiss).not.toBeNull();
+    act(() => {
+      dismiss.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true, clientX: 5, clientY: 5 }));
+      dismiss.dispatchEvent(new MouseEvent("pointerup", { bubbles: true, clientX: 5, clientY: 5 }));
+      dismiss.click();
+    });
+    expect(copy).not.toHaveBeenCalled();
+    expect(useAssetPreviewStore.getState().previewAsset).toBe("assets/other.png");
+    expect(usePlayerStore.getState().selectedElementId).toBeNull();
+    expect(add).toHaveBeenCalledExactlyOnceWith(asset);
+    expect(document.querySelector('.hf-toast-viewport [role="alert"]')?.classList.contains("hf-toast-exit")).toBe(true);
+  });
+
+  it.each(["font", "audio"])("adds %s without copying or opening preview", async kind => {
+    const add = vi.fn().mockResolvedValue(true);
+    const copy = vi.fn();
+    const asset = kind === "font" ? "assets/AlbertSans.ttf" : "assets/music.mp3";
+    const props = { asset, used: false, onCopy: copy, copyFeedback: null, onAddAssetToTimeline: add };
+    const host = mount(kind === "font" ? <FontRow {...props} /> : <AudioRow {...props} projectId="p1" />);
+    const button = host.querySelector<HTMLButtonElement>('button[aria-label="Add at playhead"]')!;
+    await act(async () => {
+      button.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      button.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+      button.click();
+    });
+    expect(add).toHaveBeenCalledExactlyOnceWith(asset);
+    expect(copy).not.toHaveBeenCalled();
+    expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
+  });
+});
+
+it('shows the imported name while preview, drag and rename keep the immutable asset path', () => {
+  const asset = 'assets/imported/94dcfb95-f8f9-455d-bca3-382788fa3943.m4a';
+  const host = mount(<AudioRow projectId="p" asset={asset} displayName="Dia 参考视频－原声" used={false} onCopy={() => {}} copyFeedback={null} />);
+  expect(host.textContent).toContain('Dia 参考视频－原声');
+  expect(host.textContent).not.toContain('94dcfb95');
+  const row = host.querySelector('[role="button"]')!;
+  act(() => row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+  expect(useAssetPreviewStore.getState().previewAsset).toBe(asset);
+});
+
+it('edits the display name without constructing a new storage path', () => {
+  const rename = vi.fn();
+  const asset = 'assets/imported/94dcfb95-f8f9-455d-bca3-382788fa3943.m4a';
+  const host = mount(<InlineAssetRename asset={asset} displayName="original-audio" onRename={rename} onDone={() => {}} />);
+  const input = host.querySelector('input')!;
+  expect(input.value).toBe('original-audio');
+  act(() => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'Dia 参考视频－原声');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  act(() => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+  expect(rename).toHaveBeenCalledExactlyOnceWith(asset, 'Dia 参考视频－原声');
 });

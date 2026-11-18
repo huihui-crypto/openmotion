@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveZoneDropPlacement } from "./timelineCollision";
 import { snapMoveToTargets, stickyTimelineTime } from "./timelineSnapping";
-import { linkedOverlayKeys } from "./timelineLinkage";
+import { linkedOverlayKeys, mainVisualTrack } from "./timelineLinkage";
 import { compactMainTrack } from "./timelineMainMagnet";
 import { appendUntimedText } from "../lib/timelineUntimedText";
 import { pasteTimelineClips, pasteElementHtml } from "../../hooks/useClipboard";
@@ -37,25 +37,25 @@ describe("pointer-following collision placement", () => {
 
 describe("sticky edge ownership", () => {
   const targets = [{ time: 10, type: "clip-edge" as const }, { time: 12, type: "playhead" as const }];
-  it("enters at 8px, holds at 10px and releases at 14px", () => {
-    const first = snapMoveToTargets(9.92, 1, targets, 100, 30);
+  it("enters at 4px, holds at 6px and releases at 8px", () => {
+    const first = snapMoveToTargets(9.96, 1, targets, 100, 30);
     expect(first.snapTime).toBe(10);
-    const held = snapMoveToTargets(9.9, 1, targets, 100, 30, 0, first);
+    const held = snapMoveToTargets(9.94, 1, targets, 100, 30, 0, first);
     expect(held.start).toBe(10);
-    expect(snapMoveToTargets(9.86, 1, targets, 100, 30, 0, held).snapTime).toBeNull();
+    expect(snapMoveToTargets(9.92, 1, targets, 100, 30, 0, held).snapTime).toBeNull();
   });
   it("does not switch the owning edge when the opposite edge gets nearer", () => {
     const first = snapMoveToTargets(9.95, 1.9, targets, 100, 30);
-    const next = snapMoveToTargets(10.09, 1.9, targets, 100, 30, 0, first);
+    const next = snapMoveToTargets(10.06, 1.9, targets, 100, 30, 0, first);
     expect(next).toMatchObject({ start: 10, snapTime: 10, snapEdge: "start" });
   });
   it("releases immediately when snapping is disabled", () => {
     expect(snapMoveToTargets(9.9, 1, [], 100, 30, 0, {snapTime:10, snapType:"clip-edge",snapEdge:"start"}).snapTime).toBeNull();
   });
   it("uses the same release threshold for trim edges", () => {
-    const first = stickyTimelineTime(9.92, targets, 100);
-    expect(stickyTimelineTime(9.9, targets, 100, 0, first.target).time).toBe(10);
-    expect(stickyTimelineTime(9.86, targets, 100, 0, first.target).target).toBeNull();
+    const first = stickyTimelineTime(9.96, targets, 100);
+    expect(stickyTimelineTime(9.94, targets, 100, 0, first.target).time).toBe(10);
+    expect(stickyTimelineTime(9.92, targets, 100, 0, first.target).target).toBeNull();
   });
 });
 
@@ -115,4 +115,16 @@ it("does not compact an unrelated root lane when trimming an expanded compositio
 it("does not send a deliberate downward layer move back to its vacated origin lane", () => {
   const result = placement(6, {origin:{track:0,start:6}});
   expect(result).toEqual({track:1,insertRow:1,start:6});
+});
+
+
+it("never treats timed text or captions as the main video track, including legacy lower lanes", () => {
+  const text = { ...clip('text', 3, 0, 3), timelineRole: 'text' };
+  const caption = { ...clip('transcript-00000000-0000-0000-0000-000000000000-cue', 4, 0, 3) };
+  const main = clip('video', 1, 0, 6);
+  const elements = [main, text, caption];
+  expect(mainVisualTrack(elements)).toBe(1);
+  expect([...linkedOverlayKeys(elements, 'text', null, true)]).toEqual(['text']);
+  expect([...linkedOverlayKeys(elements, caption.id, null, true)]).toEqual([caption.id]);
+  expect(mainVisualTrack([text, caption])).toBeNull();
 });

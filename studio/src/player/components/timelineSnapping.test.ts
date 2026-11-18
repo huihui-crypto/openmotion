@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   TIMELINE_SNAP_PX,
+  stickyTimelineTime,
   collectTimelineSnapTargets,
   snapMoveToTargets,
   snapTimelineTime,
@@ -148,12 +149,17 @@ describe("snapMoveToTargets", () => {
 
   it("prefers the edge on a real target over the other edge nearer a ruler line", () => {
     // start 2.99 is 1px from the 3s line; the end 4.94 is 6px from the playhead at 5
-    const r = snapMoveToTargets(2.99, 1.95, targets, 100, 60, 0.25);
-    expect(r).toEqual({ start: 3.05, snapTime: 5, snapType: "playhead", snapEdge: "end" });
+    const r = snapMoveToTargets(2.99, 1.98, targets, 100, 60, 0.25);
+    expect(r).toEqual({ start: 3.02, snapTime: 5, snapType: "playhead", snapEdge: "end" });
   });
 
-  it("TIMELINE_SNAP_PX matches the historical beat-snap threshold", () => {
-    expect(TIMELINE_SNAP_PX).toBe(8);
+  it("releases a held target after a small deliberate move at every zoom", () => {
+    for (const pps of [20, 100, 800]) {
+      const target = { time: 5, type: "clip-edge" as const };
+      expect(stickyTimelineTime(5 + 4 / pps, [target], pps).target).toEqual(target);
+      expect(stickyTimelineTime(5 + 6 / pps, [target], pps, 0, target).target).toEqual(target);
+      expect(stickyTimelineTime(5 + 8 / pps, [target], pps, 0, target).target).toBeNull();
+    }
   });
 
   it("keeps the snap indicator for a frame-quantized duration (ms-rounding residue, no clamp)", () => {

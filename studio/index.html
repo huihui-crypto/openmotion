@@ -32,16 +32,18 @@
 <meta name="theme-color" content="#f4f4f4" data-light="#f4f4f4" data-dark="#292929" />
 <!-- /openmotion:metadata -->
     <script>
-      // Embedded browsers receive the host's color scheme. Resolve it before paint;
-      // standalone Studio keeps its saved choice. main.tsx binds live host changes.
-      let preference = "light";
+      // Standalone defaults to Light; embedded (embed=1) defaults to System and follows
+      // the host until the user picks a theme. Resolve before paint; main.tsx binds live changes.
+      const embedded = new URLSearchParams(location.search).get("embed") === "1";
+      let preference = embedded ? "system" : "light";
       try {
-        const saved = JSON.parse(localStorage.getItem("hf-studio-ui-preferences") || "{}")?.theme;
+        const prefs = JSON.parse(localStorage.getItem("hf-studio-ui-preferences") || "{}");
+        const saved = embedded ? prefs?.embeddedTheme : prefs?.theme;
         if (saved === "light" || saved === "dark" || saved === "system") preference = saved;
       } catch (e) {}
       document.documentElement.dataset.themePreference = preference;
       let theme = preference;
-      if (new URLSearchParams(location.search).get("embed") === "1" || preference === "system")
+      if (preference === "system")
         theme = window.matchMedia?.("(prefers-color-scheme: dark)")?.matches ? "dark" : "light";
       if (theme === "light") document.documentElement.dataset.theme = "paper";
       else delete document.documentElement.dataset.theme;

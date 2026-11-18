@@ -19,15 +19,17 @@ export const workflowRegistry = {
       edit: 'skills/openmotion-production/references/edit.md',
       portable: 'skills/openmotion-production/references/portable-project.md',
       materials: 'skills/openmotion-production/references/materials.md',
+      transcripts: 'docs/transcripts.md',
       decisions: 'skills/openmotion-production/references/decisions.md',
       review: 'skills/openmotion-production/references/review.md',
       sound: 'skills/openmotion-production/references/sound.md',
-      account: 'skills/openmotion-production/references/media-providers/account.md',
-      compatible: 'skills/openmotion-production/references/media-providers/compatible.md',
-      fal: 'skills/openmotion-production/references/media-providers/fal.md',
-      opendesign: 'skills/openmotion-production/references/media-providers/opendesign.md',
-      atlascloud: 'skills/openmotion-production/references/media-providers/atlascloud.md',
-      wavespeed: 'skills/openmotion-production/references/media-providers/wavespeed.md',
+      // Provider guides live in openmotion-media; these production sections keep older resource URIs working.
+      account: 'skills/openmotion-media/references/providers/account.md',
+      compatible: 'skills/openmotion-media/references/providers/compatible.md',
+      fal: 'skills/openmotion-media/references/providers/fal.md',
+      opendesign: 'skills/openmotion-media/references/providers/opendesign.md',
+      atlascloud: 'skills/openmotion-media/references/providers/atlascloud.md',
+      wavespeed: 'skills/openmotion-media/references/providers/wavespeed.md',
       typography: 'skills/openmotion-production/references/typography.md',
       fonts: 'skills/openmotion-production/references/fonts.md',
       reference: 'skills/openmotion-production/references/reference-video.md',
@@ -77,6 +79,12 @@ export const workflowRegistry = {
       setup: 'skills/openmotion-media/references/setup.md',
       jobs: 'skills/openmotion-media/references/jobs.md',
       inspection: 'skills/openmotion-media/references/inspection.md',
+      account: 'skills/openmotion-media/references/providers/account.md',
+      compatible: 'skills/openmotion-media/references/providers/compatible.md',
+      fal: 'skills/openmotion-media/references/providers/fal.md',
+      opendesign: 'skills/openmotion-media/references/providers/opendesign.md',
+      atlascloud: 'skills/openmotion-media/references/providers/atlascloud.md',
+      wavespeed: 'skills/openmotion-media/references/providers/wavespeed.md',
     },
   },
 } as const;
@@ -108,9 +116,13 @@ export async function readWorkflowResource(uri: unknown, dataDirectory: string) 
   return { uri, mimeType: 'text/markdown', text: await readFile(file, 'utf8') };
 }
 
+// A document shared by several workflows takes its identity from the workflow whose Skill directory holds it, else the first registration.
+const skillDirectory = (documentId: string) => documentId.split('/').slice(0, 2).join('/');
 const documents = new Map<string, { workflow: string; section: string; documentId: string }>();
 for (const [workflow, definition] of Object.entries(workflowRegistry)) for (const [section, documentId] of Object.entries(definition.sections)) {
-  if (!documents.has(documentId)) documents.set(documentId, { workflow, section, documentId });
+  const owner = skillDirectory(documentId) === skillDirectory(definition.sections.start);
+  const current = documents.get(documentId);
+  if (!current || owner && skillDirectory(documentId) !== skillDirectory(workflowRegistry[current.workflow as keyof typeof workflowRegistry].sections.start)) documents.set(documentId, { workflow, section, documentId });
 }
 
 // Old installed Markdown paths resolve to the maintained production body. Keep the

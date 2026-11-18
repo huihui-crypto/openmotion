@@ -4,70 +4,48 @@ Checked against official documentation on 2026-11-13. Sections: discovery, reque
 
 ## Setup and discovery
 
-Save the key in editor **Model providers**. `WAVESPEED_API_KEY` is the environment alternative; a saved key wins. The service injects `Authorization: Bearer ...`. Agents use `openmotion_media_use`; never read credential files or put keys in tool arguments. Shell examples document the wire protocol for service implementation or user-run diagnostics, using environment placeholders only.
+Save the key in editor **Model providers**. `WAVESPEED_API_KEY` is the environment alternative; a saved key wins. The service injects `Authorization: Bearer ...`. Agents discover with `openmotion_media_use` and generate with `openmotion_assets_use`; never read credential files or put keys in tool arguments.
 
 ```json
 {"action":"models","provider":"wavespeed","refresh":true,"modality":"video","query":"hunyuan","limit":20}
 ```
 
-Underlying authenticated request:
-
-```bash
-curl --fail-with-body --silent --show-error 'https://api.wavespeed.ai/api/v3/models' \
-  -H "Authorization: Bearer ${WAVESPEED_API_KEY:?Set WAVESPEED_API_KEY locally}"
-```
-
-The envelope uses `code: 200`; read `data[].model_id`, `name`, `type`. Raw entries can include `api_schema.api_schemas[].request_schema`; the tool returns normalized metadata rather than the full schema. Use the selected model's official API page for required inputs and output format. Change or omit modality/query for image/audio. Cached/built-in entries are not live account or balance checks.
+Discovery calls the authenticated `GET https://api.wavespeed.ai/api/v3/models`. The envelope uses `code: 200`; read `data[].model_id`, `name`, `type`. Raw entries can include `api_schema.api_schemas[].request_schema`; the tool returns normalized metadata rather than the full schema. Use the selected model's official API page for required inputs and output format. Change or omit modality/query for image/audio. Cached/built-in entries are not live account or balance checks.
 
 ## Request templates
 
-These are arguments to `openmotion_media_use`. Replace the project ID and assign a new requestId per intended generation. Check current model availability/schema before submitting; generation can incur charges.
+These are `openmotion_assets_use` arguments. Assign a new requestId per intended generation. Check current model availability/schema before submitting; generation can incur charges.
 
 Image — [REST API example](https://wavespeed.ai/docs/rest-api):
 
 ```json
-{"action":"generate","provider":"wavespeed","projectId":"project","requestId":"wave-image-01","model":"wavespeed-ai/z-image/turbo","modality":"image","mode":"text-to-image","prompt":"A ceramic cup on a wooden table, soft morning light","parameters":{"size":"1024*1024"}}
+{"action":"generate","requestId":"wave-image-01","model":"wavespeed:wavespeed-ai/z-image/turbo","modality":"image","mode":"text-to-image","prompt":"A ceramic cup on a wooden table, soft morning light","parameters":{"size":"1024*1024"}}
 ```
 
 Video — [Hunyuan text-to-video](https://wavespeed.ai/models/wavespeed-ai/hunyuan-video/t2v):
 
 ```json
-{"action":"generate","provider":"wavespeed","projectId":"project","requestId":"wave-video-01","model":"wavespeed-ai/hunyuan-video/t2v","modality":"video","mode":"text-to-video","prompt":"Steam rises from a ceramic cup as the camera slowly moves closer","parameters":{"size":"1280*720"}}
+{"action":"generate","requestId":"wave-video-01","model":"wavespeed:wavespeed-ai/hunyuan-video/t2v","modality":"video","mode":"text-to-video","prompt":"Steam rises from a ceramic cup as the camera slowly moves closer","parameters":{"size":"1280*720"}}
 ```
 
 Speech — [speech API example](https://wavespeed.ai/docs/generate-speech):
 
 ```json
-{"action":"generate","provider":"wavespeed","projectId":"project","requestId":"wave-speech-01","model":"minimax/speech-2.6-hd","modality":"audio","mode":"text-to-speech","prompt":"Welcome to a quiet morning.","parameters":{"voice_id":"Friendly_Person","speed":1}}
+{"action":"generate","requestId":"wave-speech-01","model":"wavespeed:minimax/speech-2.6-hd","modality":"audio","mode":"text-to-speech","prompt":"Welcome to a quiet morning.","parameters":{"voice_id":"Friendly_Person","speed":1}}
 ```
 
 Voice IDs belong to the selected model. Music/SFX models can also appear in audio discovery, but their schemas differ from speech; do not send `voice_id` or assume a `text` field without checking that model.
 
-Wire mapping: POST `https://api.wavespeed.ai/api/v3/{full model ID}`, body `{...parameters,prompt}` or `{...parameters,text}` for `text-to-speech`. The model ID belongs in the path, not the body. The image template becomes:
-
-```bash
-curl --fail-with-body --silent --show-error 'https://api.wavespeed.ai/api/v3/wavespeed-ai/z-image/turbo' \
-  -H "Authorization: Bearer ${WAVESPEED_API_KEY:?Set WAVESPEED_API_KEY locally}" \
-  -H 'Content-Type: application/json' \
-  --data '{"prompt":"A ceramic cup on a wooden table, soft morning light","size":"1024*1024"}'
-```
+Wire mapping: POST `https://api.wavespeed.ai/api/v3/{full model ID}`, body `{...parameters,prompt}` or `{...parameters,text}` for `text-to-speech`. The model ID belongs in the path, not the body.
 
 Reference-media URLs, if supported, go in the selected model's exact parameter fields. Local paths are not uploaded. Only image/video/audio files are imported; LLM, training and 3D outputs are outside this adapter.
 
 ## Polling and result
 
-Save the response `data.id` and query the original task:
-
-```bash
-curl --fail-with-body --silent --show-error \
-  "https://api.wavespeed.ai/api/v3/predictions/${WAVE_PREDICTION_ID:?Use original data.id}/result" \
-  -H "Authorization: Bearer ${WAVESPEED_API_KEY:?Set WAVESPEED_API_KEY locally}"
-```
-
-The adapter constructs this fixed-origin polling path; it does not forward the key to arbitrary returned URLs. `data.status: completed` imports `data.outputs`; `failed`, `cancelled`, `canceled`, `timeout` or `deleted` stops local processing. Other statuses keep polling. In the Agent workflow use the local ID:
+Save the response `data.id`; the adapter polls `GET https://api.wavespeed.ai/api/v3/predictions/{data.id}/result`. It constructs this fixed-origin polling path; it does not forward the key to arbitrary returned URLs. `data.status: completed` imports `data.outputs`; `failed`, `cancelled`, `canceled`, `timeout` or `deleted` stops local processing. Other statuses keep polling. In the Agent workflow use the local ID:
 
 ```json
-{"action":"status","projectId":"project","jobId":"LOCAL_JOB_ID_FROM_GENERATE"}
+{"action":"status","jobId":"LOCAL_JOB_ID_FROM_GENERATE"}
 ```
 
 Submission is never automatically retried. The provider recommends backoff for transient **GET** failures, honoring Retry-After where supplied. The current adapter does not implement that read retry: a poll error stops local work while preserving the remote ID. Its worker deadline is fifteen minutes. The remote task may continue; inspect provider history/the original task before any new paid POST. Cancellation is local and does not guarantee a remote stop or refund.

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import { Window } from 'happy-dom';
 import { App } from '@modelcontextprotocol/ext-apps/app-with-deps';
 import { mountTemplateCards, recreationPrompt } from '../mcp-ui/template-recommendations/app.ts';
+import { templatePrompt } from '../shared/integration.ts';
+import type { IntegrationInfo } from '../shared/integration.ts';
 import { translations, languages, resolveLanguage } from '../mcp-ui/template-recommendations/i18n.ts';
 import type { TemplateCardsHost } from '../mcp-ui/template-recommendations/types.ts';
 
@@ -181,7 +183,7 @@ test('onboarding welcome stays above the cards without duplicate descriptions or
 
 test('all seven user-request languages override host locale across welcome, cards, controls and drafts', async () => {
   const cloneLabels = ['复刻模板', 'Recreate template', 'テンプレートを再現', '템플릿 재현', 'Recréer le modèle', 'Recrear plantilla', 'Recriar modelo'];
-  const briefLabels = ['我的要求', 'My requirements', '私の要望', '내 요구 사항', 'Mes besoins', 'Mis requisitos', 'Meus requisitos'];
+  const briefLabels = ['我的要求', 'My requirements', '私の要望', '내 요구사항', 'Mes exigences', 'Mis requisitos', 'Meus requisitos'];
   for (const [index, language] of languages.entries()) {
     const f = fixture();
     try {
@@ -251,7 +253,7 @@ test('SDK drafts capture the exact template, never submit, suppress double click
     button.click(); button.click();
     assert.equal(f.messages.length, 1);
     assert.deepEqual(f.messages[0]._meta, { 'openai/message': { target: 'active', send: false } });
-    assert.equal(f.messages[0].content[0].text, 'Creative brief: Use the OpenMotion plugin to create a video from the selected template, my requirements and attachments. Preserve the main animation and style by default, and deliver HTML and MP4.\n\nSelected template: Decision Tree\nTemplate ID: decision-tree\n\nMy requirements:\n');
+    assert.equal(f.messages[0].content[0].text, 'Instructions: Use the OpenMotion plugin. If it is not installed, follow https://github.com/nexu-io/openmotion to install and connect it, then continue.\nSelected template: Decision Tree (decision-tree)\nCreative brief: Adapt the template using my requirements and attachments. Preserve its main motion and style by default, and deliver HTML and MP4.\nMy requirements:\n');
     assert.equal(f.messages[0].content[0].text.includes('OPENMOTION_TEMPLATE_SELECTION'), false);
     f.ui.update(result([0, 1, 2], '33333333-3333-4333-8333-333333333333'));
     finish({}); await flush();
@@ -293,8 +295,8 @@ test('each card fills its actual title and ID, and the brief format accepts cata
     } finally { await f.close(); }
   }
   const prompt = recreationPrompt({ title: 'Higgsfield API｜返现活动', templateId: 'motion-a6f31f7b-f6af-44be-8bf4-881e70057f63' });
-  assert.ok(prompt.includes('指定模板：Higgsfield API｜返现活动\n模板 ID：motion-a6f31f7b-f6af-44be-8bf4-881e70057f63'));
-  assert.ok(prompt.endsWith('\n\n我的要求：\n'));
+  assert.ok(prompt.includes('指定模板：Higgsfield API｜返现活动（motion-a6f31f7b-f6af-44be-8bf4-881e70057f63）'));
+  assert.ok(prompt.endsWith('\n我的要求：\n'));
 });
 
 test('the pinned real SDK preserves draft metadata on the wire and its negotiated capability', async () => {
@@ -521,4 +523,14 @@ test('stale detail/media events and a pending host completion cannot mutate a re
     assert.equal(f.root.textContent!.includes('cannot play'), false);
     f.ui.destroy(); finish({}); await flush(); assert.equal(f.root.children.length, 0);
   } finally { await f.close(); }
+});
+
+// Both entry points must offer the same brief, regardless of media provenance.
+test('recommendation briefs equal library briefs in every card language', () => {
+  const card = { title: 'Dia 开放给 Arc 会员', templateId: 'motion-0ad92fd0-b2fb-4885-957c-b71152df15fd' };
+  for (const language of languages) for (const templateKind of [undefined, 'reference'] as const) {
+    const locale = language === 'pt' ? 'pt-br' : language;
+    assert.equal(recreationPrompt({ ...card, templateKind }, language),
+      templatePrompt({} as IntegrationInfo, 'codex', { id: card.templateId, title: card.title }, locale), language);
+  }
 });

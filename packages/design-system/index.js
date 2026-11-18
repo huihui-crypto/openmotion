@@ -20,7 +20,7 @@ export const iconSprite = designSystemAsset('icons.svg');
 /** Positive HTTP/distribution list: adding a file to the package does not expose it. */
 export const publicDesignFiles = Object.freeze([
   'tokens.json', 'tokens.css', 'ui.css', 'fonts.css', 'base.css', 'controls.css', 'material.css',
-  'loading.css', 'studio.css', 'studio/adapter.css', 'studio/control-states.css', 'studio/feedback.css', 'studio/editor-workspace.css', 'studio/application.css', 'studio/mcp.css', 'studio/template-cards.css', 'studio/discovery.css', 'studio/media-detail.css',
+  'loading.css', 'studio.css', 'studio/adapter.css', 'studio/control-states.css', 'studio/feedback.css', 'studio/editor-workspace.css', 'studio/application.css', 'studio/mcp.css', 'studio/template-cards.css', 'studio/discovery.css', 'studio/media-detail.css', 'studio/audio-assets.css', 'studio/media-quick-actions.css',
   'index.html', 'theme.js', 'catalog.js', 'catalog-view.js', 'catalog.css', 'token-model.js', 'generate.js', 'icons.svg',
   'opendesign-dark.svg', 'opendesign-light.svg', 'brand/openmotion-logo.svg',
   'brand/loading-mark.svg', 'brand/loading-wordmark.svg', 'brand/favicon.svg', 'brand/favicon-32.png', 'brand/apple-touch-icon.png',

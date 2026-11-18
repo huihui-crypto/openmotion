@@ -20,7 +20,6 @@ type Translation = {
     manual: string; draftLabel: string; copied: string; copyFailed: string; welcomeLabel: string; listLabel: string };
   welcome: { heading: string; discovery: string; introduction: string; recommendations: string; draft: string; clipboardDraft: string };
   descriptions: Partial<Record<TemplateId, string>>;
-  prompt: { brief: string; instruction: string; referenceInstruction: string; template: string; id: string; requirements: string };
 };
 export const translations: Record<Language, Translation> = {
   zh: {
@@ -35,7 +34,6 @@ export const translations: Record<Language, Translation> = {
       recommendations: '不想自己找？先看看我挑的这 3 个 👇',
       draft: '你可以点击下方卡片上的「复刻模板」，然后补充「我的要求」或添加附件，发送后就开始创作！' },
     descriptions: { 'product-promo': '从图标开场到多人协作，查看多场景动画与字幕编排。', 'nyt-graph': '报刊风格的动态图表，查看数据、标注与图形的节奏。', 'decision-tree': '逐步展开的决策树，查看节点、连线与分支动画。' },
-    prompt: { brief: '创作要求', instruction: '请使用 OpenMotion 插件，基于选择的模板，结合我的要求和附件创作。默认保留主要动效与风格，并交付 HTML 和 MP4。', referenceInstruction: "以准确模板 ID 调用 openmotion_get_template，读取 instructions 和 motionDocument，并按 openmotion-recreate 复刻参考视频。这是参考模板，不是可直接复制的内置工程。", template: '指定模板', id: '模板 ID', requirements: '我的要求' },
   },
   en: {
     ui: { copied: "Copied. Paste into the chat and add your requirements.", copyFailed: "Copy failed. Please try again.", waiting: 'Preparing template previews…', unavailable: 'Template previews are unavailable. Choose a template in the chat.', loading: 'Loading preview…',
@@ -49,7 +47,6 @@ export const translations: Record<Language, Translation> = {
       recommendations: 'Want a starting point? Try one of these three 👇',
       draft: 'Choose Recreate template on a card below, add your requirements or attachments, then send it to start creating!' },
     descriptions: { 'product-promo': 'From an opening icon to team collaboration, explore multi-scene animation and caption sequencing.', 'nyt-graph': 'Newspaper-style animated charts, with carefully paced data, annotations and graphics.', 'decision-tree': 'Explore a decision tree that unfolds through animated nodes, connections and branches.' },
-    prompt: { brief: 'Creative brief', instruction: 'Use the OpenMotion plugin to create a video from the selected template, my requirements and attachments. Preserve the main animation and style by default, and deliver HTML and MP4.', referenceInstruction: "Call openmotion_get_template with the exact template ID, read instructions and motionDocument, and follow openmotion-recreate to recreate the reference video. This is a reference template, not a bundled editable project.", template: 'Selected template', id: 'Template ID', requirements: 'My requirements' },
   },
   ja: {
     ui: { copied: "コピーしました。チャットに貼り付けて要望を追加してください。", copyFailed: "コピーできませんでした。もう一度お試しください。", waiting: 'テンプレートのプレビューを準備中…', unavailable: 'プレビューを利用できません。チャットでテンプレートを選んでください。', loading: 'プレビューを読み込み中…',
@@ -63,7 +60,6 @@ export const translations: Record<Language, Translation> = {
       recommendations: 'どれにするか迷ったら、まずはこの3つをどうぞ 👇',
       draft: '下のカードの「テンプレートを再現」をクリックし、「私の要望」を記入するかファイルを添付して送信すると、制作が始まります！' },
     descriptions: { 'product-promo': 'アイコンでのオープニングからチームでの共同作業まで、多彩なシーンのアニメーションと字幕構成を紹介します。', 'nyt-graph': '新聞風のアニメーショングラフで、データ、注釈、図形のリズムを表現します。', 'decision-tree': 'ノードや接続線、分岐が順に展開する決定木のアニメーションです。' },
-    prompt: { brief: '制作依頼', instruction: 'OpenMotion プラグインを使い、選択したテンプレート、私の要望、添付ファイルをもとに動画を制作してください。特に指定がなければ主なアニメーションとスタイルを維持し、HTML と MP4 を納品してください。', referenceInstruction: "正確なテンプレート ID で openmotion_get_template を呼び、instructions と motionDocument を読み、openmotion-recreate に従って参考動画を再現してください。直接コピーできる組み込みプロジェクトではありません。", template: '選択したテンプレート', id: 'テンプレート ID', requirements: '私の要望' },
   },
   ko: {
     ui: { copied: "복사했습니다. 대화창에 붙여넣고 요구 사항을 추가하세요.", copyFailed: "복사하지 못했습니다. 다시 시도해 주세요.", waiting: '템플릿 미리보기를 준비하는 중…', unavailable: '템플릿 미리보기를 사용할 수 없습니다. 채팅에서 템플릿을 선택해 주세요.', loading: '미리보기를 불러오는 중…',
@@ -77,7 +73,6 @@ export const translations: Record<Language, Translation> = {
       recommendations: '고르기 어렵다면 제가 추천하는 이 3가지를 먼저 살펴보세요 👇',
       draft: '아래 카드의 「템플릿 재현」을 누르고 「내 요구 사항」을 작성하거나 파일을 첨부한 뒤 전송하면 제작이 시작됩니다!' },
     descriptions: { 'product-promo': '아이콘으로 시작해 팀 협업으로 이어지는 다양한 장면의 애니메이션과 자막 구성을 살펴보세요.', 'nyt-graph': '신문 스타일의 애니메이션 차트로 데이터, 주석, 그래픽의 리듬을 표현합니다.', 'decision-tree': '노드, 연결선, 분기가 차례로 펼쳐지는 의사결정 트리 애니메이션입니다.' },
-    prompt: { brief: '제작 요청', instruction: 'OpenMotion 플러그인을 사용해 선택한 템플릿, 내 요구 사항과 첨부 파일을 바탕으로 영상을 제작해 주세요. 별도 요청이 없으면 주요 애니메이션과 스타일을 유지하고 HTML과 MP4를 제공해 주세요.', referenceInstruction: "정확한 템플릿 ID로 openmotion_get_template을 호출하고 instructions와 motionDocument를 읽은 뒤 openmotion-recreate에 따라 참조 영상을 재현하세요. 바로 복사할 수 있는 내장 프로젝트가 아닙니다.", template: '선택한 템플릿', id: '템플릿 ID', requirements: '내 요구 사항' },
   },
   fr: {
     ui: { copied: "Copié. Collez dans le chat et ajoutez vos besoins.", copyFailed: "Échec de la copie. Réessayez.", waiting: 'Préparation des aperçus…', unavailable: 'Les aperçus sont indisponibles. Choisissez un modèle dans le chat.', loading: 'Chargement de l’aperçu…',
@@ -91,7 +86,6 @@ export const translations: Record<Language, Translation> = {
       recommendations: 'Besoin d’inspiration ? Découvrez ces 3 modèles que j’ai choisis 👇',
       draft: 'Cliquez sur « Recréer le modèle » sur une carte ci-dessous, complétez « Mes besoins » ou ajoutez des fichiers, puis envoyez votre demande pour lancer la création !' },
     descriptions: { 'product-promo': 'D’une icône d’ouverture à la collaboration en équipe, découvrez des scènes animées et leur enchaînement de sous-titres.', 'nyt-graph': 'Des graphiques animés au style journalistique, rythmant données, annotations et formes.', 'decision-tree': 'Découvrez un arbre de décision dont les nœuds, les liens et les branches se déploient progressivement.' },
-    prompt: { brief: 'Demande de création', instruction: 'Utilisez le plugin OpenMotion pour créer une vidéo à partir du modèle sélectionné, de mes besoins et des fichiers joints. Par défaut, conservez les animations principales et le style, puis livrez les fichiers HTML et MP4.', referenceInstruction: "Appelez openmotion_get_template avec cet ID exact, lisez instructions et motionDocument, puis suivez openmotion-recreate pour recréer la vidéo de référence. Ce modèle de référence ne se copie pas comme un projet intégré.", template: 'Modèle sélectionné', id: 'Identifiant du modèle', requirements: 'Mes besoins' },
   },
   es: {
     ui: { copied: "Copiado. Pega en el chat y añade tus requisitos.", copyFailed: "No se pudo copiar. Inténtalo de nuevo.", waiting: 'Preparando vistas previas…', unavailable: 'Las vistas previas no están disponibles. Elige una plantilla en el chat.', loading: 'Cargando vista previa…',
@@ -105,7 +99,6 @@ export const translations: Record<Language, Translation> = {
       recommendations: '¿Necesitas inspiración? Mira estas 3 plantillas que he elegido 👇',
       draft: 'Haz clic en « Recrear plantilla » en una tarjeta, completa « Mis requisitos » o adjunta archivos y envía tu solicitud para empezar a crear.' },
     descriptions: { 'product-promo': 'Desde un icono inicial hasta la colaboración en equipo, descubre escenas animadas y la secuencia de sus subtítulos.', 'nyt-graph': 'Gráficos animados de estilo periodístico que combinan datos, anotaciones y formas con ritmo.', 'decision-tree': 'Explora un árbol de decisión cuyos nodos, conexiones y ramas se despliegan paso a paso.' },
-    prompt: { brief: 'Solicitud de creación', instruction: 'Utiliza el plugin OpenMotion para crear un vídeo a partir de la plantilla seleccionada, mis requisitos y los archivos adjuntos. Por defecto, conserva las animaciones principales y el estilo, y entrega HTML y MP4.', referenceInstruction: "Llama a openmotion_get_template con este ID exacto, lee instructions y motionDocument y sigue openmotion-recreate para recrear el vídeo de referencia. No es un proyecto integrado que se pueda copiar directamente.", template: 'Plantilla seleccionada', id: 'ID de la plantilla', requirements: 'Mis requisitos' },
   },
   pt: {
     ui: { copied: "Copiado. Cole no chat e adicione seus requisitos.", copyFailed: "Falha ao copiar. Tente novamente.", waiting: 'Preparando prévias dos modelos…', unavailable: 'As prévias estão indisponíveis. Escolha um modelo no chat.', loading: 'Carregando prévia…',
@@ -119,7 +112,6 @@ export const translations: Record<Language, Translation> = {
       recommendations: 'Precisa de inspiração? Veja estes 3 modelos que escolhi 👇',
       draft: 'Clique em « Recriar modelo » em um cartão, preencha « Meus requisitos » ou anexe arquivos e envie sua solicitação para começar a criar!' },
     descriptions: { 'product-promo': 'De um ícone de abertura à colaboração em equipe, explore cenas animadas e a sequência de suas legendas.', 'nyt-graph': 'Gráficos animados de estilo jornalístico, com ritmo entre dados, anotações e formas.', 'decision-tree': 'Explore uma árvore de decisão com nós, conexões e ramificações que se revelam passo a passo.' },
-    prompt: { brief: 'Pedido de criação', instruction: 'Use o plugin OpenMotion para criar um vídeo com o modelo selecionado, meus requisitos e os arquivos anexados. Por padrão, preserve as animações principais e o estilo e entregue HTML e MP4.', referenceInstruction: "Chame openmotion_get_template com este ID exato, leia instructions e motionDocument e siga openmotion-recreate para recriar o vídeo de referência. Não é um projeto integrado que possa ser copiado diretamente.", template: 'Modelo selecionado', id: 'ID do modelo', requirements: 'Meus requisitos' },
   },
 };
 

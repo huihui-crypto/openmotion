@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { ExportCompositionSelect } from "./ExportCompositionSelect";
+import { memo, useState } from "react";
 import { NativeRuntimeNotice } from "../NativeRuntimeNotice";
 import { useFileManagerContextOptional } from "../../contexts/FileManagerContext";
 import { RenderQueue } from "./RenderQueue";
@@ -14,8 +15,11 @@ import { usePreviewVariablesStore } from "../../hooks/previewVariablesStore";
  * without giving anything a second reader.
  */
 export const RenderQueuePanel = memo(function RenderQueuePanel() {
-  const { projectId, compositionDimensions, waitForPendingDomEditSaves, renderQueue } =
+  const { projectId, activeCompPath, compositionDimensions, waitForPendingDomEditSaves, renderQueue } =
     useStudioShellContext();
+  const [chosen, setChosen] = useState<{ projectId: string; path: string } | null>(null);
+  const composition = chosen?.projectId === projectId ? chosen.path : activeCompPath || 'index.html';
+  const current = composition === (activeCompPath || 'index.html');
   const fileManager = useFileManagerContextOptional();
 
   return (
@@ -26,6 +30,7 @@ export const RenderQueuePanel = memo(function RenderQueuePanel() {
         onRetry={renderQueue.recheckFfmpeg}
         pendingImport={fileManager?.pendingImport ? { count: fileManager.pendingImport.files.length, retry: () => { void fileManager.retryPendingImport(); } } : undefined}
       />
+      <ExportCompositionSelect value={composition} onChange={path => setChosen({ projectId, path })} disabled={renderQueue.isRendering} />
       <div className="min-h-0 flex-1">
         <RenderQueue
           jobs={renderQueue.jobs as RenderJob[]}
@@ -44,8 +49,9 @@ export const RenderQueuePanel = memo(function RenderQueuePanel() {
           onRecheckFfmpeg={renderQueue.recheckFfmpeg}
           onStartRender={async (format, quality, resolution, fps, gpu, gifLoop) => {
             await waitForPendingDomEditSaves();
-            // No `composition`: startRender targets the active one by default.
+            // Use the explicit selected composition without changing the editor preview.
             await renderQueue.startRender({
+              composition,
               fps,
               quality,
               format,
@@ -55,12 +61,12 @@ export const RenderQueuePanel = memo(function RenderQueuePanel() {
               origin: "export_panel",
               // Render what the user is previewing: active variable overrides
               // from the Variables panel ride along (undefined = defaults).
-              variables: usePreviewVariablesStore.getState().values ?? undefined,
+              variables: current ? usePreviewVariablesStore.getState().values ?? undefined : undefined,
             });
           }}
-          compositionDimensions={compositionDimensions}
+          compositionDimensions={current ? compositionDimensions : null}
           isRendering={renderQueue.isRendering}
-          emptyComposition={renderQueue.emptyComposition}
+          emptyComposition={current && renderQueue.emptyComposition}
         />
       </div>
     </div>

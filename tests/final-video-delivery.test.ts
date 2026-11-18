@@ -14,6 +14,12 @@ test('only final video presentation mounts a chat component, never production or
   const tools = (await call('tools/list')).result.tools;
   const final = tools.find((t: any) => t.name === 'openmotion_show_video');
   assert.ok(final, 'A final-only presentation entry must be discoverable');
+  assert.match(final.description, /Optional fallback player/);
+  assert.match(final.description, /Codex defaults to one final-reply video embed/);
+  assert.match(final.description, /Never combine this player with a native embed/);
+  const initialized = (await call('initialize', { capabilities })).result;
+  assert.match(initialized.instructions, /without calling openmotion_show_video/);
+  assert.match(initialized.instructions, /Never combine both previews for the same export/);
   assert.ok(final._meta.ui.resourceUri);
   assert.equal(final._meta.ui.resourceUri, 'ui://openmotion/inline-video/v2/player.html');
   const current = (await call('resources/read', { uri: final._meta.ui.resourceUri })).result.contents[0];
@@ -41,4 +47,7 @@ test('saving an active production round defers the editor until the film is read
   assert.equal(saved.previewHandoff.hostActionRequired, false);
   assert.equal(saved.previewHandoff.nextAction, null);
   assert.match(saved.previewHandoff.instructions, /ready|complete/i);
+  assert.match(saved.previewHandoff.instructions, /host-native video preview first/);
+  assert.match(saved.previewHandoff.instructions, /Only if native preview is unavailable/);
+  assert.match(saved.previewHandoff.instructions, /never present the same export through both routes/);
 }, false));

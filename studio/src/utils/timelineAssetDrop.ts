@@ -1,6 +1,8 @@
+import { fontFamilyFromAssetPath, importedFontFaceCss } from "../components/editor/fontAssets";
+import designTokens from "../../../packages/design-system/tokens.json";
 import { encodeUrlPath } from "@hyperframes/parsers";
 export { buildTimelineAssetId } from "@hyperframes/core/timeline-asset-id";
-import { AUDIO_EXT, IMAGE_EXT, VIDEO_EXT } from "./mediaTypes";
+import { AUDIO_EXT, FONT_EXT, IMAGE_EXT, VIDEO_EXT } from "./mediaTypes";
 import { roundToCenti } from "./rounding";
 import { COMPOSITION_ROOT_OPEN_TAG_RE } from "./compositionPatterns";
 import { patchRootCompositionDuration, readRootCompositionDuration } from "./rootDuration";
@@ -9,7 +11,7 @@ export const TIMELINE_ASSET_MIME = "application/x-hyperframes-asset";
 export const TIMELINE_BLOCK_MIME = "application/x-hyperframes-block";
 const FALLBACK_TIMELINE_FILE_DROP_DURATION = 5;
 
-export type TimelineAssetKind = "image" | "video" | "audio";
+export type TimelineAssetKind = "image" | "video" | "audio" | "text";
 
 export function parseTimelineAssetPayload(raw: string): { path: string; duration?: number } | null {
   try {
@@ -27,6 +29,7 @@ export function getTimelineAssetKind(assetPath: string): TimelineAssetKind | nul
   if (IMAGE_EXT.test(assetPath)) return "image";
   if (VIDEO_EXT.test(assetPath)) return "video";
   if (AUDIO_EXT.test(assetPath)) return "audio";
+  if (FONT_EXT.test(assetPath)) return "text";
   return null;
 }
 
@@ -121,6 +124,20 @@ export function buildTimelineAssetInsertHtml(input: {
   const sharedAttrs = `id="${input.id}" data-hf-id="${input.hfId}" class="clip" src="${encodeUrlPath(input.assetPath)}" data-start="${input.start}" data-duration="${input.duration}" data-track-index="${input.track}"`;
   const geometry = input.geometry ?? { left: 0, top: 0, width: 640, height: 360 };
   const visualStyles = `position: absolute; left: ${geometry.left}px; top: ${geometry.top}px; width: ${geometry.width}px; height: ${geometry.height}px; object-fit: contain; z-index: ${input.zIndex}`;
+
+  if (input.kind === "text") {
+    // Unique CSS family aliases keep files with the same family/name independent.
+    const family = `font-${input.hfId}`;
+    const face = importedFontFaceCss({ family, path: input.assetPath, url: encodeUrlPath(input.assetPath) });
+    const label = fontFamilyFromAssetPath(input.assetPath).replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    })[char]!);
+    const fontSize = Math.max(16, Math.round(geometry.height / 10));
+    // Persist concrete neutral defaults: authored text must not depend on editor theme variables.
+    const color = designTokens.shared["neutral-n0"];
+    const shadow = designTokens.shared["neutral-n11"];
+    return `<style>${face}</style><p id="${input.id}" data-hf-id="${input.hfId}" class="clip" data-start="${input.start}" data-duration="${input.duration}" data-track-index="${input.track}" style="position: absolute; left: ${geometry.left + geometry.width * 0.1}px; top: ${geometry.top + geometry.height * 0.4}px; width: ${geometry.width * 0.8}px; margin: 0; text-align: center; font-family: '${family}'; font-size: ${fontSize}px; line-height: 1.2; color: ${color}; text-shadow: 0 1px 3px ${shadow}; z-index: ${input.zIndex}">${label}</p>`;
+  }
 
   if (input.kind === "image") {
     return `<img ${sharedAttrs} style="${visualStyles}" />`;

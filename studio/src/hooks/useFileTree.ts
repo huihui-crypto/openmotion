@@ -24,6 +24,7 @@ interface FetchedFileTree {
   fileTree: string[];
   compositionPaths: string[];
   projectDir: string | null;
+  assetNames?: Record<string, string>;
   fonts?: Array<Omit<ImportedFontAsset, "url">>;
 }
 
@@ -31,7 +32,7 @@ interface FetchedFileTree {
 // and defeat useMemo/useCallback deps downstream (e.g. the `assets` memo below).
 const EMPTY_FILE_LIST: string[] = [];
 
-type TreeListing = { dir?: string; files?: string[]; compositions?: string[]; fonts?: Array<Omit<ImportedFontAsset, "url">> };
+type TreeListing = { assetNames?: Record<string, string>; dir?: string; files?: string[]; compositions?: string[]; fonts?: Array<Omit<ImportedFontAsset, "url">> };
 
 async function readTreeListing(projectId: string, signal: AbortSignal): Promise<TreeListing> {
   const res = await studioApiFetch(buildProjectApiPath(projectId), { signal });
@@ -85,6 +86,7 @@ export function useFileTree({ projectId, projectIdRef }: UseFileTreeOptions) {
           compositionPaths: data.compositions ?? [],
           projectDir: typeof data.dir === "string" ? data.dir : null,
           fonts: data.fonts,
+          assetNames: data.assetNames,
         });
         // Snapshot how this project was made, while the listing is in hand and
         // the app is still alive. A crash later has no other way to learn it.
@@ -140,6 +142,7 @@ export function useFileTree({ projectId, projectIdRef }: UseFileTreeOptions) {
               // known-good list — only replace it when the field is present.
               compositionPaths: data.compositions ?? prev.compositionPaths,
               fonts: data.fonts ?? prev.fonts,
+              assetNames: data.assetNames ?? prev.assetNames,
             }
           : prev,
       );
@@ -172,5 +175,6 @@ export function useFileTree({ projectId, projectIdRef }: UseFileTreeOptions) {
     compositions: compositionPaths,
     assets,
     fontAssets,
+    assetNames: current?.assetNames,
   };
 }

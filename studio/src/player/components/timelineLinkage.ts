@@ -2,7 +2,9 @@ import type { TimelineElement } from "../store/playerStore";
 import { classifyZone } from "./timelineZones";
 
 export function mainVisualTrack(elements: readonly TimelineElement[]): number | null {
-  const visual = elements.filter(el => classifyZone(el) === "visual");
+  const visual = elements.filter(el => classifyZone(el) === "visual" &&
+    el.timelineRole !== 'caption' && el.timelineRole !== 'text' &&
+    !/^(?:transcript|text)-[a-f0-9-]{36}-/.test(el.domId || el.id));
   return visual.length ? Math.max(...visual.map(el => el.track)) : null;
 }
 

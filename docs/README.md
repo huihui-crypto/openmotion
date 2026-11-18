@@ -31,6 +31,7 @@
 - [mcp-phase1-tools.md](mcp-phase1-tools.md)
 - [Project import quick start, offline sharing and ZIP format](project-archives.md)
 - [Workspace assets, versions and Agent creation](assets.md)
+- [Transcripts, recordings, editable captions and platform/language versions](transcripts.md)
 - [Curated fonts and on-demand import](fonts.md)
 - [Typography evaluation and fixed-scene comparison](reports/typography-evaluation.md)
 - [model-gateway.md](model-gateway.md)

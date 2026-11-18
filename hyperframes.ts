@@ -120,16 +120,16 @@ export async function inspectProject(runtimeRoot: string, directory: string, vie
 
 // Read the immutable render input, never the later active project or the output MP4.
 // Use the pinned runtime's public parser and fps rules; no wrapper composition DSL.
-export async function snapshotExportExpectation(runtimeRoot: string, directory: string) {
-  const info = await inspectProject(runtimeRoot, directory, 'info');
-  if (info.exitCode) throw new Error('无法读取导出快照规格：' + JSON.stringify(info.result));
+export async function snapshotExportExpectation(runtimeRoot: string, directory: string, compositionPath = 'index.html') {
+  const info = compositionPath === 'index.html' ? await inspectProject(runtimeRoot, directory, 'info') : null;
+  if (info?.exitCode) throw new Error('无法读取导出快照规格：' + JSON.stringify(info.result));
   const coreRoot = path.join(runtimeRoot, 'node_modules/@hyperframes/core');
   const core = JSON.parse(await readFile(path.join(coreRoot, 'package.json'), 'utf8'));
   const [{ parseHTMLContent }, { parseFps, fpsToNumber }] = await Promise.all([
     import(pathToFileURL(path.join(coreRoot, core.exports['./compiler'].import)).href),
     import(pathToFileURL(path.join(coreRoot, core.exports['.'].import)).href),
   ]);
-  const document = parseHTMLContent(await readFile(path.join(directory, 'index.html'), 'utf8'));
+  const document = parseHTMLContent(await readFile(path.join(directory, compositionPath), 'utf8'));
   const attribute = (element: Element, name: string) => Array.from(element.attributes).find(item => item.name.toLowerCase() === name)?.value;
   const compositions = Array.from(document.querySelectorAll('*')) as Element[];
   const roots = compositions.filter(element => attribute(element, 'data-composition-id') !== undefined);
@@ -137,8 +137,8 @@ export async function snapshotExportExpectation(runtimeRoot: string, directory: 
   if (!root) throw new Error('导出快照缺少根 composition');
   const fps = parseFps(attribute(root, 'data-fps')?.trim() || '30');
   if (!fps.ok) throw new Error('导出快照帧率无效：' + fps.reason);
-  return validateExportExpectation({ width: info.result.width, height: info.result.height,
-    duration: info.result.duration, fps: fpsToNumber(fps.value), audio: 'optional' });
+  return validateExportExpectation({ width: info?.result.width ?? Number(attribute(root, 'data-width')), height: info?.result.height ?? Number(attribute(root, 'data-height')),
+    duration: info?.result.duration ?? Number(attribute(root, 'data-duration')), fps: fpsToNumber(fps.value), audio: 'optional' });
 }
 
 export type Studio = { url: string; projectDirectory: string; alive: () => boolean; close: () => Promise<void>; openProject?: (id: string) => Promise<void> };

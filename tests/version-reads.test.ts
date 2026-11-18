@@ -87,6 +87,46 @@ test('empty export and model queues do not acquire workspace locks', async t => 
   store.lock = async () => assert.fail('An idle queue must not acquire a workspace lock');
   for (let i = 0; i < 4; i++) { assert.equal(await store.claimExport(), null); await gateway.tick(); }
 });
+test('adding a caption reuses verified historical media instead of reading its bytes again', async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'motion-caption-reads-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const previous = process.env.HYPERFRAMES_HISTORY_ROOT;
+  process.env.HYPERFRAMES_HISTORY_ROOT = path.join(root, 'native');
+  t.after(() => { if (previous === undefined) delete process.env.HYPERFRAMES_HISTORY_ROOT; else process.env.HYPERFRAMES_HISTORY_ROOT = previous; });
+  const store = new WorkspaceStore(root), service = new Phase1Service(store, pluginRoot, {
+    origin: () => 'http://127.0.0.1:4173', nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => {},
+  });
+  const created = await service.call('openmotion_create_project', { requestId: 'create', projectType: 'natural_language', title: 'Caption performance', requirements: 'Editable captions' });
+  const scoped = store.forProject(created.projectId), media = path.join(scoped.projectDirectory, 'assets/media.mp4');
+  await mkdir(path.dirname(media), { recursive: true });
+  await writeFile(media, Buffer.alloc(2 * 1024 * 1024, 51));
+  const detail = await service.call('openmotion_get_project', { projectId: created.projectId });
+  const versions = service.versions(created.projectId), version = (await versions.index()).versions.at(-1)!;
+  const mediaFile = version.files.find(file => file.path === 'assets/media.mp4')!;
+  const historicalMedia = mediaFile.retained ? versions.blob(mediaFile.hash) : await versions.nativeBlob(mediaFile.hash);
+  let mediaReads = 0;
+  const original = fs.createReadStream;
+  fs.createReadStream = ((...args: Parameters<typeof fs.createReadStream>) => {
+    if (String(args[0]) === historicalMedia) mediaReads++;
+    return original(...args);
+  }) as typeof fs.createReadStream;
+  syncBuiltinESMExports();
+  t.after(() => { fs.createReadStream = original; syncBuiltinESMExports(); });
+  const added = await service.call('openmotion_assets_use', { action: 'transcript', transcript: {
+    command: 'caption_add', projectId: created.projectId, compositionPath: 'index.html', requestId: 'caption',
+    expectedRevision: detail.revision, expectedVersionId: detail.currentVersionId,
+    segments: [{ id: 'line', text: 'New caption', start: 0, end: 3 }],
+  } });
+  assert.equal(added.captionCount, 1);
+  assert.equal(mediaReads, 0, 'a caption-only commit must not reread unchanged retained media');
+  assert.equal(added.version.restorable, true);
+  assert.match(await readFile(path.join(scoped.projectDirectory, 'index.html'), 'utf8'), /New caption/);
+  await assert.rejects(service.call('openmotion_assets_use', { action: 'transcript', transcript: {
+    command: 'caption_add', projectId: created.projectId, compositionPath: 'index.html', requestId: 'stale-caption',
+    expectedRevision: detail.revision, expectedVersionId: detail.currentVersionId,
+    segments: [{ id: 'line', text: 'Stale caption', start: 0, end: 3 }],
+  } }), /VERSION_CONFLICT/);
+});
 test('export copies remain immutable under in-place source writes and preserve revision checks', async t => {
   const root = await mkdtemp(path.join(tmpdir(), 'motion-snapshot-')); t.after(() => rm(root, { recursive: true, force: true }));
   const store = new WorkspaceStore(root);

@@ -16,7 +16,7 @@ export function AppearanceSettings() {
   const { t } = useI18n(), preference = useStudioThemePreference(), embedded = studioUsesHostTheme();
   return <div className="om-settings-page"><h1 className="om-title">{t('Appearance')}</h1><p className="om-muted">{t('Make this workspace feel like yours.')}</p>
     <section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Theme')}</h2>
-      {embedded ? <p className="om-muted">{t('Appearance follows the app hosting this editor.')}</p> : <>
+      <>
         <div className="om-theme-options" role="group" aria-label={t('Theme')}>
           {(['light', 'dark', 'system'] as const).map(value => <button className="om-theme-choice" key={value} aria-pressed={preference === value} onClick={event => { if (preference !== value) trackStudioClick('settings', 'theme_toggle', undefined, clickMethod(event), clickOption(value)); setStudioTheme(value); }}>
             <span className="om-theme-thumbnail" aria-hidden="true">
@@ -25,8 +25,8 @@ export function AppearanceSettings() {
             <span className="om-theme-label"><RemixIcon name={value === 'light' ? 'sun-line' : value === 'dark' ? 'moon-line' : 'computer-line'} size={15} /><span>{t(value === 'light' ? 'Light' : value === 'dark' ? 'Dark' : 'System')}</span><span className="om-theme-selection" aria-hidden="true">{preference === value && <RemixIcon name="check-line" size={14} />}</span></span>
           </button>)}
         </div>
-        <p className="om-muted">{t('System follows your device’s appearance automatically.')}</p>
-      </>}
+        <p className="om-muted">{t(embedded ? 'System follows the app hosting this editor.' : 'System follows your device’s appearance automatically.')}</p>
+      </>
     </section>
     <section className="om-card om-card-stack"><h2 className="om-subtitle">{t('Accessibility')}</h2><p className="om-muted">{t('Motion follows your system’s reduced motion preference. Keyboard focus stays visible throughout the workspace.')}</p></section>
   </div>;

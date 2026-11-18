@@ -15,6 +15,8 @@ const sourceInputs = [
   'mcp-ui/tsconfig.json',
   'scripts/build-template-cards.mjs',
   'shared/onboarding-templates.ts',
+  'shared/template-prompts.ts',
+  'shared/template-locale.ts',
   'packages/design-system/inline-feedback.ts',
   'packages/design-system/tokens.css',
   'packages/design-system/studio/feedback.css',

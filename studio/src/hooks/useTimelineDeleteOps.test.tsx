@@ -50,10 +50,12 @@ describe("useTimelineDeleteOps: ripple undo label", () => {
 </body></html>`;
 
   beforeEach(() => {
+    usePlayerStore.setState({ rippleEditEnabled: true });
     stubRemoveElementsFetch(html, html);
   });
 
   afterEach(() => {
+    usePlayerStore.getState().reset();
     document.body.innerHTML = "";
     vi.unstubAllGlobals();
   });

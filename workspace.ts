@@ -38,7 +38,7 @@ export type SavedProject = { id: string; title: string; titleKey?: 'OpenMotion S
 export type ProjectCatalog = { activeId: string; projects: SavedProject[]; sessions?: CreativeSession[]; activeSessionId?: string };
 export type ProjectMutationResult = { projectId: string; title: string; trashed?: boolean; deleted?: boolean; activeProjectId: string; replayed?: boolean };
 type ProjectTrashIntent = { action: 'trash' | 'restore'; projectId: string; requestId: string };
-export type ExportJob = { id: string; projectId?: string; versionId?: string; requestId?: string; workId?: string; phase1?: boolean; stage?: string; verification?: unknown; trackingHost?: HostContext; revision: string; state: 'pending' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
+export type ExportJob = { id: string; projectId?: string; versionId?: string; requestId?: string; workId?: string; phase1?: boolean; compositionPath?: string; stage?: string; verification?: unknown; trackingHost?: HostContext; revision: string; state: 'pending' | 'running' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
   createdAt: number; acceptedAt?: number; deadlineAt?: number; terminalAt?: number; observedOutcome?: 'success' | 'failure' | 'unknown' | 'cancelled'; expiresAt: number; token?: string; workerPid?: number; file?: string; outputName?: string; error?: string; expected?: ExportExpectation };
 export class Conflict extends Error { constructor() { super('工程已经被 Studio 或 Agent 更新，请重新读取 revision 后再修改。'); } }
 
@@ -546,7 +546,7 @@ export class WorkspaceStore {
     return { revision: current.revision, hasProject: Boolean(current.project), projectId: this.projectId, projectTitle: catalog.projects.find(item => item.id === this.projectId)!.title, sessionId, activeSessionId: catalog.activeSessionId, exportJob: job };
   }
   snapshotDirectory(id: string) { return path.join(this.directory, 'jobs', id, 'project'); }
-  async requestExport(expectedRevision: string, options: Partial<Pick<ExportJob, 'phase1' | 'versionId' | 'requestId' | 'workId' | 'trackingHost'>> & { audio?: ExportExpectation['audio'] } = {}) {
+  async requestExport(expectedRevision: string, options: Partial<Pick<ExportJob, 'phase1' | 'versionId' | 'requestId' | 'workId' | 'trackingHost' | 'compositionPath'>> & { audio?: ExportExpectation['audio'] } = {}) {
     return this.lock(async () => {
       const current = await this.get();
       if (current.revision !== expectedRevision) throw new Conflict();
@@ -554,9 +554,14 @@ export class WorkspaceStore {
       const previous = await this.job();
       if (previous && ['pending', 'running', 'cancelling'].includes(previous.state) && previous.expiresAt > Date.now() && (previous.state === 'pending' || alive(previous.workerPid))) throw new Error('EXPORT_BUSY: 已有导出任务正在等待或运行');
       const { audio, ...identity } = options;
+      if (identity.compositionPath !== undefined) {
+        identity.compositionPath = projectPath(identity.compositionPath);
+        if (!identity.compositionPath.endsWith('.html')) throw new Error('Choose an HTML composition');
+        await this.safePath(identity.compositionPath);
+      }
       const acceptedAt = Date.now(), deadlineAt = acceptedAt + 30 * 60_000;
       const job: ExportJob = { ...identity, id: crypto.randomUUID(), projectId: this.projectId, revision: expectedRevision, state: 'pending', stage: 'queued', createdAt: acceptedAt, acceptedAt, deadlineAt, expiresAt: deadlineAt };
-      job.outputName = renderFilenameStem(this.projectCatalog().projects.find(project => project.id === this.projectId)?.title) + '.mp4';
+      job.outputName = renderFilenameStem(this.projectCatalog().projects.find(project => project.id === this.projectId)?.title) + (job.compositionPath && job.compositionPath !== 'index.html' ? '-' + renderFilenameStem(path.basename(job.compositionPath, '.html')) : '') + '.mp4';
       const snapshot = this.snapshotDirectory(job.id);
       try {
         // Native history omits dist trees, but render inputs must retain local vendored libraries.
@@ -568,7 +573,7 @@ export class WorkspaceStore {
         }
         if (this.revision(await this.files(snapshot)) !== expectedRevision || (await this.get()).revision !== expectedRevision
           || this.revision(await this.files(snapshot, true)) !== fingerprint || this.revision(await this.files(this.projectDirectory, true)) !== fingerprint) throw new Conflict();
-        job.expected = await exportExpectation(this.directory, snapshot);
+        job.expected = await exportExpectation(this.directory, snapshot, job.compositionPath);
         if (audio) job.expected.audio = audio;
         await atomic(path.join(this.directory, 'jobs', job.id, 'job.json'), JSON.stringify(job));
         await atomic(this.jobFilename, JSON.stringify(job));

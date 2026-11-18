@@ -9,6 +9,7 @@ import { fixture } from './fixtures.ts';
 import { gatewayFor } from '../gateway/service.ts';
 import { Phase1Service } from '../phase1.ts';
 import { pluginRoot } from '../hyperframes.ts';
+import { accountMediaState } from '../gateway/account-media.ts';
 import { providerOrigin } from '../gateway/network.ts';
 import type { Fetcher } from '../gateway/network.ts';
 
@@ -35,9 +36,9 @@ test('public media tool reads guides, generates fal media once and binds job que
   assert.doesNotMatch(JSON.stringify(inspect), /test-fal-private/);
   const reference = await api.call('openmotion_media_use', { action: 'reference', provider: 'fal' });
   assert.match(reference.content, /https:\/\/fal.ai\/docs\//);
-  assert.equal(reference.workflow, 'production');
-  assert.equal(reference.documentId, 'skills/openmotion-production/references/media-providers/fal.md');
-  assert(inspect.references.every((ref: any) => ref.uri.startsWith('openmotion://workflow/production/')));
+  assert.equal(reference.workflow, 'media');
+  assert.equal(reference.documentId, 'skills/openmotion-media/references/providers/fal.md');
+  assert(inspect.references.every((ref: any) => ref.uri.startsWith('openmotion://workflow/media/')));
   const args = { action: 'generate', provider: 'fal', model: 'fal-ai/flux/schnell', projectId: store.projectId, requestId: 'same-task', modality: 'image', prompt: 'cup', parameters: { image_size: 'square_hd' } };
   const queued = await api.call('openmotion_media_use', args);
   assert.equal(queued.job.state, 'queued');
@@ -270,3 +271,42 @@ test('WaveSpeed stops deleted tasks, rejects unsafe remote IDs and records auth 
   assert.equal((await gateway.status()).providers.find(p => p.id === 'wavespeed')!.verification, 'rejected');
   await gateway.close();
 }));
+
+test('public inspect requests billing refresh and exposes only sanitized account hints', t => fixture(async store => {
+  const gateway = gatewayFor(store); gateway.options.detect = async () => [];
+  t.after(() => gateway.close());
+  const refreshes: boolean[] = [];
+  t.mock.method(gateway.account, 'summary', async (refresh = false) => {
+    refreshes.push(refresh);
+    return { state: 'signed-in', plan: ' Go ', balance: '0.00', billingUnavailable: false,
+      user: { email: 'private@example.test' }, consoleUrl: 'https://example.test', authorizationUrl: 'private-url' };
+  });
+  await gateway.status(); assert(refreshes.every(value => value === false));
+  refreshes.length = 0;
+  const result = await service(store).call('openmotion_media_use', { action: 'inspect' });
+  assert(refreshes.includes(true));
+  const account = result.providers.find((p: any) => p.id === 'account');
+  assert.equal(account.mediaEntitlement, 'not-included'); assert.equal(account.available, true);
+  assert.equal(account.plan, 'go'); assert.equal(account.hasBalance, false);
+  assert.doesNotMatch(JSON.stringify(result), /0\.00|"balance"|private@example|private-url|controlKey|runtimeKey/);
+}));
+
+test('account media hints distinguish personal tiers, invalid balances and unfetched billing', () => {
+  const summary = { state: 'signed-in' as const, billingUnavailable: false, consoleUrl: 'https://example.test' };
+  for (const plan of ['plus', 'PRO', 'max', ' Max ']) {
+    assert.equal(accountMediaState({ ...summary, plan }).mediaEntitlement, 'included', plan);
+  }
+  for (const balance of [undefined, null, '', '  ', 'NaN', 'Infinity', 'invalid']) {
+    const hint = accountMediaState({ ...summary, plan: 'free', balance });
+    assert.equal(hint.mediaEntitlement, 'unknown', String(balance)); assert.equal(hint.hasBalance, undefined);
+  }
+  assert.equal(accountMediaState({ ...summary, plan: 'free', balance: '-0.25' }).mediaEntitlement, 'not-included');
+  for (const plan of ['team_plus', 'team_pro', 'team_max', 'future-tier']) {
+    assert.equal(accountMediaState({ ...summary, plan, balance: '0' }).mediaEntitlement, 'unknown', plan);
+  }
+  for (const input of [{ ...summary, plan: '   ', balance: '1.00' }, { ...summary }, { ...summary, plan: 'plus', billingUnavailable: true },
+    { ...summary, plan: 'plus', billingUnavailable: undefined }, { ...summary, plan: 'plus', state: 'reauth-required' as const }]) {
+    const hint = accountMediaState(input);
+    assert.equal(hint.mediaEntitlement, input.state === 'signed-in' ? 'unknown' : undefined); assert.equal(hint.plan, undefined); assert.equal(hint.hasBalance, undefined);
+  }
+});

@@ -67,8 +67,8 @@ test('public package assets and their transitive imports work through both HTTP 
     const bytes = Buffer.from(await response.arrayBuffer());
     assert.deepEqual(bytes, await readFile(new URL(file, packageRoot)), file);
     if (!/\.(css|html)$/.test(file)) continue;
-    for (const match of bytes.toString().matchAll(/(?:url\(\s*['"]?([^)'"\s]+)|(?:src|href)="(\/design-system\/[^"#]+))/g)) {
-      const target = new URL(match[1] || match[2], `${origin}/design-system/${file}`);
+    for (const match of bytes.toString().matchAll(/(?:url\(\s*['"]?([^)'"\s]+)|(?:src|href)="(\/design-system\/[^"#]+)|@import\s+['"]([^'"]+)['"])/g)) {
+      const target = new URL(match[1] || match[2] || match[3], `${origin}/design-system/${file}`);
       if (target.origin !== origin) continue;
       assert.equal((await fetch(target)).status, 200, `${file} -> ${target.pathname}`);
     }

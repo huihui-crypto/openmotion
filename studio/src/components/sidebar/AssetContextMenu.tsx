@@ -1,3 +1,4 @@
+import { ASSET_NAME_ERROR } from '../../../../shared/asset-names';
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -16,6 +17,7 @@ export function ContextMenu({
   x,
   y,
   asset,
+  displayName,
   onClose,
   onCopy,
   onDelete,
@@ -28,6 +30,7 @@ export function ContextMenu({
   x: number;
   y: number;
   asset: string;
+  displayName?: string;
   onClose: () => void;
   onCopy: (path: string) => void;
   onDelete?: (path: string) => void;
@@ -41,8 +44,9 @@ export function ContextMenu({
   const mvp = useMvpEditor();
   const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x, y });
+  const name = displayName ?? filename(asset);
   const [mode, setMode] = useState<"menu" | "confirm-delete" | "rename">("menu");
-  const [renameDraft, setRenameDraft] = useState(() => filename(asset));
+  const [renameDraft, setRenameDraft] = useState(() => name);
   const [renameError, setRenameError] = useState<string | null>(null);
   const deleteRequestedRef = useRef(false);
   const deleteAsset = () => {
@@ -101,18 +105,18 @@ export function ContextMenu({
 
   const commitRename = useCallback(() => {
     const trimmed = renameDraft.trim();
-    if (trimmed === filename(asset)) {
+    if (trimmed === name) {
       onClose();
       return;
     }
-    if (!isValidAssetName(trimmed)) {
-      setRenameError("Name can't contain / or ..");
+    if (displayName === undefined ? !isValidAssetName(trimmed) : !trimmed || trimmed.length > 200 || /[\x00-\x1f\x7f]/.test(trimmed)) {
+      setRenameError(t(displayName === undefined ? "Name can't contain / or .." : ASSET_NAME_ERROR));
       return;
     }
     const dir = asset.includes("/") ? asset.slice(0, asset.lastIndexOf("/") + 1) : "";
-    onRename?.(asset, `${dir}${trimmed}`);
+    onRename?.(asset, displayName === undefined ? `${dir}${trimmed}` : trimmed);
     onClose();
-  }, [renameDraft, asset, onRename, onClose]);
+  }, [renameDraft, asset, displayName, name, onRename, onClose, t]);
 
   const itemCls = `${menuClasses.row} ${menuClasses.rowEnabled} active:bg-neutral-700/70 transition-colors`;
 
@@ -129,7 +133,7 @@ export function ContextMenu({
       <div
         ref={menuRef}
         role="menu"
-        aria-label={t("Actions for {value0}", { value0: filename(asset) })}
+        aria-label={t("Actions for {value0}", { value0: name })}
         className={`${mvp ? `${popupSurface} motion-context-menu p-1 shadow-menu min-w-[180px]` : `${menuClasses.panel} min-w-[160px]`} absolute text-xs`}
         style={{ left: pos.x, top: pos.y, maxWidth: "calc(100vw - 16px)", maxHeight: "calc(100vh - 16px)", overflow: "auto" }}
         onClick={(e) => e.stopPropagation()}
@@ -174,7 +178,7 @@ export function ContextMenu({
         )}
         {mode === "confirm-delete" && (
           <DeleteConfirm
-            name={filename(asset)}
+            name={name}
             onConfirm={deleteAsset}
             onCancel={() => setMode("menu")}
           />
@@ -195,7 +199,7 @@ export function ContextMenu({
                   setMode("menu");
                 }
               }}
-              aria-label={t("Rename {value0}", { value0: filename(asset) })}
+              aria-label={t("Rename {value0}", { value0: name })}
               className="w-full bg-neutral-800 border border-neutral-600 rounded-sm px-1.5 py-1 text-[11px] text-text-0 focus:border-studio-accent/60 focus:outline-hidden"
             />
             {renameError && <span className="text-[10px] text-danger-ink">{renameError}</span>}

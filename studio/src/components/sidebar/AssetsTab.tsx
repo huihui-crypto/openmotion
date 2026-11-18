@@ -24,6 +24,8 @@ import {
   FILTER_ORDER,
 } from "./assetHelpers";
 import { AudioRow } from "./AudioRow";
+import { assetSourcePath, deriveAssetUsages } from "./assetUsage";
+import { useAssetUsageNavigation } from "./useAssetUsageNavigation";
 import { AssetCard, FontRow } from "./AssetCard";
 import { useProjectAssetManifest } from "../../hooks/useProjectAssetManifest";
 import type { FileTreeRefreshOptions } from '../../hooks/useFileTree';
@@ -31,6 +33,7 @@ import type { FileTreeRefreshOptions } from '../../hooks/useFileTree';
 interface AssetsTabProps {
   projectId: string;
   assets: string[];
+  assetNames?: Record<string, string>;
   onImport?: (files: FileList, entryPoint?: "assets_button" | "assets_drop") => void | Promise<void>;
   onLibraryImport?: (options: FileTreeRefreshOptions) => Promise<void>;
   onDelete?: (path: string) => void;
@@ -79,36 +82,12 @@ export function countUsage(
  *
  * Pure — unit-tested.
  */
-export function deriveUsedPaths(elements: Array<{ src?: string }>): Set<string> {
-  const paths = new Set<string>();
-  for (const el of elements) {
-    if (!el.src) continue;
-    let s = el.src;
-
-    // Strip absolute origin if present (http://host/path → /path)
-    try {
-      const u = new URL(s);
-      s = u.pathname + (u.search ? u.search : "") + (u.hash ? u.hash : "");
-    } catch {
-      // Not a valid absolute URL — leave as-is (relative path)
-    }
-
-    s = s
-      .replace(/^\/api\/projects\/[^/]+\/preview\//, "") // strip the dev serve prefix
-      .replace(/^\.?\//, "") // strip leading ./ or /
-      .split(/[?#]/)[0]; // drop query / hash
-
-    // Decode percent-encoded characters (spaces, parens, etc.) so the path
-    // matches the plain-text asset-list entries the server returns.
-    try {
-      s = decodeURIComponent(s);
-    } catch {
-      // Malformed encoding — use as-is
-    }
-
-    if (s) paths.add(s);
-  }
-  return paths;
+export function deriveUsedPaths(elements: Array<{ src?: string; sourceFile?: string }>, manifest: readonly { assetUrl?: string | null }[] = []): Set<string> {
+  const references = [...elements, ...manifest.map(clip => ({ src: clip.assetUrl ?? undefined, sourceFile: undefined }))];
+  return new Set(references.flatMap(el => {
+    const path = el.src && assetSourcePath(el.src, el.sourceFile);
+    return path ? [path] : [];
+  }));
 }
 
 /** Empty list body. A query that matched nothing says so and offers a way out;
@@ -149,6 +128,7 @@ function EmptyState({
 export const AssetsTab = memo(function AssetsTab({
   projectId,
   assets,
+  assetNames,
   onImport,
   onLibraryImport,
   onDelete,
@@ -221,7 +201,11 @@ export const AssetsTab = memo(function AssetsTab({
     setTimeout(() => setCopyFeedback(null), copied ? 1500 : 3000);
   }, []);
   const elements = usePlayerStore((s) => s.elements);
-  const usedPaths = useMemo(() => deriveUsedPaths(elements), [elements]);
+  const clipManifest = usePlayerStore(s => s.clipManifest);
+  const timelineProjectId = usePlayerStore(s => s.timelineProjectId);
+  const { reveal, activePath } = useAssetUsageNavigation(projectId);
+  const usages = useMemo(() => timelineProjectId && timelineProjectId !== projectId ? new Map() : deriveAssetUsages(elements, clipManifest, projectId, activePath), [elements, clipManifest, projectId, activePath, timelineProjectId]);
+  const usedPaths = useMemo(() => new Set<string>(usages.keys()), [usages]);
 
   // Unfiltered pool — header controls (search, chips) are gated on THIS, not
   // the search-filtered list, so a no-match query can't unmount its own input.
@@ -235,11 +219,12 @@ export const AssetsTab = memo(function AssetsTab({
     if (!searchQuery) return all;
     const q = searchQuery.toLowerCase();
     return all.filter((a) => {
+      if ((assetNames?.[a] ?? filename(a)).toLowerCase().includes(q)) return true;
       if (filename(a).toLowerCase().includes(q)) return true;
       const rec = manifest.get(a);
       return rec?.description?.toLowerCase().includes(q);
     });
-  }, [allMediaAssets, searchQuery, manifest]);
+  }, [allMediaAssets, searchQuery, manifest, assetNames]);
 
   const categorized = useMemo(() => {
     const groups: Record<MediaCategory, string[]> = { audio: [], images: [], video: [], fonts: [] };
@@ -391,6 +376,9 @@ export const AssetsTab = memo(function AssetsTab({
                           key={a}
                           projectId={projectId}
                           asset={a}
+                          usages={usages.get(a)}
+                          onRevealUsage={reveal}
+                          displayName={assetNames?.[a]}
                           used={usedPaths.has(a)}
                           meta={manifest.get(a)}
                           onCopy={handleCopyPath}
@@ -407,6 +395,7 @@ export const AssetsTab = memo(function AssetsTab({
                             key={a}
                             projectId={projectId}
                             asset={a}
+                            displayName={assetNames?.[a]}
                             used={usedPaths.has(a)}
                             duration={manifest.get(a)?.duration}
                             onCopy={handleCopyPath}
@@ -423,6 +412,7 @@ export const AssetsTab = memo(function AssetsTab({
                         <FontRow
                           key={a}
                           asset={a}
+                          displayName={assetNames?.[a]}
                           used={usedPaths.has(a)}
                           onCopy={handleCopyPath}
                           copyFeedback={copyFeedback}

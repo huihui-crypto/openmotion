@@ -14,7 +14,6 @@ import {
   type TimelineGroupResizeSession,
 } from "./timelineGroupEditing";
 import { collectTimelineSnapTargets, type TimelineSnapTarget } from "./timelineSnapping";
-import { getTimelineGridStep, rulerFrameRate } from "./timelineRulerGeometry";
 import { setPreviewFrame } from "../store/previewFrameStore";
 import type { StackingPatch } from "./timelineStackingSync";
 import type { TimelineEditCallbacks } from "./timelineCallbacks";
@@ -33,7 +32,7 @@ import type {
 } from "./timelineClipDragTypes";
 import { getTimelineElementIndexes } from "../lib/timelineElementIndexes";
 import { dropMisalignedTrimPartners, linkedGestureKeys } from "./audioClipLink";
-import { isLinkedSelectionOn, useLinkedClipPreferences } from "../../utils/linkedClipPreferences";
+import { isLinkedSelectionOn } from "../../utils/linkedClipPreferences";
 import { useTimelineClipCapabilities } from "./timelineReadOnly";
 import { timelineClipFocusId } from "./timelineNavigationIdentity";
 import {
@@ -184,15 +183,9 @@ export function useTimelineClipDrag({
     },
     [],
   );
-  // The ruler's line spacing at the current zoom; 0 with the magnet off, like the targets.
-  const snapGridStep = useCallback(() => {
-    if (!snapContextRef.current.enabled) return 0;
-    const frameRate = rulerFrameRate(
-      usePlayerStore.getState().timeDisplayMode,
-      useLinkedClipPreferences.getState().compositionFps,
-    );
-    return getTimelineGridStep(durationRef.current, ppsRef.current, frameRate);
-  }, [durationRef, ppsRef]);
+  // Clip gestures align to meaningful media edges and the playhead, not every
+  // ruler subdivision. Dense grid targets otherwise make short moves feel stuck.
+  const snapGridStep = useCallback(() => 0, []);
 
   const [draggedClip, setDraggedClipState] = useState<DraggedClipState | null>(null);
   const draggedClipRef = useRef<DraggedClipState | null>(null);

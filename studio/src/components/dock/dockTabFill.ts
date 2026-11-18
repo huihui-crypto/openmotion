@@ -1,4 +1,5 @@
 import type { DockviewApi } from "dockview-react";
+import { installTabScroll } from "./dockTabScroll";
 
 const TAB_FILL_CLASS = "hf-dock-tab-fill";
 
@@ -75,6 +76,7 @@ function markClippedEdges(list: HTMLElement) {
  * Returns a disposer.
  */
 export function installTabFill(api: DockviewApi, root: HTMLElement): () => void {
+  const disposeScroll = installTabScroll(root);
   const lists = () => root.querySelectorAll<HTMLElement>(".dv-tabs-container");
   // Tab widths also change with no dockview event: a renamed title, a late web font.
   const resizeObserver = new ResizeObserver(() => placeAll());
@@ -117,6 +119,7 @@ export function installTabFill(api: DockviewApi, root: HTMLElement): () => void 
   root.addEventListener("scroll", onScroll, true);
   placeAll();
   return () => {
+    disposeScroll();
     root.removeEventListener("scroll", onScroll, true);
     for (const subscription of subscriptions) subscription.dispose();
     resizeObserver.disconnect();

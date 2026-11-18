@@ -9,6 +9,9 @@ let givenUp = false;
 const changing = () => reloading || reloadRequested || scriptWrites > 0;
 const noteIdle = () => {
   if (!changing()) givenUp = false;
+  // Scene swaps and pending saves use the same server as composition thumbnails.
+  // Reserve it for the preview from the request through the final painted frame.
+  thumbnailScheduler.setPreviewReloading(changing());
   globalThis.document?.documentElement.toggleAttribute(
     "data-preview-changing",
     isPreviewChanging(),
@@ -22,7 +25,6 @@ export function giveUpOnPreviewChange(): void {
 
 export function setPreviewReloading(next: boolean): void {
   reloading = next;
-  thumbnailScheduler.setPreviewReloading(next);
   noteIdle();
 }
 

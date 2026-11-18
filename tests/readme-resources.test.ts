@@ -79,6 +79,19 @@ test('README displays registered public media without requiring its optional loc
   await assert.rejects(checkDocument(file, new Set([url])), /external display/);
 });
 
+test('only the repository-owned daily star chart is allowed as a live picture source', async t => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'motion-star-history-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const file = path.join(dir, 'README.md');
+  const url = 'https://raw.githubusercontent.com/nexu-io/openmotion/readme-charts/star-history.svg';
+  await writeFile(file, `<source srcset="${url}">`);
+  await checkDocument(file);
+  for (const source of [url.replace('/nexu-io/', '/another-owner/'), url.replace('/readme-charts/', '/main/')]) {
+    await writeFile(file, `<source srcset="${source}">`);
+    await assert.rejects(checkDocument(file), /external display/);
+  }
+});
+
 test('README rejects oversized embedded images but keeps original download links valid', async t => {
   const dir = await mkdtemp(path.join(tmpdir(), 'motion-readme-proxy-'));
   t.after(() => rm(dir, { recursive: true, force: true }));

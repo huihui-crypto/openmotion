@@ -67,6 +67,7 @@ export interface TimelineToolbarProps {
   /** Hides Add keyframe and auto-record, and turns off auto-record and the K shortcut with them. */
   showKeyframes?: boolean;
   rightActions?: ReactNode;
+  leftActions?: ReactNode;
 }
 
 interface KeyframeToggleState {
@@ -169,6 +170,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
   showAddBeat = true,
   showKeyframes = true,
   rightActions,
+  leftActions,
 }: TimelineToolbarProps) {
   const { t } = useI18n();
   const mvp = useMvpEditor();
@@ -279,6 +281,7 @@ export const TimelineToolbar = memo(function TimelineToolbar({
               );
             })()}
           <TimelineTrimButtons onResize={onResizeElement} />
+          {leftActions}
           {!mvp && <LinkedSelectionToggle />}
           {!mvp && projectHasAudio && (
             <Tooltip label={audioMetersVisible ? t("Hide audio meters") : t("Show audio meters")}>

@@ -36,9 +36,11 @@
 
 .motion-track-controls-row { display: flex; align-items: center; padding-inline: var(--motion-space-4); }
 .motion-track-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0; width: 100%; }
-.motion-track-kind { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; color: var(--motion-dim); }
+.motion-track-kind { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 24px; color: var(--motion-control-disabled); }
+.motion-track-badge { min-width: 24px; width: auto; padding: var(--motion-space-2) var(--motion-space-4); margin-right: var(--motion-space-2); border-radius: var(--motion-radius-xs); font-size: var(--motion-text-xs); font-weight: var(--motion-weight-semibold); font-variant-numeric: tabular-nums; color: var(--motion-strong); background: var(--motion-hover); }
 .motion-track-controls > div { margin-left: 0; }
 .motion-track-controls button { width: 24px; height: 24px; min-height: 0; flex: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: var(--motion-radius-xs); color: var(--motion-muted); background: transparent; cursor: pointer; }
+.motion-track-controls button > svg { width: 14px; height: 14px; }
 .motion-track-controls button:hover:enabled { color: var(--motion-strong); background: var(--motion-hover); }
 .motion-track-controls button[aria-pressed="true"] { color: var(--motion-accent); }
 .motion-track-controls button:disabled { color: var(--motion-control-disabled); cursor: not-allowed; }

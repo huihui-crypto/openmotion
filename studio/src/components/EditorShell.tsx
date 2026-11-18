@@ -295,7 +295,9 @@ function EditorShellBody({
   const { compositionStack, updateCompositionStack, containerRef } = useNLEContext();
   const host = useStudioHost();
   // The workspace sidebar and conversation are outside this editor's geometry.
-  const dockWidth = useCallback(() => containerRef.current?.clientWidth || window.innerWidth, [containerRef]);
+  // A mounted editor hidden by settings has zero width. Keep that signal so the
+  // dock suspends fitting instead of treating the whole window as editor space.
+  const dockWidth = useCallback(() => containerRef.current?.clientWidth ?? window.innerWidth, [containerRef]);
 
   // The caption track's blocks are seek targets; CaptionTimeline took an onSeek
   // prop that nothing ever passed, so clicking a block did nothing.

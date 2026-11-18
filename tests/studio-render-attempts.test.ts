@@ -36,6 +36,7 @@ async function fixture(run: (context: any) => Promise<void>) {
       const host = {states, beforeStart: undefined};
       globalThis.__studioRenderTestHosts.set(projectDir, host);
       const adapter = {
+        transformPreviewHtml: async ({html}) => html,
         startRender(options) {
           const state = {id: options.jobId, status: 'rendering', progress: 0,
             outputPath: options.outputPath, options, cancelCalls: 0,

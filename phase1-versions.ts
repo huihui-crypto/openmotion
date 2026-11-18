@@ -196,7 +196,10 @@ export class ProjectVersions {
       await atomicJson(this.indexFile, index);
       journal.state = 'committed'; journal.versionId = version.versionId;
       await atomicJson(path.join(transaction, 'journal.json'), journal); committed = true;
-      return { version: await this.publicVersion(version, history), revision: version.revision, changed: version.versionId !== current.versionId };
+      // A text edit must not transfer and hash every unchanged media blob again.
+      // Reuse the stat-validated streaming checks used by project/version reads;
+      // changed, missing or corrupt blobs still invalidate their cached verdict.
+      return { version: await this.publicVersion(version, history, true), revision: version.revision, changed: version.versionId !== current.versionId };
     } catch (error) {
       if (await exists(path.join(transaction, 'journal.json'))) await this.rollback(transaction, journal);
       throw error;

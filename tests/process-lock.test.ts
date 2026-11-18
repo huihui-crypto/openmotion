@@ -57,11 +57,12 @@ test('Windows sharing violations are retried during acquisition and release', as
   const worker = await child(`
     import fs from 'node:fs/promises'; import {syncBuiltinESMExports} from 'node:module'; import assert from 'node:assert/strict';
     Object.defineProperty(process,'platform',{value:'win32'});
-    let links=0,unlinks=0; const link=fs.link,unlink=fs.unlink;
+    let links=0,unlinks=0,busyReads=0; const link=fs.link,unlink=fs.unlink,readFile=fs.readFile;
     fs.link=async(...args)=>{ if(++links<=2) throw Object.assign(new Error('sharing'),{code:'EPERM'}); return link(...args); };
     fs.unlink=async(...args)=>{ if(++unlinks<=2) throw Object.assign(new Error('sharing'),{code:'EACCES'}); return unlink(...args); };
-    syncBuiltinESMExports(); let ran=0; await withProcessLock(${JSON.stringify(lock)},async()=>{ran++;});
-    assert.equal(ran,1);assert.equal(links,3);assert.equal(unlinks,3);
+    fs.readFile=async(...args)=>{ if(busyReads>0){busyReads--;throw Object.assign(new Error('sharing'),{code:'EPERM'});} return readFile(...args); };
+    syncBuiltinESMExports(); let ran=0; await withProcessLock(${JSON.stringify(lock)},async()=>{ran++;busyReads=2;});
+    assert.equal(ran,1);assert.equal(links,3);assert.equal(unlinks,3);assert.equal(busyReads,0);
     const owner=JSON.stringify({pid:1234,token:crypto.randomUUID()});
     await fs.writeFile(${JSON.stringify(lock)},owner);
     process.kill=()=>{throw Object.assign(new Error('Cannot inspect process'),{code:'EPERM'});};

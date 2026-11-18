@@ -25,7 +25,7 @@
   "Add a music track with beat analysis to place beats": "添加已分析节拍的音乐轨道后，即可放置节拍点",
   "Add a new animation effect to this element": "为此元素添加动画效果",
   "Add at least 2 position keyframes to enable arc motion.": "至少添加 2 个位置关键帧，即可启用弧线运动。",
-  "Add at playhead": "在播放头处添加",
+  "Add at playhead": "添加到当前位置",
   "Add beat at playhead": "在播放头处添加节拍",
   "Add color selection": "添加颜色选区",
   "Add effect": "添加效果",

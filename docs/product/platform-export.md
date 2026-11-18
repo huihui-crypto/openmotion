@@ -1,11 +1,11 @@
 # Platform export through an Agent
 
-Platform export prepares a project-specific instruction for an external Agent. The Agent uses the existing public MCP operations to create independent editable versions, preview them and export verified MP4s. The Export panel retains File export as its default tab. Copying a platform instruction waits for pending Studio saves; it does not create a project or start a render.
+Platform export prepares a project-specific instruction for an external Agent. The Agent uses the existing public MCP operations to create independent editable versions, preview them and export verified MP4s. The Export panel defaults to Video, with separate Captions and Platform export choices. Copying a platform instruction waits for pending Studio saves; it does not create a project or start a render.
 
 ## User journey
 
 1. Open a project in Studio and choose **Export → Platform export**.
-2. Choose Douyin, Xiaohongshu, WeChat Channels, Bilibili, TikTok, Instagram Reels or YouTube Shorts. Choose **Make a short version**, **Extract highlights** or **Adapt the full video**, then set the canvas, target duration and caption policy. Highlights also offer a maximum clip count. Expand Additional requirements for free-form notes. The summary shows the requested dimensions and duration; the copy action stays visible while the form scrolls.
+2. Choose Douyin, Xiaohongshu, WeChat Channels, Bilibili, TikTok, Instagram Reels or YouTube Shorts. Choose **Adapt the full video** (default), **Make a short version** or **Extract highlights**, then set the canvas, target duration and caption policy. Highlights also offer a maximum clip count. Optionally enter subtitle languages or open Review captions to correct speech in Transcript. Expand Additional requirements for free-form notes. The summary shows the requested dimensions and duration; the copy action stays visible while the form scrolls.
 3. Click **Copy for Agent**. Studio completes pending saves and copies the project ID, local workspace, project URL, connection guide and selected brief. Floating feedback confirms copying; clipboard denial exposes the exact instruction for manual selection.
 4. Paste into a compatible connected Agent. **Connection help** opens the existing MCP handbook. Its **Prepare a platform version** example uses the same instruction builder, but asks the user to select the source project because the handbook has no editor identity.
 5. The Agent reads the current project and plans from supplied media, captions, scripts or confirmed timecodes. It duplicates the source, edits each copy, opens its preview and obtains fresh revision/version identities before export.
@@ -35,9 +35,17 @@ Platform export prepares a project-specific instruction for an external Agent. T
 - Existing `openmotion_get_project`, `openmotion_manage_project`, `openmotion_edit_project`, `openmotion_open_preview` and `openmotion_export_request` provide the execution path. Cancellation remains available through `openmotion_export_cancel`. See the [public MCP contract](../mcp-phase1-tools.md).
 - [AGENTS.md](../../AGENTS.md#mcp-onboarding-and-capability-maintenance) and [CLAUDE.md](../../CLAUDE.md#mcp-onboarding) require the handbook to stay aligned with capability changes and scenarios composed from existing tools.
 
+## Direct downloads and existing scenes
+
+Video exports the current composition through the native queue, retaining existing format preferences. Export settings are collapsed until needed. If a project has several compositions, Export scene selects an existing HTML scene without navigating the editor or applying the current scene's variable overrides to it. A different scene uses its authored size; unsupported scaling is unavailable. The public `openmotion_export_request` accepts the equivalent optional `compositionPath` with its normal revision/version/request guards.
+
+Captions downloads SRT/VTT from saved timeline cues via the shared `caption_export` operation. It includes manual captions and native text/timing edits, offers all visible captions or one track, and excludes hidden cues. Save failures block export; errors use floating Toasts and loading failures offer Retry. The full source-transcript download remains in Transcript.
+
+Platform export defaults to full-video adaptation with retained captions. Platform and goal are the main choices. Customize version discloses canvas, duration, captions, highlight count, language presets and additional notes. Removing captions also removes a retained translation request from the brief. Selecting a platform updates its default canvas; explicit choices remain intact. Copy for Agent is an instruction handoff, not a completed download. The popup has stable geometry across all tabs and the platform/subtitle actions stay visible while their content scrolls.
+
 ## Scope and verification boundaries
 
-Canvas sizes and selectable duration goals are editorial starting points, not maintained platform upload limits, encoder presets or a guarantee of distribution performance. This feature does not add account connections or direct publication. Speech transcription, semantic highlight selection, face tracking and creative quality depend on the host's available tools, source material and Agent judgment. Missing analysis inputs must be requested rather than fabricated.
+Canvas sizes and selectable duration goals are editorial starting points, not maintained platform upload limits, encoder presets or a guarantee of distribution performance. This feature does not add account connections or direct publication. Speech transcription uses configured ASR models through the shared transcript operation, or supplied text/timecodes. Visual analysis, semantic highlight selection, face tracking and creative quality depend on the host's available tools, source material and Agent judgment. Missing analysis inputs must be requested rather than fabricated.
 
 The deterministic end-to-end test exercises real Studio, clipboard, a separate stdio MCP process, independent project editing, native preview, the actual renderer and playback of the exact downloaded MP4 bytes. The attachment download route is not evaluated as a byte-range streaming API. Its synthetic film has confirmed timecodes and locally generated audio. It does not invoke a language model, validate editorial decisions on arbitrary long videos, establish a native Agent's connection, or provide human audiovisual acceptance. Those remain separate acceptance checks.
 

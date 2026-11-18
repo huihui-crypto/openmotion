@@ -10,6 +10,7 @@ const root = fileURLToPath(new URL('../', import.meta.url));
 // New documentation and developer scripts require an explicit distribution decision.
 const motionPackageFiles = [
   'docs/brand-kits.md',
+  'docs/transcripts.md',
   'docs/motion-package-spec.md',
   'packages/motion-package/README.md',
   'packages/motion-package/package.json',
@@ -302,6 +303,7 @@ const localReadmeResourceFiles = [
   'docs/readme/openmotion-logo.svg',
   'docs/readme/community-star.svg', 'docs/readme/community-star.zh-CN.svg', 'docs/readme/community-star.ja.svg',
   'docs/readme/community-star.gif',
+  'docs/readme/star-history.svg',
   'docs/readme/capcut-claude-motion-cover.webp',
   'docs/readme/capcut-claude-motion-cover.ja.webp',
   'docs/readme/capcut-claude-motion-cover.zh-CN.webp',
@@ -685,7 +687,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'package.json', 'package-lock.json',
     'skills/openmotion-recreate/assets/reconstruction.js',
     'server.ts', 'browser.ts', 'workspace.ts', 'mcp.ts', 'mcp-tools.ts', 'editor-runtime.ts',
-    'phase1.ts', 'phase1-versions.ts', 'project-archive.ts', 'project-management.ts', 'inline-video.ts', 'preview.ts', 'hyperframes.ts', 'template-library.ts',
+    'phase1.ts', 'phase1-versions.ts', 'project-archive.ts', 'project-management.ts', 'project-asset-names.ts', 'inline-video.ts', 'preview.ts', 'hyperframes.ts', 'template-library.ts',
     'template-catalog.ts', 'prism-templates.ts', 'editor-server.ts',
     'scripts/runtime-assets.mjs', 'scripts/vision-runtime.mjs', 'scripts/npm-runtime.mjs', 'scripts/runtime-lock.json', 'scripts/lint-project.mjs',
     'scripts/npm-installer.mjs', 'scripts/npm-hosts.mjs', 'scripts/recover-workspace-lock.ts', 'scripts/cleanup-harness-bundles.mjs', 'scripts/check-installed-mcp.mjs', 'scripts/mcp-client.mjs',
@@ -693,7 +695,7 @@ export async function distributionFiles(profile: string, include: (file: string)
     'scripts/diagnostics.mjs', 'scripts/diagnostic-redaction.mjs', 'scripts/zip.mjs',
     'scripts/verify-export.ts', 'scripts/export-adapters.ts', 'scripts/package.ts', 'scripts/distribution.ts',
     'scripts/repository-media.ts', 'scripts/prepare-font.ts', 'scripts/font-specimen.ts', 'scripts/build-template-cards.mjs',
-    'shared/workflow-entry.js', 'shared/inline-video-result.js', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
+    'shared/asset-name-ui.json', 'shared/workflow-entry.js', 'shared/inline-video-result.js', 'shared/provider-registry-LICENSE.txt', 'shared/provider-registry-NOTICE.md', 'studio/LICENSE', 'studio/README.md', 'template-library/LICENSE', 'shared/editor-launch.pl',
     'gateway/brand-capture/LICENSE', 'gateway/brand-capture/NOTICE.md',
     'tracking/core.ts', 'tracking/node.ts', 'tracking/browser.ts', 'tracking/events.ts', 'tracking/studio-events.ts', 'tracking/studio-properties.ts', 'tracking/host.ts', 'tracking/device.ts', 'tracking/task-ledger.ts',
     // Required, reviewed native MCP presentation assets; do not widen media globs.

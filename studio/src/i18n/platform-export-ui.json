@@ -40,7 +40,26 @@
     "Copy to your Agent. It creates the version; you upload the video.": "复制给 Agent 制作，完成后由你上传平台。",
     "e.g. Keep the opening hook and original narration": "例如：保留开场亮点与原始旁白",
     "Vertical": "竖屏",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "在“导出 → 平台导出”中选择平台、目标、画幅、时长和字幕；提取精彩片段还可设置数量。复制给 Agent 制作可编辑副本并导出 MP4。"
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "在“导出 → 平台导出”中选择平台、目标、画幅、时长和字幕；提取精彩片段还可设置数量。复制给 Agent 制作可编辑副本并导出 MP4。",
+    "Export settings": "导出设置",
+    "Customize version": "更多选项",
+    "Subtitle language": "字幕语言",
+    "Paste into your Agent to create and export this version.": "粘贴到 Agent，制作并导出这个版本。",
+    "Export scene": "导出内容",
+    "Full video": "完整视频",
+    "Subtitle format": "字幕格式",
+    "Subtitle download started": "已开始下载字幕",
+    "All visible captions": "全部可见字幕",
+    "Uses the text and timing on your timeline.": "与时间轴上的文字和时间一致。",
+    "No visible captions to export": "还没有可导出的字幕",
+    "Could not load captions": "无法加载字幕",
+    "Could not export captions": "字幕导出失败",
+    "Download {format}": "下载 {format}",
+    "Choose SRT or VTT": "请选择 SRT 或 VTT",
+    "Caption timing is invalid; check the timeline": "字幕时间无效，请检查时间轴",
+    "Export nested captions from their own composition": "请在所属片段中导出嵌套字幕",
+    "In Export, download the current video or an existing scene, download timeline captions as SRT/VTT, or prepare a platform version. Keep the editable project.": "在导出中下载完整视频或已有片段、下载时间轴字幕 SRT／VTT，或制作平台版本，并保留可编辑工程。",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "在“导出 → 平台导出”中选择平台和目标。默认保留完整视频与字幕，可在“更多选项”中设置语言、画幅和时长。复制给 Agent 后，制作可编辑版本并导出 MP4。"
   },
   "ja": {
     "Export method": "書き出し方法",
@@ -79,7 +98,8 @@
     "Copy to your Agent. It creates the version; you upload the video.": "Agentにコピーして制作。完成後は自分で投稿できます。",
     "e.g. Keep the opening hook and original narration": "例：冒頭のフックと元のナレーションを保持",
     "Vertical": "縦長",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "「書き出し → プラットフォーム向け」で配信先、目的、画面比率、長さ、字幕を選びます。Agentにコピーして編集可能な動画とMP4を作成します。"
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "「書き出し → プラットフォーム向け」で配信先、目的、画面比率、長さ、字幕を選びます。Agentにコピーして編集可能な動画とMP4を作成します。",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "「書き出し → プラットフォーム向け書き出し」で配信先と目的を選びます。既定では動画全体と字幕を保持します。詳細設定で言語・画面比率・長さを変更できます。依頼内容を Agent にコピーし、編集可能な版と MP4 を作成します。"
   },
   "ko": {
     "Export method": "내보내기 방식",
@@ -118,7 +138,8 @@
     "Copy to your Agent. It creates the version; you upload the video.": "Agent에 복사해 제작하고 완성된 영상을 직접 업로드하세요.",
     "e.g. Keep the opening hook and original narration": "예: 도입부와 원본 내레이션 유지",
     "Vertical": "세로",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "내보내기 → 플랫폼 내보내기에서 플랫폼, 목표, 화면 비율, 길이, 자막을 선택하세요. Agent에 복사하여 편집 가능한 사본과 MP4를 만듭니다."
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "내보내기 → 플랫폼 내보내기에서 플랫폼, 목표, 화면 비율, 길이, 자막을 선택하세요. Agent에 복사하여 편집 가능한 사본과 MP4를 만듭니다.",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "내보내기 → 플랫폼 내보내기에서 플랫폼과 목적을 선택하세요. 기본값은 전체 영상과 자막을 유지합니다. 추가 옵션에서 언어, 화면 비율, 길이를 설정하고 Agent에 요청을 복사하여 편집 가능한 버전과 MP4를 만드세요."
   },
   "de": {
     "Export method": "Exportmethode",
@@ -157,7 +178,8 @@
     "Copy to your Agent. It creates the version; you upload the video.": "In den Agent kopieren. Er erstellt die Version, du lädst das Video hoch.",
     "e.g. Keep the opening hook and original narration": "Z. B.: Einstieg und Originalkommentar beibehalten",
     "Vertical": "Vertikal",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "Wähle unter Export → Plattformexport Plattform, Ziel, Format, Dauer und Untertitel. Kopiere den Auftrag in deinen Agent für editierbare Versionen und MP4."
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "Wähle unter Export → Plattformexport Plattform, Ziel, Format, Dauer und Untertitel. Kopiere den Auftrag in deinen Agent für editierbare Versionen und MP4.",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "Unter Export → Plattformexport Plattform und Ziel wählen. Standardmäßig bleiben das vollständige Video und die Untertitel erhalten. Weitere Optionen öffnen Sprache, Format und Dauer. Den Auftrag an den Agent kopieren, um bearbeitbare Versionen und MP4 zu erstellen."
   },
   "fr": {
     "Export method": "Mode d’export",
@@ -196,7 +218,8 @@
     "Copy to your Agent. It creates the version; you upload the video.": "Copiez dans votre Agent. Il crée la version, vous publiez la vidéo.",
     "e.g. Keep the opening hook and original narration": "Ex. : garder l’accroche et la narration d’origine",
     "Vertical": "Vertical",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "Dans Exporter → Plateforme, choisissez plateforme, objectif, format, durée et sous-titres. Copiez dans votre Agent pour créer des versions éditables et MP4."
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "Dans Exporter → Plateforme, choisissez plateforme, objectif, format, durée et sous-titres. Copiez dans votre Agent pour créer des versions éditables et MP4.",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "Dans Exporter → Export pour plateforme, choisissez une plateforme et un objectif. La vidéo complète et les sous-titres sont conservés par défaut. Les options permettent de régler la langue, le format et la durée. Copiez la demande dans votre Agent pour créer des versions modifiables et des MP4."
   },
   "ru": {
     "Export method": "Способ экспорта",
@@ -235,7 +258,8 @@
     "Copy to your Agent. It creates the version; you upload the video.": "Скопируйте в Agent. Он создаст версию, а вы загрузите видео.",
     "e.g. Keep the opening hook and original narration": "Например: сохранить начало и исходную озвучку",
     "Vertical": "Вертикальный",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "В Экспорт → Для платформы выберите платформу, цель, формат, длительность и субтитры. Скопируйте задание в Agent для создания редактируемых копий и MP4."
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "В Экспорт → Для платформы выберите платформу, цель, формат, длительность и субтитры. Скопируйте задание в Agent для создания редактируемых копий и MP4.",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "В меню «Экспорт → Экспорт для платформы» выберите платформу и цель. По умолчанию сохраняются полное видео и субтитры. В дополнительных параметрах можно выбрать язык, формат и длительность. Скопируйте задание в Agent для создания редактируемых версий и MP4."
   },
   "es": {
     "Export method": "Método de exportación",
@@ -274,7 +298,8 @@
     "Copy to your Agent. It creates the version; you upload the video.": "Copia al Agent. Él crea la versión; tú subes el vídeo.",
     "e.g. Keep the opening hook and original narration": "Ej.: conservar el inicio y la narración original",
     "Vertical": "Vertical",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "En Exportar → Exportación para plataformas, elige plataforma, objetivo, formato, duración y subtítulos. Copia al Agent para crear versiones editables y MP4."
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "En Exportar → Exportación para plataformas, elige plataforma, objetivo, formato, duración y subtítulos. Copia al Agent para crear versiones editables y MP4.",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "En Exportar → Exportación para plataformas, elige la plataforma y el objetivo. Se conservan por defecto el vídeo completo y los subtítulos. Abre las opciones para cambiar idioma, formato y duración. Copia las instrucciones a tu Agent para crear versiones editables y MP4."
   },
   "pt-BR": {
     "Export method": "Método de exportação",
@@ -313,7 +338,8 @@
     "Copy to your Agent. It creates the version; you upload the video.": "Copie para o Agent. Ele cria a versão; você publica o vídeo.",
     "e.g. Keep the opening hook and original narration": "Ex.: manter a abertura e a narração original",
     "Vertical": "Vertical",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "Em Exportar → Exportação para plataformas, escolha plataforma, objetivo, formato, duração e legendas. Copie para o Agent criar versões editáveis e MP4."
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "Em Exportar → Exportação para plataformas, escolha plataforma, objetivo, formato, duração e legendas. Copie para o Agent criar versões editáveis e MP4.",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "Em Exportar → Exportação para plataformas, escolha a plataforma e o objetivo. O vídeo completo e as legendas são mantidos por padrão. Abra as opções para ajustar idioma, formato e duração. Copie as instruções para seu Agent criar versões editáveis e MP4."
   },
   "it": {
     "Export method": "Metodo di esportazione",
@@ -352,7 +378,8 @@
     "Copy to your Agent. It creates the version; you upload the video.": "Copia nell’Agent. Crea la versione e tu carichi il video.",
     "e.g. Keep the opening hook and original narration": "Es.: conserva l’apertura e la voce originale",
     "Vertical": "Verticale",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "In Esporta → Esportazione piattaforma, scegli piattaforma, obiettivo, formato, durata e sottotitoli. Copia nell’Agent per creare versioni modificabili e MP4."
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "In Esporta → Esportazione piattaforma, scegli piattaforma, obiettivo, formato, durata e sottotitoli. Copia nell’Agent per creare versioni modificabili e MP4.",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "In Esporta → Esportazione per piattaforme, scegli piattaforma e obiettivo. Per impostazione predefinita vengono mantenuti il video completo e i sottotitoli. Le opzioni consentono di cambiare lingua, formato e durata. Copia le istruzioni nel tuo Agent per creare versioni modificabili e MP4."
   },
   "tr": {
     "Export method": "Dışa aktarma yöntemi",
@@ -391,6 +418,7 @@
     "Copy to your Agent. It creates the version; you upload the video.": "Agent’a kopyalayın. O sürümü oluşturur, siz videoyu yüklersiniz.",
     "e.g. Keep the opening hook and original narration": "Örn.: açılışı ve orijinal anlatımı koru",
     "Vertical": "Dikey",
-    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "Dışa aktar → Platform dışa aktarımında platform, hedef, boyut, süre ve altyazıları seçin. Düzenlenebilir sürümler ve MP4 için talimatı Agent’a kopyalayın."
+    "In Export → Platform export, choose a platform, goal, canvas, duration and captions. Copy the brief to your Agent to create editable versions and export MP4.": "Dışa aktar → Platform dışa aktarımında platform, hedef, boyut, süre ve altyazıları seçin. Düzenlenebilir sürümler ve MP4 için talimatı Agent’a kopyalayın.",
+    "In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.": "Dışa aktar → Platform için dışa aktar bölümünde platformu ve amacı seçin. Varsayılan olarak videonun tamamı ve altyazılar korunur. Dil, biçim ve süre için seçenekleri açın. Düzenlenebilir sürümler ve MP4 oluşturması için talimatları Agent’ınıza kopyalayın."
   }
 }

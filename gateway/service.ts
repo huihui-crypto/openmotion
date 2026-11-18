@@ -14,6 +14,7 @@ import { ProviderConnections, type GatewayConfig } from './connections.ts';
 import { isGatewayProvider, isMediaProvider, registeredProvider } from '../shared/provider-registry.ts';
 import { compatibleProvider } from './compatible.ts';
 import { OpenDesignAccount } from './account.ts';
+import { accountMediaState } from './account-media.ts';
 import { AssetLibrary } from './asset-library.ts';
 import { requireLibraryMediaRuntime } from './asset-probe.ts';
 import { generationOptions, resolveGenerationParameters, validateGenerationOptions } from '../shared/generation-options.ts';
@@ -182,7 +183,7 @@ export class ModelGateway {
     await this.connections.setDefault(kind, modelId as string | null);
     return this.status();
   }
-  async status(refreshAgents = false): Promise<GatewayStatus> {
+  async status(refreshAgents = false, options: { refreshAccount?: boolean } = {}): Promise<GatewayStatus> {
     const [config, agents, models] = await Promise.all([this.config(), this.agents(refreshAgents), this.models()]);
     const providers: ProviderState[] = await Promise.all(providerIds.map(async id => {
       const saved = config.providers[id] ?? {};
@@ -203,8 +204,8 @@ export class ModelGateway {
         reason: !active ? 'API key required' : !enabled ? 'Disabled' : definition.baseUrlEditable && !baseUrl ? `${definition.label} API origin required` : verification === 'rejected' ? 'Credentials or permissions rejected; update the key' : verification === 'verified' ? 'A generation request succeeded with this key' : 'Configured; availability and quota are checked when generating' };
     }));
     providers.push(...await this.connections.states());
-    const account = await this.account.summary();
-    providers.push({ id: 'account', label: registeredProvider('account')!.label, enabled: account.state === 'signed-in', configured: account.state === 'signed-in', available: account.state === 'signed-in', credentialSource: 'account', verification: 'unverified', reason: account.state === 'signed-in' ? 'Included with your account' : account.state === 'reauth-required' ? 'OpenDesign sign-in expired; sign in again to use your account models' : 'Sign in to use your account models' });
+    const account = await this.account.summary(options.refreshAccount === true);
+    providers.push({ id: 'account', label: registeredProvider('account')!.label, enabled: account.state === 'signed-in', configured: account.state === 'signed-in', available: account.state === 'signed-in', credentialSource: 'account', verification: 'unverified', ...accountMediaState(account) });
     const capabilities = modalities.map(kind => {
       const available = models.filter(model => model.modality === kind && providers.find(p => p.id === model.provider)?.available);
       const selected = config.routes[kind] ? available.find(m => m.id === config.routes[kind]) : available.find(m => m.mode.startsWith('text-to-'));

@@ -159,6 +159,7 @@ export class ProviderConnections {
   async models() { return (await this.config()).models; }
   async saveModel(provider: string, input: Record<string, unknown>) {
     if (!(await this.list()).some(p => p.id === provider)) throw new Error('Provider not found');
+    if (input.kind === 'transcription' && !(await this.list()).some(p => p.id === provider && p.protocol === 'openai')) throw new Error('Transcription requires an OpenAI-compatible provider');
     validId(input.modelId);
     if (!modelKinds.includes(input.kind as ModelKind)) throw new Error('Choose a model capability');
     if (typeof input.label !== 'string' || !input.label.trim() || input.label.length > 180) throw new Error('Model name is required');
@@ -170,6 +171,7 @@ export class ProviderConnections {
   }
   async modelOverrides() { return (await this.config()).modelOverrides ?? {}; }
   async updateMetadata(id: string, input: Record<string, unknown>) {
+    if (input.kind === 'transcription' && !(await this.list()).some(p => id.startsWith(p.id + ':') && p.protocol === 'openai')) throw new Error('Transcription requires an OpenAI-compatible provider');
     const metadata = modelMetadata(input);
     if (input.label !== undefined && (typeof input.label !== 'string' || !input.label.trim() || input.label.length > 180)) throw new Error('Model name is required');
     if (input.kind !== undefined && !modelKinds.includes(input.kind as ModelKind)) throw new Error('Invalid model type');
@@ -225,7 +227,8 @@ export class ProviderConnections {
         try { validId(modelId); } catch { continue; }
         // Only explicit output metadata establishes media capability. Unknown models remain language models.
         const outputs = row.architecture?.output_modalities ?? row.output_modalities;
-        const kind: ModelKind = Array.isArray(outputs) && outputs.includes('image') ? 'image'
+        const asr = provider.protocol === 'openai' && (id === 'openai' && /^(gpt-transcribe|whisper-1|gpt-4o-(mini-)?transcribe(-.*)?)$/.test(modelId) || id === 'groq' && /^whisper-large-v3(-turbo)?$/.test(modelId));
+        const kind: ModelKind = asr ? 'transcription' : Array.isArray(outputs) && outputs.includes('image') ? 'image'
           : Array.isArray(outputs) && outputs.includes('audio') ? 'audio'
           : Array.isArray(outputs) && outputs.includes('video') ? 'video'
           : row.type === 'embedding' || row.supportedGenerationMethods?.includes('embedContent') ? 'embedding' : 'text';

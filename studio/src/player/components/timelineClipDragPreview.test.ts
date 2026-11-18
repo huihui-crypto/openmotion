@@ -984,16 +984,17 @@ describe("trimPreviewTime", () => {
 
 describe("magnet-aware collision preview and commit", () => {
   it.each([
+    { name: "modifier bypass on magnetic main track", bypass: true, magnet: true, track: 1, start: 12, aim: 6, landing: 6, insertRow: 1 },
     { name: "secondary track", magnet: true, track: 0, start: 12, aim: 6, landing: 6, insertRow: 0 },
     { name: "magnetic main track", magnet: true, track: 1, start: 5, aim: 2, landing: 0, insertRow: null },
     { name: "nonmagnetic main track", magnet: false, track: 1, start: 12, aim: 6, landing: 6, insertRow: 1 },
-  ])("shares the resolved landing with commit on $name", ({ magnet, track, start, aim, landing, insertRow }) => {
+  ])("shares the resolved landing with commit on $name", ({ magnet, track, start, aim, landing, insertRow, bypass }) => {
     const moving = clip("moving", track, start, 5, 1);
     const busy = clip("busy", track, start === 5 ? 0 : 5, 5, 1);
     const other = clip("other", track === 0 ? 1 : 0, 0, 20, 1);
     const elements = [busy, moving, other];
     const { drag, clientX, clientY } = horizontalDrag(moving, track + 0.5, aim - start);
-    const ghost = computeDragPreview(drag, clientX, clientY, {
+    const ghost = computeDragPreview({ ...drag, snapDisabled: bypass }, clientX, clientY, {
       ...ctx(undefined, elements), trackOrder: [0, 1], rippleEditEnabled: magnet,
     });
     expect(ghost).toMatchObject({ previewTrack: track, previewStart: landing, insertRow });

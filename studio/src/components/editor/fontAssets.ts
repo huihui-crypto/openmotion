@@ -17,7 +17,10 @@ function cssString(value: string): string {
 }
 
 export function fontFamilyFromAssetPath(path: string): string {
-  const fileName = decodeURIComponent(path.split(/[\\/]/).pop() ?? path).replace(FONT_EXT_RE, "");
+  let basename = path.split(/[\\/]/).pop() ?? path;
+  try { basename = decodeURIComponent(basename); }
+  catch { /* Local filenames may contain literal percent signs rather than URL escapes. */ }
+  const fileName = basename.replace(FONT_EXT_RE, "");
   let family = fileName
     .replace(/[_-]+/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")

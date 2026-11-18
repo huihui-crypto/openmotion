@@ -98,7 +98,7 @@ export function swapFreshly(
   };
   const retries = attempt < SWAP_REFETCHES_BEFORE_THE_COPY_IN_HAND_WINS;
   const gate = retries ? () => isCurrent() && fresh() : isCurrent;
-  whileScriptWrites(() => swap(url.toString(), gate, cancel))
+  void whileScriptWrites(() => swap(url.toString(), gate, cancel)
     .then(() => {
       if (isCurrent() && !fresh() && retries) again();
     })
@@ -107,7 +107,7 @@ export function swapFreshly(
       if (!fresh() && retries) return again();
       logReload("scene-swap-refused", { reason: String(error) });
       reloadWholeFilm(url.toString());
-    });
+    }));
 }
 
 /** Null when the preview cannot swap; rejects when superseded, cancelled or a full reload is needed. */
@@ -127,12 +127,16 @@ export function sceneSwapFor(
     const onCancel = () => deadline.abort(cancel?.reason);
     cancel?.addEventListener("abort", onCancel, { once: true });
     const swapping = (async () => {
+      logReload("perf-swap-fetch");
       const response = await studioApiFetch(url, { signal: deadline.signal });
+      logReload("perf-swap-response");
       if (!response.ok) throw new Error(`preview request failed with ${response.status}`);
       const html = await response.text();
       if (!isCurrent()) throw new Error("superseded by a newer reload");
       // Aborted with the deadline, so a swap still waiting cannot land after the reload has begun.
+      logReload("perf-swap-runtime");
       await swap.call(win, html, deadline.signal);
+      logReload("perf-swap-done");
     })();
     const expired = new Promise<never>((_resolve, reject) =>
       deadline.signal.addEventListener("abort", () => reject(deadline.signal.reason)),

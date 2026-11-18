@@ -10,7 +10,7 @@ const MIN_SIDE_W_FLOOR = 120;
 // Two standard 48px tracks plus the ruler/padding/toolbar fit comfortably in
 // the default workspace without taking over the preview.
 const DEFAULT_TIMELINE_H = 224;
-const DEFAULT_LEFT = ["compositions", "assets", "code", "catalog"] as const;
+const DEFAULT_LEFT = ["compositions", "assets", "captions", "transcript", "code", "catalog"] as const;
 const DEFAULT_RIGHT = ["design", "layers", "renders", "variables", "motionBlur"] as const;
 export const COLLAPSED_SIDE_WIDTH = 48;
 export const MIN_MVP_SIDE_WIDTH = { left: 160, right: 200 } as const;

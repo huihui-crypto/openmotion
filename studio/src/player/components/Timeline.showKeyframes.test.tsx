@@ -66,7 +66,7 @@ async function mountKeyframed(showKeyframes?: boolean, withLanes = true, mvpEdit
   const named = Array.from(host.querySelectorAll("[role=rowheader]")).some((h) =>
     h.textContent?.includes("Hero card"),
   );
-  const accessibleName = !!host.querySelector('.motion-track-controls [aria-label="Track 1"]');
+  const accessibleName = !!host.querySelector('.motion-track-controls[aria-label="Track 1"]');
   const visibilityControl = !!host.querySelector('button[aria-label="Hide track 1"]');
   const lanes = host.textContent?.includes("Position") ?? false;
   act(() => root.unmount());

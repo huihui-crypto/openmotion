@@ -55,11 +55,51 @@ function collectFloatingViews(floating: unknown, into: unknown[]): boolean {
   });
 }
 
+/** Retire the duplicate Text tab without resetting saved editor widths. */
+function migrateTextPanel(value: Record<string, unknown>): Record<string, unknown> | null {
+  if (!isRecord(value.panels) || !('text' in value.panels)) return value;
+  const legacy = value.panels.text;
+  if (!isRecord(legacy) || legacy.id !== 'text' || legacy.contentComponent !== DOCK_PANEL_COMPONENT) return null;
+  const originalViews: unknown[] = [];
+  if (!isRecord(value.grid) || !collectLeafViews(value.grid.root, originalViews) || !collectFloatingViews(value.floatingGroups, originalViews) || !originalViews.includes('text')) return null;
+  const next = structuredClone(value);
+  const panels = next.panels as Record<string, unknown>, grid = next.grid as Record<string, unknown>;
+  const replace = !panels.captions;
+  if (replace) panels.captions = { ...legacy, id: 'captions', title: 'Captions' };
+  delete panels.text;
+  const groupIds: unknown[] = [];
+  let captionGroup: unknown;
+  const group = (data: unknown): boolean => {
+    if (!isRecord(data) || !Array.isArray(data.views)) return false;
+    const wasActive = data.activeView === 'text';
+    data.views = data.views.flatMap(id => id === 'text' ? replace ? ['captions'] : [] : [id]);
+    if (!(data.views as unknown[]).length) return false;
+    if (wasActive) data.activeView = (data.views as unknown[]).includes('captions') ? 'captions' : (data.views as unknown[])[0];
+    groupIds.push(data.id);
+    if ((data.views as unknown[]).includes('captions')) captionGroup = data.id;
+    return true;
+  };
+  const prune = (node: unknown): unknown => {
+    if (!isRecord(node)) return null;
+    if (node.type === 'leaf') return group(node.data) ? node : null;
+    if (node.type !== 'branch' || !Array.isArray(node.data)) return null;
+    node.data = node.data.map(prune).filter(Boolean);
+    return (node.data as unknown[]).length ? node : null;
+  };
+  grid.root = prune(grid.root);
+  if (!grid.root) return null;
+  if (Array.isArray(next.floatingGroups)) next.floatingGroups = next.floatingGroups.filter(item => isRecord(item) && group(item.data));
+  if (!groupIds.includes(next.activeGroup)) next.activeGroup = captionGroup || groupIds[0];
+  return next;
+}
+
 /** Parses a stored layout at the trust boundary; null (stale or foreign shape) means use the default preset. */
 export function parseDockLayout(
   value: unknown,
   allowed: readonly PanelId[] = PANEL_IDS,
 ): SerializedDockview | null {
+  if (!isRecord(value) || !isRecord(value.grid) || !isRecord(value.panels)) return null;
+  value = migrateTextPanel(value);
   if (!isRecord(value) || !isRecord(value.grid) || !isRecord(value.panels)) return null;
   const { grid, panels } = value;
   if (!hasGridShape(grid) || !panelsAreRegistered(panels, allowed)) return null;

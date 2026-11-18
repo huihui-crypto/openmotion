@@ -73,6 +73,7 @@ test('every workflow document and linked reference is reachable over MCP with ca
     const filesBefore = await readdir(directory, { recursive: true });
     const responses = stdio(directory, entries.map(({ workflow, section }, index) => workflowCall(index + 1, { workflow, section })));
     const returned = new Map<string, any>();
+    const byRoute = new Map<string, any>();
     for (const [index, entry] of entries.entries()) {
       const response = responses.get(index + 1);
       assert.ok(!response.isError, JSON.stringify(response));
@@ -88,13 +89,13 @@ test('every workflow document and linked reference is reachable over MCP with ca
       assert.deepEqual(result.sections, Object.keys(workflowRegistry[entry.workflow as keyof typeof workflowRegistry].sections));
       assert.equal(new Set(result.references.map((reference: { documentId: string }) => reference.documentId)).size, result.references.length);
       if (!returned.has(result.documentId)) returned.set(result.documentId, result);
+      byRoute.set(`${result.workflow}/${result.section}`, result);
     }
     for (const document of returned.values()) {
       for (const reference of document.references) {
-        const target = returned.get(reference.documentId);
+        const target = byRoute.get(`${reference.workflow}/${reference.section}`);
         assert.ok(target, `${document.documentId} links to an unreachable document`);
-        assert.equal(target.workflow, reference.workflow);
-        assert.equal(target.section, reference.section);
+        assert.equal(target.documentId, reference.documentId);
       }
     }
     assert.equal(returned.get('skills/openmotion-template-to-video/SKILL.md').status, 'ready');
@@ -124,7 +125,8 @@ test('MCP template delivery exposes a paused zero-second handoff with user playb
     const native = responses.get(2).structuredContent;
     assert.ok(template.references.some((reference: { documentId: string }) =>
       reference.documentId === native.documentId), 'Template delivery must expose the shared handoff to MCP-only clients');
-    assert.match(template.content, /After the playback check[\s\S]*?paused at 0 seconds[^.]*opening frame is blank/i, 'Template delivery must stay at zero even with a blank first frame');
+    assert.match(template.content, /After the playback check[^.]*handoff's paused playback state/i, 'Template delivery must return to the shared paused handoff');
+    assert.doesNotMatch(template.content, /opening frame is blank|seek\(0\)/i, 'Template delivery must not restate the shared zero-second rule');
     assert.match(native.content, /pause the preview first[^.]*seek to 0 seconds/i, 'Playback must pause before seeking to zero');
     assert.match(native.content, /paused at 0 seconds[^.]*opening frame is blank[^.]*do not advance/i, 'A blank opening must not move the playhead forward');
     assert.match(native.content, /Before recording display confirmation[\s\S]*?default handoff[^.]*at 0 seconds[^.]*stable[^.]*paused/i, 'Stable paused playback at zero must be checked before confirmation');

@@ -109,11 +109,15 @@ try {
   const audio = imported.items[0].path;
   let current = await client.call('openmotion_get_project', { projectId: sourceId });
   await client.call('openmotion_edit_project', { projectId: sourceId, requestId: 'source', expectedRevision: current.revision, expectedVersionId: current.currentVersionId, files: [{ path: 'index.html', content: film(audio) }] });
+  current = await client.call('openmotion_get_project', { projectId: sourceId });
+  await client.call('openmotion_assets_use', { action: 'transcript', transcript: { command: 'caption_add', projectId: sourceId, compositionPath: 'index.html', requestId: 'manual-caption', expectedRevision: current.revision, expectedVersionId: current.currentVersionId, segments: [{ id: 'cue', text: 'Saved timeline subtitle', start: 1, end: 3 }] } });
   const preview = await client.call('openmotion_open_preview', { projectId: sourceId });
   const origin = new URL(preview.previewUrl).origin;
   browser = await puppeteer.launch({ executablePath: process.env.HYPERFRAMES_BROWSER_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--autoplay-policy=no-user-gesture-required'] });
   await browser.defaultBrowserContext().overridePermissions(origin, ['clipboard-read', 'clipboard-write', 'clipboard-sanitized-write']);
   page = await browser.newPage(); page.setDefaultTimeout(30_000);
+  const cdp = await page.createCDPSession();
+  await cdp.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: out });
   page.on('pageerror', error => console.error('PAGE ERROR', error.message));
   let integrationMode = 'normal', held;
   const integration = await (await fetch(origin + '/motion-api/integration')).json();
@@ -136,6 +140,25 @@ try {
     await openExport();
     assert.equal(await page.evaluate(() => document.documentElement.dataset.theme === 'paper' ? 'light' : 'dark'), theme);
     assert.equal(await page.$eval('[data-tab-id=file]', el => el.getAttribute('aria-selected')), 'true');
+    await page.waitForFunction(() => { const el = document.querySelector('[data-testid=export-dialog]'); return Math.abs(el.getBoundingClientRect().height - el.offsetHeight) < 0.05; });
+    const videoHeight = await page.$eval('[data-testid=export-dialog]', node => node.getBoundingClientRect().height);
+    await clickText('Captions', '[data-testid=export-dialog] [role=tab]');
+    await page.waitForSelector('[data-testid=caption-export-panel] [role=radio]');
+    await clickText('Download SRT');
+    await page.waitForFunction(() => document.querySelector('.motion-feedback-layer')?.textContent.includes('Subtitle download started'));
+    const subtitleFile = path.join(out, 'index-captions.srt');
+    let subtitleBytes;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      try { subtitleBytes = await readFile(subtitleFile, 'utf8'); break; } catch { await new Promise(resolve => setTimeout(resolve, 100)); }
+    }
+    const subtitleMcp = await client.call('openmotion_assets_use', { action: 'transcript', transcript: { command: 'caption_export', projectId: sourceId, compositionPath: 'index.html', format: 'srt' } });
+    assert.equal(subtitleBytes, subtitleMcp.content);
+    assert(subtitleBytes.includes('00:00:01,000 --> 00:00:03,000\nSaved timeline subtitle'));
+    await rm(subtitleFile);
+    await page.waitForFunction(() => { const el = document.querySelector('[data-testid=export-dialog]'); return Math.abs(el.getBoundingClientRect().height - el.offsetHeight) < 0.05; });
+    assert(Math.abs(await page.$eval('[data-testid=export-dialog]', node => node.getBoundingClientRect().height) - videoHeight) < 1);
+    await page.screenshot({ path: path.join(out, `${theme}-${width}-subtitle-download.png`) });
+    check(`timeline subtitle download matches public MCP: ${theme}, ${width}px`);
     await clickText('Platform export', '[role=tab]'); await page.waitForSelector(`${panel} [role=radio]`);
     await settle();
     const initialLayout = await exportGeometry();
@@ -156,11 +179,12 @@ try {
     await page.keyboard.press('ArrowRight');
     assert.equal(await platformRadio.evaluate(el => el.getAttribute('aria-checked')), 'true');
     assert.equal(await page.$$eval(`${panel} .om-platform-icon img`, images => images.filter(image => image.complete && image.naturalWidth > 0).length), 7);
+    await clickText('Customize version', `${panel} summary`);
     await page.click(`${panel} button[aria-label=Duration]`); await page.waitForFunction(() => [...document.querySelectorAll('[role=option]')].some(el => el.textContent.includes('15–30 seconds')));
     await clickText('15–30 seconds', '[role=option] .om-select-option-copy > :first-child');
     await page.click(`${panel} button[aria-label=Captions]`); await page.waitForSelector('[role=option]');
     await clickText('Add editable captions', '[role=option] .om-select-option-copy > :first-child');
-    await page.click(`${panel} summary`);
+    await clickText('Additional requirements (optional)', `${panel} summary`);
     await page.type(`${panel} textarea`, 'Keep only the confirmed opening, 0–2 seconds, with its audio.');
     assertStableChrome(initialLayout, await exportGeometry());
     const scrolled = await verifyMiddleScroll();
@@ -216,6 +240,7 @@ try {
   check(`integration loading, failure/retry and manual clipboard recovery: ${theme}`);
   await page.setViewport({ width: 390, height: 600 });
   await page.waitForFunction(() => document.querySelector('[data-testid=export-dialog]').getBoundingClientRect().bottom <= innerHeight - 11);
+  await clickText('Customize version', `${panel} summary`);
   await clickText('Additional requirements (optional)', `${panel} summary`);
   await page.type('textarea[aria-label="Additional requirements (optional)"]', 'Keep the confirmed opening.\n'.repeat(30));
   // Editing notes invalidates the prior instruction; request the new fallback.
@@ -237,7 +262,7 @@ try {
   const duplicate = await client.call('openmotion_manage_project', duplicateArgs);
   assert.equal((await client.call('openmotion_manage_project', duplicateArgs)).projectId, duplicate.projectId);
   current = await client.call('openmotion_get_project', { projectId: duplicate.projectId });
-  const edit = { projectId: duplicate.projectId, expectedRevision: current.revision, expectedVersionId: current.currentVersionId, requestId: 'platform-edit', files: [{ path: 'index.html', content: film(audio, true) }] };
+  const edit = { projectId: duplicate.projectId, expectedRevision: current.revision, expectedVersionId: current.currentVersionId, requestId: 'platform-edit', files: [{ path: 'index.html', content: film(audio) }, { path: 'compositions/outro.html', content: film('../' + audio, true).replace('src="assets/gsap.min.js"', 'src="../assets/gsap.min.js"') }] };
   await client.call('openmotion_edit_project', edit);
   await assert.rejects(client.call('openmotion_edit_project', { ...edit, requestId: 'stale-edit' }), /revision|conflict/i);
   const adaptedPreview = await client.call('openmotion_open_preview', { projectId: duplicate.projectId });
@@ -246,7 +271,7 @@ try {
   await waitForPreview();
   await page.screenshot({ path: path.join(out, 'adapted-preview.png') });
   current = await client.call('openmotion_get_project', { projectId: duplicate.projectId });
-  const exportArgs = { projectId: duplicate.projectId, versionId: current.currentVersionId, expectedRevision: current.revision, requestId: 'platform-render', audio: 'required' };
+  const exportArgs = { projectId: duplicate.projectId, versionId: current.currentVersionId, expectedRevision: current.revision, requestId: 'platform-render', audio: 'required', compositionPath: 'compositions/outro.html' };
   const queued = await client.call('openmotion_export_request', exportArgs);
   assert.equal((await client.call('openmotion_export_request', exportArgs)).job.id, queued.job.id);
   let completed; const deadline = Date.now() + 180_000;
@@ -257,7 +282,7 @@ try {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
   assert(completed, 'Render must finish'); assert.equal(completed.verification.status, 'passed');
-  assert.equal(completed.expected.width, 1080); assert.equal(completed.expected.height, 1920); assert.equal(completed.expected.duration, 2);
+  assert.equal(completed.compositionPath, 'compositions/outro.html'); assert.equal(completed.expected.width, 1080); assert.equal(completed.expected.height, 1920); assert.equal(completed.expected.duration, 2);
   const downloaded = await fetch(completed.downloadUrl); assert.equal(downloaded.status, 200);
   const deliveredBytes = Buffer.from(await downloaded.arrayBuffer());
   assert.deepEqual(deliveredBytes, await readFile(completed.path));

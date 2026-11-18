@@ -100,6 +100,27 @@ correctness incidents and recovery evidence use `incident_confirmed` and
 
 ## Identity, properties and privacy
 
+`account_sign_in_result` reports each finished OpenDesign connector attempt with
+`source_product=openmotion`, `source_detail=openmotion_editor_login`, and an
+`entry_id` / `entry_occurred_at` pair created when the editor starts sign-in.
+Attempts replaced within that sign-in retain the entry pair while their
+`attempt_id` changes. A new explicit sign-in creates a new entry pair. Success
+is reported only after the connector completes credential acceptance and the
+local account setup finishes; browser opening or approval alone is not success.
+Successful completion also reports the confirmed account ID as `amr_user_id`,
+so account counts can deduplicate across installations and join AMR account facts.
+Failures and cancellations omit that ID. The existing collection controls apply;
+`distinct_id` remains the installation ID, without identify/alias or person merging.
+Email, names, activation URLs, authorization codes and credentials are omitted.
+These fields describe the local OM result; AMR handoff attribution is separate.
+
+The account and subscription settings' **Manage subscription** link carries
+`od_origin=openmotion`, `od_entry_source=openmotion_manage_subscription`, and a
+fresh `od_entry_id` / UTC `od_entry_at` for each primary or middle click. The link
+retains `billing=plan` and contains no account, installation or credential data.
+AMR must accept the OpenMotion origin and entry source in its attribution
+validation before these parameters can reach its subscription/payment events.
+
 One random `installation_id` UUID is persisted atomically in `tracking/identity.json`
 under each owned data directory, outside projects and versioned application caches.
 Different data directories remain separate installations.
@@ -138,8 +159,8 @@ WHERE timestamp >= now() - INTERVAL 2 DAY
 
 This measures OS-device identities, not people or immutable physical hardware. Shared
 machines count once, a person on two machines counts twice, cloned OS identifiers can
-collide, and an OS reinstall can change Windows/Linux identifiers. No account identity,
-MAC address, raw platform identifier or probabilistic fingerprint is sent. The package can
+collide, and an OS reinstall can change Windows/Linux identifiers. Device context contains
+no account identity, MAC address, raw platform identifier or probabilistic fingerprint. The package can
 initialize an identity with a validated source label; existing identities retain
 their first source. Landing-page attribution and installer `--source` plumbing are
 a separate change. Unknown source remains null.

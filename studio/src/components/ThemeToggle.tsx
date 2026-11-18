@@ -31,7 +31,7 @@ function origin(e: React.MouseEvent<HTMLButtonElement>): [number, number] {
   return [box.left + box.width / 2, box.top + box.height / 2];
 }
 
-/** On only in Studio's own app; a host that embeds Studio owns its theme. */
+/** Top-bar quick toggle: on only in Studio's own app. Embedded Studio still offers the full switcher in Appearance settings. */
 export const ShowThemeToggle = createContext(false);
 
 function cannotReveal(): boolean {

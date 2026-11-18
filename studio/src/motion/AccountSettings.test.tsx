@@ -80,11 +80,45 @@ it('explains that account models still work when the plan and balance cannot be 
   expect(page.textContent).toContain('暂时无法读取订阅和余额。账户模型不受影响，可以照常使用。');
 });
 
+it('passes a fresh subscription entry on ordinary and middle clicks without account credentials', async () => {
+  const page = await open({ state: 'signed-in', user: { email: 'ada@example.test' }, plan: 'free', balance: '0.00' });
+  const link = page.querySelector<HTMLAnchorElement>('a')!;
+  link.addEventListener('click', event => event.preventDefault());
+  link.addEventListener('auxclick', event => event.preventDefault());
+  const ids = new Set<string>();
+  for (const [type, mouseButton] of [['click', 0], ['click', 0], ['auxclick', 1]] as const) {
+    const before = Date.now();
+    await act(async () => { link.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: mouseButton })); });
+    const prepared = link.href;
+    await act(async () => { link.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, button: mouseButton, detail: 1 })); });
+    expect(link.href).toBe(prepared);
+    const url = new URL(link.href), params = url.searchParams;
+    expect(url.origin + url.pathname).toBe('https://open-design.ai/cloud/dashboard');
+    expect([...params.keys()].sort()).toEqual(['billing', 'od_entry_at', 'od_entry_id', 'od_entry_source', 'od_origin']);
+    expect(params.get('billing')).toBe('plan');
+    expect(params.get('od_origin')).toBe('openmotion');
+    expect(params.get('od_entry_source')).toBe('openmotion_manage_subscription');
+    expect(params.get('od_entry_id')).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    const at = params.get('od_entry_at')!;
+    expect(new Date(at).toISOString()).toBe(at);
+    expect(Date.parse(at)).toBeGreaterThanOrEqual(before);
+    expect(Date.parse(at)).toBeLessThanOrEqual(Date.now());
+    ids.add(params.get('od_entry_id')!);
+  }
+  expect(ids.size).toBe(3);
+  await act(async () => { link.click(); });
+  expect(ids.has(new URL(link.href).searchParams.get('od_entry_id')!)).toBe(false);
+  expect(link.target).toBe('_blank'); expect(link.rel).toBe('noreferrer');
+});
+
 it('replaces missing billing metrics with a dashboard link on 403 and restores them on retry', async () => {
   const page = await open({ state: 'signed-in', billingUnavailable: true, billingError: { status: 403 } }, 'zh-CN');
   expect(page.textContent).toContain('账单服务拒绝了本次查询');
   expect(page.querySelector('.om-account-metrics')).toBeNull();
-  expect(page.querySelector('a')?.href).toBe('https://open-design.ai/cloud/dashboard?billing=plan');
+  const url = new URL(page.querySelector('a')!.href);
+  expect(url.origin + url.pathname).toBe('https://open-design.ai/cloud/dashboard');
+  expect(url.searchParams.get('billing')).toBe('plan');
+  expect(url.searchParams.get('od_origin')).toBe('openmotion');
   hooks.account = { state: 'signed-in', plan: 'pro', balance: '0.00', consoleUrl: 'https://open-design.ai/cloud' };
   await act(async () => page.querySelector<HTMLButtonElement>('button[aria-busy]')!.click());
   expect(page.querySelector('.om-account-metrics')?.textContent).toContain('$0.00');

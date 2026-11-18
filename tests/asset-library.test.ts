@@ -98,14 +98,24 @@ test('asset HTTP uploads are replayable and media supports byte ranges; project 
   const invalid = await fetch(url, { headers: { Range: 'bytes=999999-' } }); assert.equal(invalid.status, 416);
   const service = new Phase1Service(store, pluginRoot, { origin: () => 'http://localhost:4173', nativeUrl: () => undefined, openProject: async () => {}, mutation: async task => task(), cancel: async () => {} });
   const project = await service.call('openmotion_create_project', { requestId: 'project', projectType: 'natural_language', title: 'Film', requirements: 'A silent film' });
+  await new AssetLibrary(store).update(asset.id, { name: 'User chosen name' });
   const imported = await service.call('openmotion_assets', { action: 'import_to_project', projectId: project.projectId, requestId: 'import', assetId: asset.id, versionId: asset.currentVersionId });
+  assert.equal(imported.items[0].name, 'User chosen name');
   assert.equal(imported.status, 'completed', JSON.stringify(imported)); assert.equal(imported.appliedToTimeline, false);
   const copied = path.join(store.projectDirectoryFor(project.projectId), imported.items[0].path);
+  await new AssetLibrary(store).update(asset.id, { name: 'Later library name' });
+  const reused = await service.call('openmotion_assets', { action: 'import_to_project', projectId: project.projectId, requestId: 'import-again', assetId: asset.id, versionId: asset.currentVersionId });
+  assert.equal(reused.status, 'completed');
+  assert.equal(reused.items[0].assetId, imported.items[0].assetId);
+  assert.equal(reused.items[0].name, 'User chosen name');
+  const replay = await service.call('openmotion_assets', { action: 'import_to_project', projectId: project.projectId, requestId: 'import', assetId: asset.id, versionId: asset.currentVersionId });
+  assert.equal(replay.items[0].assetId, imported.items[0].assetId);
+  assert.equal(replay.items[0].name, 'User chosen name');
   await new AssetLibrary(store).update(asset.id, { trashed: true });
   assert.deepEqual(await readFile(copied), bytes);
 }, false));
 
-test('in-app Agent streams, confirms generation, persists threads, rejects duplicate turns and stops without resubmitting', () => fixture(async store => {
+test('in-app Agent streams, confirms generation, persists threads, rejects duplicate turns and stops without resubmitting', t => fixture(async store => {
   const binaries: any[] = [];
   class FakeRpc {
     notify: (message: any) => void; sent: any[] = []; requests: any[] = [];
@@ -115,11 +125,44 @@ test('in-app Agent streams, confirms generation, persists threads, rejects dupli
     close() {}
   }
   const chats = new AssetConversations(store, { resolve: async () => '/fake/codex', rpc: FakeRpc as unknown as typeof AssetAgentRpc });
+  t.after(() => chats.close());
   const chat = await chats.create(), input = { requestId: 'one', text: 'Make a lake image', model: 'fixture-model', reasoning: 'high' };
   assert.equal(chats.pending, 0);
   await chats.start(chat.id, input); await until(() => binaries[0]?.requests.some((r: any) => r.method === 'turn/start'));
   assert.equal(chats.pending, 1);
   const rpc = binaries[0];
+  const accountGateway = gatewayFor(store); accountGateway.options.detect = agents;
+  const refreshes: boolean[] = [];
+  let accountTier = 'go';
+  const summary = t.mock.method(accountGateway.account, 'summary', async (refresh = false) => {
+    refreshes.push(refresh);
+    if (refresh) accountTier = 'plus';
+    return { state: 'signed-in', plan: accountTier, balance: '0.00', billingUnavailable: false, consoleUrl: 'https://example.test', user: { email: 'private@example.test' } };
+  });
+  rpc.notify({ id: 88, method: 'item/tool/call', params: { tool: 'openmotion_asset_models', arguments: {} } });
+  await until(() => rpc.sent.some((r: any) => r.id === 88));
+  const reply = rpc.sent.find((r: any) => r.id === 88).result;
+  assert.equal(reply.success, true);
+  assert.deepEqual(refreshes, [false]);
+  const account = JSON.parse(reply.contentItems[0].text).providers.find((p: any) => p.id === 'account');
+  assert.deepEqual(account, { id: 'account', available: true, reason: 'Signed in; multimodal generation requires OpenDesign Plus or above', mediaEntitlement: 'not-included', plan: 'go', hasBalance: false });
+  assert.doesNotMatch(reply.contentItems[0].text, /0\.00|private@example|"balance"/);
+  rpc.notify({ id: 87, method: 'item/tool/call', params: { tool: 'openmotion_asset_models', arguments: { refreshAccount: true } } });
+  await until(() => rpc.sent.some((r: any) => r.id === 87));
+  const refreshedReply = rpc.sent.find((r: any) => r.id === 87).result;
+  assert.equal(refreshedReply.success, true);
+  assert.deepEqual(refreshes, [false, true]);
+  const refreshedAccount = JSON.parse(refreshedReply.contentItems[0].text).providers.find((p: any) => p.id === 'account');
+  assert.deepEqual(refreshedAccount, { id: 'account', available: true, reason: 'Included with your account', mediaEntitlement: 'included', plan: 'plus' });
+  rpc.notify({ id: 86, method: 'item/tool/call', params: { tool: 'openmotion_asset_models', arguments: { refreshAccount: 'yes' } } });
+  await until(() => rpc.sent.some((r: any) => r.id === 86));
+  assert.equal(rpc.sent.find((r: any) => r.id === 86).result.success, false);
+  summary.mock.restore();
+  rpc.notify({ id: 89, method: 'item/tool/call', params: { tool: 'openmotion_asset_models', arguments: {} } });
+  await until(() => rpc.sent.some((r: any) => r.id === 89));
+  const signedOut = JSON.parse(rpc.sent.find((r: any) => r.id === 89).result.contentItems[0].text).providers.find((p: any) => p.id === 'account');
+  assert.deepEqual(Object.keys(signedOut).sort(), ['available', 'id', 'reason']);
+
   assert.equal(rpc.requests.find((r: any) => r.method === 'turn/start').params.effort, 'high');
   await assert.rejects(chats.start(chat.id, { requestId: 'invalid-effort', text: 'hello', reasoning: 'high' }), /Choose an Agent model/);
   assert.equal(rpc.requests.find((r: any) => r.method === 'thread/start').params.sandbox, 'read-only');

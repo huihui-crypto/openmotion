@@ -48,6 +48,8 @@ export interface StudioUiPreferences {
    */
   agentToolsEnabled?: boolean;
   theme?: StudioThemePreference;
+  /** Theme choice inside an embedding host (`?embed=1`). Absent means System: follow the host. */
+  embeddedTheme?: StudioThemePreference;
   /** The dock's serialized panel tree; parsed by `parseDockLayout` on read. */
   dockLayout?: SerializedDockview;
   workspaceLayout?: { left: boolean; right: boolean; preview?: boolean; timeline: boolean; timelineHeight: number | null };
@@ -144,6 +146,9 @@ function readStorage(storage: Storage | null, key: string): StudioUiPreferences 
       preferences.rippleEditEnabled = parsed.rippleEditEnabled;
     }
     if (parsed.theme === "light" || parsed.theme === "dark" || parsed.theme === "system") preferences.theme = parsed.theme;
+    if (parsed.embeddedTheme === "light" || parsed.embeddedTheme === "dark" || parsed.embeddedTheme === "system") {
+      preferences.embeddedTheme = parsed.embeddedTheme;
+    }
     if (parsed.timeDisplayMode === "time" || parsed.timeDisplayMode === "frame") {
       preferences.timeDisplayMode = parsed.timeDisplayMode;
     }

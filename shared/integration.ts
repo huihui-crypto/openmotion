@@ -1,6 +1,12 @@
-import { templatePrompts } from './template-prompts.ts';
-import { catalogLocale } from './template-locale.ts';
+import { formatTemplatePrompt } from './template-prompts.ts';
 import { workflowEntryGuide } from './workflow-entry.js';
+import { transcriptWorkflowPrompt } from './transcript-workflow.ts';
+
+export function transcriptExamplePrompt(info?: Pick<IntegrationInfo, 'previewUrl' | 'dataDirectory'> | null, locale = 'en') {
+  return `First list projects with openmotion_get_project and ask the user to identify the source project and media. Replace SELECTED_PROJECT_ID with that confirmed identity before any operation.\n\n` + transcriptWorkflowPrompt({
+    projectId: 'SELECTED_PROJECT_ID', sourcePaths: [], sourceLinks: '', targets: 'YouTube Shorts and Instagram Reels', languages: 'English and Chinese', goal: 'highlights', notes: 'Review speech and pictures, preserve the original and deliver editable projects with subtitle files. Export saved timeline subtitles with openmotion_assets_use action=transcript command=caption_export (projectId, compositionPath, format=srt); use transcriptId only to select one track. Use openmotion_export_request compositionPath only for a selected existing scene.',
+  }, info ?? undefined, locale);
+}
 
 export const integrationHosts = ['codex', 'claude', 'deepseek', 'chatgpt', 'mcp'] as const;
 export type IntegrationHost = typeof integrationHosts[number];
@@ -98,9 +104,7 @@ Follow the installation guide: ${setupGuideUrl(info)}
 4. ${host === 'codex' ? '在本轮完成引导：先准备好欢迎语和视频卡片，再打开模板库并立即展示已就绪的内容，不把内部指令发成新的用户消息。' : '接入后打开模板库，'}等我给出创作要求后再创建或修改工程。`;
 }
 export function templatePrompt(_info: IntegrationInfo, _host: IntegrationHost, template: { id: string; title: string }, locale = 'zh-CN') {
-  const message = templatePrompts[catalogLocale(Object.keys(templatePrompts), locale, 'en')];
-  const values = { installUrl: 'https://github.com/nexu-io/openmotion', name: template.title, id: template.id };
-  return message.replace(/\{(installUrl|name|id)\}/g, (_, key: keyof typeof values) => values[key]);
+  return formatTemplatePrompt(template, locale);
 }
 
 export function agentGuide(info: IntegrationInfo, host: IntegrationHost) {

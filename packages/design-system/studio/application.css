@@ -466,3 +466,12 @@
 [data-motion-studio] .om-disclosure-summary:focus-visible { outline: 2px solid var(--motion-selected); outline-offset: 2px; border-radius: var(--motion-radius-sm); }
 [data-motion-studio] details[open] > .om-disclosure-summary > svg:last-child { transform: rotate(180deg); }
 @media (prefers-reduced-motion: reduce) { [data-motion-studio] .om-choice-tile { transition: none; } }
+
+[data-motion-studio] .om-preset-choice { display: inline-flex; align-items: center; gap: var(--motion-space-6); min-width: 0; min-height: var(--motion-control); padding: var(--motion-space-6) var(--motion-space-10); border: 1px solid var(--motion-border-subtle); border-radius: var(--motion-radius-md); background: var(--motion-panel); color: var(--motion-text); font-size: var(--motion-text-sm); line-height: var(--motion-leading-body); text-align: start; cursor: pointer; }
+[data-motion-studio] .om-preset-choice > svg { flex-shrink: 0; color: var(--motion-muted); }
+[data-motion-studio] .om-preset-choice:hover { background: var(--motion-nav-hover); border-color: var(--motion-border-strong); }
+[data-motion-studio] .om-preset-choice[aria-pressed="true"] { background: var(--motion-accent-soft); border-color: var(--motion-accent); color: var(--motion-accent); }
+[data-motion-studio] .om-preset-choice[aria-pressed="true"] > svg { color: inherit; }
+[data-motion-studio] .om-preset-choice[data-layout="card"] { flex-direction: column; align-items: flex-start; padding: var(--motion-space-10); }
+[data-motion-studio] .om-preset-choice:focus-visible { outline: 2px solid var(--motion-selected); outline-offset: 2px; }
+[data-motion-studio] .om-preset-choice:disabled { opacity: .5; cursor: not-allowed; }

@@ -8,6 +8,7 @@ import { usePlayerStore, type TimelineElement } from "../store/playerStore";
 import { createTimelineRowGeometry } from "./timelineLayout";
 import { resolveDropInsertRow, useTimelineAssetDrop } from "./timelineDragDrop";
 import { getTimelineRowTop, TRACK_H } from "./timelineLayout";
+import { TIMELINE_SNAP_PX } from "./timelineSnapping";
 import { configureTimelineTestViewport } from "./timelineTestViewport";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -374,12 +375,12 @@ describe("useTimelineAssetDrop start", () => {
 
   it("snaps a drop within TIMELINE_SNAP_PX of a clip edge onto that edge", () => {
     const lane: TimelineElement[] = [{ id: "c", tag: "div", start: 0, duration: 5, track: 0 }];
-    // The clip ends at x=200; 6 px past it is 5.15s, inside the 8 px radius.
-    const { preview, committed } = dropAt(lane, 206);
+    // Probe either side of the shared pixel threshold at 40 pixels per second.
+    const { preview, committed } = dropAt(lane, 200 + TIMELINE_SNAP_PX - 1);
     expect(preview).toEqual({ start: 5, track: 0 });
     expect(committed).toEqual(preview);
-    // 12 px past it is outside the radius and keeps the pointer time.
-    expect(dropAt(lane, 212).committed).toEqual({ start: 5.3, track: 0 });
+    expect(dropAt(lane, 200 + TIMELINE_SNAP_PX + 1).committed)
+      .toEqual({ start: 5 + (TIMELINE_SNAP_PX + 1) / 40, track: 0 });
   });
 
   it("keeps the pointer time with the magnet off, and also preserves it on an empty lane", () => {

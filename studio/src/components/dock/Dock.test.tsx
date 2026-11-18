@@ -108,7 +108,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// The default Edit layout tabs [compositions|assets|code|catalog] into one
+// The default Edit layout tabs [compositions|assets|transcript|captions|code|catalog] into one
 // group and [design|layers|renders|variables] into another; dockview shows
 // only the active tab's content per group. `slideshow` is never part of the
 // default build — StudioRightPanels opens it itself when the file is one.
@@ -116,14 +116,15 @@ const DEFAULT_OPEN = PANEL_IDS.filter((id) => id !== "slideshow" && id !== "hist
 const DEFAULT_VISIBLE = ["preview", "timeline", "compositions", "design"];
 
 describe("Dock on React 19", () => {
-  it("mounts the default layout's ten panels, showing only each group's active tab", () => {
+  it("mounts the default layout's panels, retaining capture state while hidden", () => {
     const host = mount("p1");
     for (const id of DEFAULT_VISIBLE) {
       expect(host.querySelector(`[data-testid="content-${id}"]`)).not.toBeNull();
     }
-    for (const id of DEFAULT_OPEN.filter((id) => !DEFAULT_VISIBLE.includes(id))) {
+    for (const id of DEFAULT_OPEN.filter((id) => !DEFAULT_VISIBLE.includes(id) && id !== "transcript" && id !== "captions")) {
       expect(host.querySelector(`[data-testid="content-${id}"]`)).toBeNull();
     }
+    expect(host.querySelector('[data-testid="content-transcript"]')).not.toBeNull();
     expect(host.querySelector('[data-testid="content-slideshow"]')).toBeNull();
     expect(useDockLayoutStore.getState().openPanels).toEqual(new Set(DEFAULT_OPEN));
   });
@@ -177,7 +178,7 @@ describe("Dock on React 19", () => {
   it("reopens a side panel next to the preview when its whole column was closed", () => {
     mount("p1");
     const { closePanel, togglePanel } = useDockLayoutStore.getState();
-    for (const id of ["compositions", "assets", "code", "catalog"] as const)
+    for (const id of ["compositions", "assets", "transcript", "captions", "code", "catalog"] as const)
       act(() => closePanel(id));
     act(() => togglePanel("compositions"));
     expect(useDockLayoutStore.getState().openPanels.has("compositions")).toBe(true);
@@ -187,7 +188,7 @@ describe("Dock on React 19", () => {
   it("reopens a side panel beside preview when its usual tab neighbour is closed", () => {
     mount("p1");
     const { closePanel, togglePanel } = useDockLayoutStore.getState();
-    for (const id of ["compositions", "assets", "code", "catalog"] as const)
+    for (const id of ["compositions", "assets", "transcript", "captions", "code", "catalog"] as const)
       act(() => closePanel(id));
     addRegisteredPanel.mockClear();
     act(() => togglePanel("assets"));
@@ -411,6 +412,25 @@ describe("parseDockLayout", () => {
     expect(parseDockLayout(placed(["preview", "design"], ["preview"]))).toBeNull();
     expect(parseDockLayout(placed(["preview"], ["preview", "design"]))).toBeNull();
     expect(parseDockLayout(placed(["preview", "design"], ["preview", "design"]))).not.toBeNull();
+  });
+
+  it("merges the retired Text tab into Captions without resetting saved geometry", () => {
+    const saved = placed(["assets", "text", "captions"], ["assets", "text", "captions"]);
+    Object.assign(saved.grid, { width: 1440, height: 900 });
+    Object.assign(saved.grid.root, { size: 480 });
+    Object.assign(saved.grid.root.data, { id: "left", activeView: "text" });
+    const restored = parseDockLayout(saved)!;
+    expect(restored.grid.width).toBe(1440);
+    expect(restored.grid.root).toMatchObject({ size: 480, data: { views: ["assets", "captions"], activeView: "captions" } });
+    expect(restored.panels).not.toHaveProperty("text");
+    expect(saved.grid.root.data.views).toContain("text");
+  });
+
+  it("replaces a lone Text tab and removes an obsolete floating duplicate", () => {
+    const saved = placed(["text"], ["text"]);
+    expect(parseDockLayout(saved)?.grid.root).toMatchObject({ data: { views: ["captions"] } });
+    const floating = { ...placed(["captions"], ["captions", "text"]), floatingGroups: [{ data: { id: "old", views: ["text"], activeView: "text" } }] };
+    expect(parseDockLayout(floating)?.floatingGroups).toEqual([]);
   });
 });
 
@@ -1322,5 +1342,62 @@ it.each([648, 703, 720])("keeps both column dividers draggable after repeated re
     drag(sashes[1], 24);
     expect(right.width).toBe(200);
     expect(preview.width).toBeGreaterThanOrEqual(240);
+  }
+});
+
+it.each([
+  ["captions", "transcript"],
+  ["transcript", "captions"],
+] as const)("keeps column widths stable when switching from %s to %s", async (first, second) => {
+  let width = 1400;
+  mount("stable-caption-tabs", {}, { panels: MVP_PANEL_IDS, fixedLayout: true, dockWidth: () => width });
+  const api = dockApi!;
+  await act(async () => { resizeDock(api, width); await Promise.resolve(); });
+  const left = api.getPanel(first)!.group;
+  const columns = () => ({ left: left.width, preview: api.getPanel("preview")!.group.width, right: api.getPanel("design")!.group.width });
+  const activate = async (id: typeof first | typeof second | "assets") => act(async () => {
+    useDockLayoutStore.getState().activatePanel(id);
+    await Promise.resolve();
+  });
+  const initial = columns();
+  await activate(first);
+  expect(columns()).toEqual(initial);
+  // A deliberate narrow sash adjustment must survive the other tab's first activation.
+  await act(async () => { left.api.setSize({ width: 280 }); await Promise.resolve(); });
+  const custom = columns();
+  await activate(second);
+  expect(columns()).toEqual(custom);
+  for (const hostWidth of [700, 1400]) {
+    await act(async () => { width = hostWidth; resizeDock(api, width); await Promise.resolve(); });
+    const fitted = columns();
+    for (const tab of [first, second, "assets", first, second] as const) {
+      await activate(tab);
+      expect(columns()).toEqual(fitted);
+    }
+    expect(api.getPanel("preview")!.group.width).toBeGreaterThanOrEqual(240);
+  }
+  expect(left.width).toBe(280);
+});
+
+it.each(["captions", "transcript"] as const)("retains %s and custom widths while the editor is hidden by settings", async (panel) => {
+  let width = 1400;
+  const host = mount("settings-return", {}, { panels: MVP_PANEL_IDS, fixedLayout: true, dockWidth: () => width });
+  const api = dockApi!;
+  await act(async () => {
+    resizeDock(api, width);
+    useDockLayoutStore.getState().activatePanel(panel);
+    await Promise.resolve();
+  });
+  const left = api.getPanel(panel)!.group;
+  const before = () => ({ left: left.width, preview: api.getPanel("preview")!.group.width, right: api.getPanel("design")!.group.width });
+  for (const custom of [false, true]) {
+    if (custom) await act(async () => { left.api.setSize({ width: 480 }); await Promise.resolve(); });
+    const expected = before();
+    for (let visit = 0; visit < 2; visit++) {
+      await act(async () => { host.hidden = true; width = 0; resizeDock(api, width, 0); await Promise.resolve(); });
+      await act(async () => { host.hidden = false; width = 1400; resizeDock(api, width); await Promise.resolve(); });
+      expect(before()).toEqual(expected);
+      expect(api.getPanel(panel)!.api.isActive).toBe(true);
+    }
   }
 });

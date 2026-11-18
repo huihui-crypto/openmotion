@@ -55,6 +55,7 @@ test('provider setup opens without a project and preserves workspace state', asy
       assert.equal(opened.previewHandoff.openedByHost, false);
       assert.equal(opened.previewHandoff.hostActionRequired, presentation !== 'background');
       assert.match(opened.previewHandoff.instructions, /Model providers/);
+      assert.match(opened.previewHandoff.instructions, /OpenDesign Plus or above/);
     }
     assert.deepEqual(await store.get(), before);
     assert.deepEqual(store.projectCatalog(), catalog);

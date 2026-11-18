@@ -1,3 +1,5 @@
+import { readProjectAssetNames } from './project-asset-names.ts';
+import { namingLanguage, projectAssetKind, validateAssetDisplayName } from './shared/asset-names.ts';
 import { projectArchive } from './project-archive.ts';
 import { manageProject } from './project-management.ts';
 import { probeLibraryMedia } from './gateway/asset-probe.ts';
@@ -7,6 +9,9 @@ import { requireNativeRuntime } from './scripts/npm-runtime.mjs';
 import { recordDiagnostic } from './scripts/diagnostics.mjs';
 import { mediaUse } from './gateway/media-use.ts';
 import { assetOperation } from './gateway/asset-operations.ts';
+import { transcriptOperation } from './gateway/transcript-operations.ts';
+import { transcriptsFor } from './gateway/transcription.ts';
+import { loadCaptionSourceOperations } from './shared/transcript-captions.ts';
 import { brandKitOperation } from './gateway/brand-kit-operation.ts';
 import { brandKitsFor } from './gateway/brand-kits.ts';
 import { MAX_ASSET_BYTES, isAssetFileWithinLimit } from './shared/asset-limits.ts';
@@ -142,7 +147,7 @@ export class Phase1Service {
           revision: result.revision, versionId: result.version.versionId }, args.presentation);
         if (args.workId && args.presentation !== 'now' && args.presentation !== 'background') {
           result.previewHandoff = { ...result.previewHandoff, state: 'deferred', hostActionRequired: false, nextAction: null,
-            instructions: 'Production is still in progress. Keep the editor closed until the final authored video is complete and ready for preview. Then prepare and present the latest version with openmotion_open_preview; after MP4 export verification, present only the final video with the discovered openmotion_show_video.' };
+            instructions: 'Production is still in progress. Keep the editor closed until the final authored video is complete and ready for preview. Then prepare and present the latest version with openmotion_open_preview; after MP4 export verification, use the host-native video preview first (Codex: one final-reply embed). Only if native preview is unavailable, use the discovered openmotion_show_video instead; never present the same export through both routes.' };
         }
       }
       return result;
@@ -240,11 +245,13 @@ export class Phase1Service {
       jobs.sort((a, b) => b.createdAt - a.createdAt);
       if (args.exportJobId && !jobs.some(job => job.id === args.exportJobId)) throw new Error('EXPORT_NOT_FOUND: 任务不属于该项目');
       const exportJob = args.exportJobId ? await this.publicJob(args.exportJobId) : jobs[0] ? await this.publicJob(jobs[0].id) : null;
+      const assetNaming = await readProjectAssetNames(scoped, (state.project?.files ?? []).map(file => file.path), undefined, this.runtimeRoot);
       if ((await scoped.get()).revision !== state.revision) throw new Error('VERSION_CONFLICT: 读取期间工程已变化');
       return { projectId, sessionId: owner.id, project: state.project, revision: state.revision, version: await versions.publicVersion(version, history, true),
         currentVersionId: version.versionId, currentVersionNumber: version.versionNumber, dataDirectory: this.store.directory,
         hyperframesCli: path.join(this.runtimeRoot, 'node_modules/hyperframes/bin/hyperframes.mjs'), authoringGuide: path.join(this.runtimeRoot, 'node_modules/hyperframes/dist/skills/hyperframes/SKILL.md'),
         requirements: meta.requirements ?? (await scoped.conversation(projectId)).messages.map(message => message.content).join('\n'),
+        ...assetNaming,
         projectType: meta.projectType ?? 'legacy', source: meta.source ?? null, assets, file, exportJob,
         previewDisplay: await this.previewDisplay(projectId, version),
         exports: jobs.map(({ token, workerPid, trackingHost, ...job }) => job), reviews: await jsonFile(path.join(this.store.directory, 'phase1', 'reviews', projectId + '.json'), []),
@@ -314,7 +321,44 @@ export class Phase1Service {
     }
     if (name === 'motion_assets') {
       if (args.action === 'brand_kit') return brandKitOperation(brandKitsFor(this.store.directory), args.brandKit, this.context.origin());
-      return assetOperation(this.store, args, input => this.importAssets(input), this.context.tracking);
+      if (args.action === 'transcript') {
+        const input = args.transcript;
+        if (input.command === 'caption_tracks' || input.command === 'caption_export') {
+          const { captionTracks, exportCaptionSource } = await loadCaptionSourceOperations(this.runtimeRoot);
+          const scoped = this.versions(input.projectId).store, name = projectPath(input.compositionPath);
+          if (!name.endsWith('.html')) throw new Error('Choose an HTML composition');
+          const source = await readFile(await scoped.safePath(name), 'utf8');
+          return input.command === 'caption_export'
+            ? { projectId: input.projectId, compositionPath: name, ...exportCaptionSource(source, input.format, input.transcriptId) }
+            : { tracks: captionTracks(source) };
+        }
+        if (!['captions', 'caption_update', 'caption_add'].includes(input.command)) return transcriptOperation(this.store, input);
+        return this.writeRequest('transcript_captions', input, () => this.context.mutation(() => this.store.lock(async () => {
+          const versions = this.versions(input.projectId), scoped = versions.store;
+          const name = projectPath(input.compositionPath);
+          if (!name.endsWith('.html')) throw new Error('Choose an HTML composition');
+          const file = await scoped.safePath(name), source = await readFile(file, 'utf8');
+          const { manualCaptionSource, updateCaptionTrackSource, transcriptCaptionSource } = await loadCaptionSourceOperations(this.runtimeRoot);
+          let captions;
+          const trackId = input.command === 'caption_add' ? crypto.randomUUID() : input.transcriptId;
+          if (input.command === 'caption_add') {
+            captions = manualCaptionSource(source, trackId, input);
+          } else if (input.command === 'caption_update') {
+            if (!input.remove && !input.captionSettings) throw new Error('Supply caption settings or remove');
+            captions = updateCaptionTrackSource(source, input.transcriptId, input.captionSettings || {}, input.remove);
+          } else {
+            const service = transcriptsFor(this.store), doc = await service.document(input.projectId, input.transcriptId);
+            if (doc.revision !== input.expectedTranscriptRevision) throw new Error('TRANSCRIPT_CONFLICT: reload the latest transcript');
+            await service.assertSource(doc.source);
+            captions = transcriptCaptionSource(source, doc, input, input.captionSettings);
+          }
+          return versions.withHistory(async history => ({ projectId: input.projectId, trackId, captionCount: captions.count,
+            ...await versions.transaction(history, input.expectedRevision, input.expectedVersionId, input.requestId,
+              [{ path: name, content: captions.content }], { label: input.command === 'caption_add' ? (input.textKind === 'text' ? 'Add text' : 'Add captions') : input.command === 'caption_update' ? (input.remove ? 'Remove caption track' : 'Update caption track') : 'Apply transcript captions' }),
+            changedFiles: [name], previewSync: this.context.nativeUrl(input.projectId) ? 'file_watcher_notified' : 'not_open' }));
+        })));
+      }
+      return assetOperation(this.store, args, (input, options) => this.importAssets(input, options), this.context.tracking);
     }
     if (name === 'motion_media_use') return mediaUse(this.store, args, this.context.tracking);
     if (name === 'motion_get_project' && !args.projectId) {
@@ -367,12 +411,13 @@ export class Phase1Service {
       if (args.projectType === 'template' && (!source || !isEditableTemplate(source))) throw new Error('TEMPLATE_NOT_COPYABLE: 请在 Studio 选择可编辑原生模板；参考视频需由 Agent 重建');
       if (args.referenceUrl && !['https:', 'http:'].includes(new URL(args.referenceUrl).protocol)) throw new Error('INVALID_REFERENCE_URL');
       validateInstruction(args.requirements);
+      const language = args.namingLanguage === undefined ? undefined : namingLanguage(args.namingLanguage);
       const title = validateProjectTitle(args.title), directory = this.store.projectDirectoryFor(record.projectId);
       let registered = false;
       try {
         if (args.projectType === 'template') await templateCatalogFor(this.store.directory).copy(source!, directory, this.runtimeRoot);
         else await createBlankProject(directory, this.runtimeRoot, title);
-        const meta = { schemaVersion: 1, projectType: args.projectType, requirements: args.requirements, creationRequestId: args.requestId,
+        const meta = { schemaVersion: 1, namingLanguage: language, projectType: args.projectType, requirements: args.requirements, creationRequestId: args.requestId,
           source: source ? { id: source.id, kind: source.kind, catalogVersion: 'catalogVersion' in source ? source.catalogVersion : undefined, previewUrl: source.previewUrl, sourceUrl: source.sourceUrl } : args.referenceUrl ? { url: args.referenceUrl, inspected: false } : null };
         await atomicJson(path.join(directory, metadataPath), meta);
         await atomicJson(path.join(directory, assetIndexPath), []);
@@ -469,14 +514,30 @@ export class Phase1Service {
       }
       if (bytes > 8388608) throw new Error('SOURCE_BATCH_TOO_LARGE: 8 MiB limit');
       const changes = [...args.files];
-      if (args.requirements !== undefined) {
-        validateInstruction(args.requirements);
+      if (args.requirements !== undefined || args.namingLanguage !== undefined) {
+        if (args.requirements !== undefined) validateInstruction(args.requirements);
         const meta = await jsonFile<any>(path.join(scoped.projectDirectory, metadataPath), { schemaVersion: 1, projectType: 'legacy' });
-        changes.push({ path: metadataPath, content: JSON.stringify({ ...meta, requirements: args.requirements }) });
+        changes.push({ path: metadataPath, content: JSON.stringify({ ...meta, ...(args.requirements !== undefined ? { requirements: args.requirements } : {}), ...(args.namingLanguage !== undefined ? { namingLanguage: namingLanguage(args.namingLanguage) } : {}) }) });
+      }
+      if (args.assetNames?.length) {
+        const records = await jsonFile<any[]>(path.join(scoped.projectDirectory, assetIndexPath), []);
+        const renamed = new Set<string>();
+        for (const item of args.assetNames) {
+          const assetPath = projectPath(item.path);
+          if (renamed.has(assetPath)) throw new Error('DUPLICATE_ASSET_PATH');
+          renamed.add(assetPath);
+          const displayName = validateAssetDisplayName(item.name);
+          const file = await stat(await scoped.safePath(assetPath));
+          if (!file.isFile() || projectAssetKind(assetPath) < 0) throw new Error('INVALID_ASSET_PATH');
+          const record = records.find(asset => asset.path === assetPath);
+          if (record) Object.assign(record, { originalName: record.originalName ?? record.name ?? path.basename(assetPath), name: displayName, nameSource: 'user' });
+          else records.push({ path: assetPath, originalName: path.basename(assetPath), name: displayName, nameSource: 'user' });
+        }
+        changes.push({ path: assetIndexPath, content: JSON.stringify(records) });
       }
       return versions.withHistory(async history => ({ projectId: args.projectId,
         ...await versions.transaction(history, args.expectedRevision, args.expectedVersionId, args.requestId, changes, { label: args.summary ?? 'Agent source edit' }),
-        changedFiles: changes.map(file => file.path), previewSync: this.context.nativeUrl(args.projectId) ? 'file_watcher_notified' : 'not_open' }));
+        ...await readProjectAssetNames(scoped, undefined, undefined, this.runtimeRoot), changedFiles: changes.map(file => file.path), previewSync: this.context.nativeUrl(args.projectId) ? 'file_watcher_notified' : 'not_open' }));
     })));
     if (name === 'motion_restore_version') return this.writeRequest(name, args, () => this.context.mutation(() => this.store.lock(async () => {
       const versions = this.versions(args.projectId);
@@ -509,7 +570,7 @@ export class Phase1Service {
       if (!args.versionId || !args.expectedRevision) throw new Error('INVALID_ARGUMENT: versionId and expectedRevision are required');
       const detail = await this.detail(args.projectId);
       if (detail.currentVersionId !== args.versionId || detail.revision !== args.expectedRevision) throw new Error('VERSION_CONFLICT');
-      const job = await this.store.forProject(args.projectId).requestExport(args.expectedRevision, { phase1: true, versionId: args.versionId, requestId: args.requestId, workId: args.workId, audio: args.audio,
+      const job = await this.store.forProject(args.projectId).requestExport(args.expectedRevision, { phase1: true, versionId: args.versionId, requestId: args.requestId, workId: args.workId, audio: args.audio, compositionPath: args.compositionPath,
         trackingHost: this.context.tracking?.enabled() ? host : undefined });
       if (this.context.tracking) {
         this.context.tracking.track('task_accepted', { task_id: job.id, task_type: 'export', project_id: args.projectId,
@@ -523,8 +584,11 @@ export class Phase1Service {
     });
     throw new Error('MCP_TOOL_NOT_EXPOSED: ' + name);
   }
-  async importAssets(args: any) {
-    return this.writeRequest('motion_import_assets', args, async () => {
+  async importAssets(args: any, options?: { receiptName: string; reusePinnedContent: boolean }) {
+    // A library's mutable display name must not change an immutable-version
+    // import's retry identity, including receipts written before display naming.
+    const requestArgs = options ? { ...args, items: args.items.map((item: any) => ({ ...item, name: options.receiptName })) } : args;
+    return this.writeRequest('motion_import_assets', requestArgs, async () => {
       const versions = this.versions(args.projectId), scoped = versions.store;
       const existing = await jsonFile<any[]>(path.join(scoped.projectDirectory, assetIndexPath), []);
       const items: any[] = [], changes: any[] = [], added: any[] = [];
@@ -537,7 +601,7 @@ export class Phase1Service {
           try {
             const inputHash = digest(item), prior = existing.find(asset => asset.itemId === item.itemId);
             if (prior) {
-              if (prior.inputHash !== inputHash) throw new Error('ITEM_ID_CONFLICT');
+              if (prior.inputHash !== inputHash && !(options?.reusePinnedContent && item.expectedSha256 && prior.sha256 === item.expectedSha256)) throw new Error('ITEM_ID_CONFLICT');
               if (!await stat(path.join(scoped.projectDirectory, prior.path)).catch(() => null)) throw new Error('ASSET_NOT_IN_CURRENT_VERSION: 请恢复对应版本或使用新 itemId 重新导入');
               if (item.expectedSha256 && await fileHash(path.join(scoped.projectDirectory, prior.path)) !== item.expectedSha256) throw new Error('ASSET_CONTENT_CHANGED: the imported copy no longer matches the pinned library version');
               items.push({ ...prior, status: 'completed', reused: true }); continue;
@@ -554,14 +618,14 @@ export class Phase1Service {
               const prepared = await prepareImportedFont(staged, item.licensePath, assetId, staging, this.runtimeRoot);
               const { changes: fontChanges, ...metadata } = prepared;
               const asset = { itemId: item.itemId, assetId, inputHash, ...metadata, size: (await stat(staged)).size,
-                sha256: await fileHash(staged), name: item.name ?? path.basename(item.sourcePath) };
+                sha256: await fileHash(staged), originalName: path.basename(item.sourcePath), name: item.name?.trim() ? validateAssetDisplayName(item.name) : path.basename(item.sourcePath) };
               changes.push(...fontChanges); added.push(asset); items.push({ ...asset, status: 'completed' }); continue;
             }
             if (item.licensePath) throw new Error('FONT_LICENSE_REQUIRES_FONT');
             const media = await probeLibraryMedia(staged).catch(error => { throw new Error('INVALID_MEDIA: ' + errorText(error)); });
             const assetId = crypto.randomUUID(), relative = 'assets/imported/' + assetId + '.' + media.extension;
             const asset = { itemId: item.itemId, assetId, inputHash, path: relative, mimeType: media.mimeType, size: media.bytes,
-              sha256, width: media.width, height: media.height, duration: media.duration, name: item.name ?? path.basename(item.sourcePath) };
+              sha256, width: media.width, height: media.height, duration: media.duration, originalName: path.basename(item.sourcePath), name: item.name?.trim() ? validateAssetDisplayName(item.name) : path.basename(item.sourcePath) };
             changes.push({ path: relative, source: staged }); added.push(asset); items.push({ ...asset, status: 'completed' });
           } catch (error) { items.push({ itemId: item.itemId, status: 'failed', error: errorText(error) }); }
         }

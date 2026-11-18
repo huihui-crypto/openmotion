@@ -1,12 +1,12 @@
+import { AssetQuickAdd } from "./AssetQuickAdd";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { OverflowText } from "../ui/OverflowText";
 import { useMvpEditor } from "../../motion/StudioHost";
 import { useI18n } from "../../i18n/I18n";
-import { useState, useRef, useEffect, useCallback } from "react";
-import { classifyWebAudioMediaRoute } from "@hyperframes/core/runtime/web-audio-route";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { InlineAssetRename } from "./InlineAssetRename";
 import { ContextMenu } from "./AssetContextMenu";
-import { filename, getAudioSubtype, type CopyFeedback } from "./assetHelpers";
+import { filename, formatDuration, type CopyFeedback } from "./assetHelpers";
 import { TIMELINE_ASSET_MIME } from "../../utils/timelineAssetDrop";
 import { usePlayerStore } from "../../player/store/playerStore";
 import { useAssetPreviewStore } from "../../utils/assetPreviewStore";
@@ -14,13 +14,20 @@ import { findClipForAsset, isPointerClick } from "../../utils/assetClickBehavior
 import { resolveMediaPreviewUrl } from "../../player/components/thumbnailUtils";
 import { timelineClipFocusId } from "../../player/components/timelineNavigationIdentity";
 
-// Only one preview should play at a time; starting a row stops the previous one.
-let stopCurrentPreview: (() => void) | null = null;
+import type { AssetUsage } from "./assetUsage";
+import { useAudioAssetPreview } from "../../hooks/useAudioAssetPreview";
+import { useNearViewport } from "../../hooks/useNearViewport";
+import { thumbnailRevisionOf } from "../../player/store/thumbnailSlice";
+import { useToast } from "../../hooks/useToast";
+import { StudioToastViewport } from "../StudioToastViewport";
 
 export function AudioRow({
   projectId,
   asset,
+  displayName,
   used,
+  usages = [],
+  onRevealUsage,
   meta,
   onCopy,
   copyFeedback,
@@ -30,7 +37,10 @@ export function AudioRow({
 }: {
   projectId: string;
   asset: string;
+  displayName?: string;
   used: boolean;
+  usages?: readonly AssetUsage[];
+  onRevealUsage?: (usage: AssetUsage) => void;
   meta?: { description?: string; duration?: number };
   onCopy: (path: string) => void;
   copyFeedback: CopyFeedback;
@@ -42,25 +52,27 @@ export function AudioRow({
   const mvp = useMvpEditor();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [renaming, setRenaming] = useState(false);
-  const [playing, setPlaying] = useState(false);
-  const [bars, setBars] = useState<number[]>([]);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const actxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-  const animRef = useRef<number>(0);
-  const name = filename(asset);
-  const subtype = getAudioSubtype(asset);
-  const subtypeLabel = subtype === "Audio" ? "" : t(subtype);
-  const serveUrl = resolveMediaPreviewUrl(asset, projectId);
+  const [usageExpanded, setUsageExpanded] = useState(false);
+  const usageListId = useId();
+  useEffect(() => setUsageExpanded(false), [asset, projectId]);
+  const [element, setElement] = useState<HTMLDivElement | null>(null);
+  const visible = useNearViewport(element);
+  const sessionEpoch = usePlayerStore(s => s.timelineSessionEpoch);
+  const revision = usePlayerStore(s => thumbnailRevisionOf(s.thumbnailRevisions, asset));
+  const { toasts, showToast, dismissToast } = useToast();
+  const name = displayName ?? filename(asset);
+  const sourceUrl = resolveMediaPreviewUrl(asset, projectId);
+  const serveUrl = `${sourceUrl}${sourceUrl.includes("?") ? "&" : "?"}assetRevision=${revision}&session=${sessionEpoch}`;
+  const { playing, pending, duration, toggle, stop } = useAudioAssetPreview(serveUrl, visible, () => showToast(t("Preview failed to load")));
+  const durationLabel = formatDuration(duration || meta?.duration || 0);
+  const timeLabel = durationLabel || "—";
   const isCopied = copyFeedback?.path === asset && copyFeedback.ok;
   const copyFailed = copyFeedback?.path === asset && !copyFeedback.ok;
 
-  const stopPlayback = useCallback(() => {
-    audioRef.current?.pause();
-    setPlaying(false);
-    cancelAnimationFrame(animRef.current);
-  }, []);
+  useEffect(() => {
+    if (isCopied) showToast(t("Copied"), "info");
+    if (copyFailed) showToast(t("Copy failed"));
+  }, [isCopied, copyFailed, showToast, t]);
 
   // CapCut-style click behavior: drag-threshold gate.
   const pointerDownRef = useRef<{ x: number; y: number } | null>(null);
@@ -117,103 +129,11 @@ export function AudioRow({
     [activateRow],
   );
 
-  useEffect(() => {
-    return () => {
-      cancelAnimationFrame(animRef.current);
-      audioRef.current?.pause();
-      actxRef.current?.close();
-      if (stopCurrentPreview === stopPlayback) stopCurrentPreview = null;
-    };
-  }, [stopPlayback]);
-
-  useEffect(() => {
-    if (playing) {
-      const barCount = 24;
-      const loop = () => {
-        const analyser = analyserRef.current;
-        if (!analyser) {
-          animRef.current = requestAnimationFrame(loop);
-          return;
-        }
-        const data = new Uint8Array(analyser.frequencyBinCount);
-        analyser.getByteFrequencyData(data);
-        const step = Math.floor(data.length / barCount);
-        const next: number[] = [];
-        for (let i = 0; i < barCount; i++) {
-          let sum = 0;
-          for (let j = 0; j < step; j++) sum += data[i * step + j];
-          next.push(sum / step / 255);
-        }
-        setBars(next);
-        if (audioRef.current && !audioRef.current.paused)
-          animRef.current = requestAnimationFrame(loop);
-      };
-      animRef.current = requestAnimationFrame(loop);
-    } else {
-      setBars([]);
-    }
-    return () => cancelAnimationFrame(animRef.current);
-  }, [playing]);
-
-  const togglePlay = useCallback(async () => {
-    if (playing) {
-      stopPlayback();
-      if (stopCurrentPreview === stopPlayback) stopCurrentPreview = null;
-      return;
-    }
-
-    // Stop whichever other row is currently previewing.
-    if (stopCurrentPreview && stopCurrentPreview !== stopPlayback) stopCurrentPreview();
-    stopCurrentPreview = stopPlayback;
-
-    if (!actxRef.current) {
-      actxRef.current = new AudioContext();
-      analyserRef.current = actxRef.current.createAnalyser();
-      analyserRef.current.fftSize = 256;
-      analyserRef.current.smoothingTimeConstant = 0.7;
-    }
-
-    if (!audioRef.current) {
-      const el = new Audio();
-      el.onended = () => {
-        setPlaying(false);
-        cancelAnimationFrame(animRef.current);
-      };
-      // `src` must be set BEFORE classifying: the check reads `currentSrc`/
-      // `src`, and a same-origin `serveUrl` mustn't be judged from a blank
-      // element.
-      el.src = serveUrl;
-      audioRef.current = el;
-      const analyser = analyserRef.current;
-      // Same hazard `webAudioRoute.ts` documents for the timeline runtime
-      // (#3458): `createMediaElementSource` on a cross-origin element without
-      // a `crossorigin` opt-in permanently reroutes it to a node that outputs
-      // SILENCE per the Web Audio spec, without throwing. Classify first so
-      // this preview player can't reintroduce that bug — skipping the Web
-      // Audio graph here only costs the frequency-bar visualizer; native
-      // `<audio>` playback below stays audible either way.
-      if (analyser && classifyWebAudioMediaRoute(el).kind === "web-audio") {
-        sourceRef.current = actxRef.current.createMediaElementSource(el);
-        sourceRef.current.connect(analyser);
-        analyser.connect(actxRef.current.destination);
-      }
-    }
-
-    if (actxRef.current.state === "suspended") await actxRef.current.resume();
-    audioRef.current.currentTime = 0;
-    try {
-      await audioRef.current.play();
-      setPlaying(true);
-    } catch {
-      // Playback refused (e.g. decode failure) — reset instead of a stuck state.
-      setPlaying(false);
-      if (stopCurrentPreview === stopPlayback) stopCurrentPreview = null;
-    }
-  }, [serveUrl, playing, stopPlayback]);
-
   return (
     <>
       <div
+        ref={setElement}
+        data-playing={playing || undefined}
         draggable
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
@@ -238,75 +158,52 @@ export function AudioRow({
           e.preventDefault();
           setContextMenu({ x: e.clientX, y: e.clientY });
         }}
-        className={`motion-audio-row group w-full mb-1 rounded-md border border-panel-border text-left px-3 py-2 flex items-center gap-2.5 transition-colors cursor-pointer outline-hidden focus-visible:ring-1 focus-visible:ring-panel-border ${
-          isCopied
-            ? "bg-panel-accent/10"
-            : "bg-panel-surface hover:bg-panel-hover"
-        }`}
+        className="motion-audio-row om-asset-action-row"
+        data-used={used || undefined}
       >
         <button
-          aria-label={playing ? t("Pause preview of {name}", { name: name }) : t("Play preview of {name}", { name: name })}
-          aria-pressed={playing}
-          className={`w-7 h-7 rounded-md shrink-0 flex items-center justify-center transition-colors active:scale-[0.95] ${
-            playing
-              ? "text-panel-text-1"
-              : "text-panel-text-5 group-hover:text-panel-text-3"
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            togglePlay();
-          }}
+          type="button"
+          aria-label={playing || pending ? t("Pause preview of {name}", { name }) : t("Play preview of {name}", { name })}
+          aria-pressed={playing || pending}
+          aria-busy={pending || undefined}
+          draggable={false}
+          className="motion-audio-play-button"
+          onPointerDown={e => e.stopPropagation()}
+          onPointerUp={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); void toggle(); }}
         >
-          {playing ? (
-            <RemixIcon name="pause-fill" size={14} />
-          ) : (
-            <RemixIcon name="play-fill" size={14} />
-          )}
+          <RemixIcon name={playing || pending ? "pause-fill" : "play-fill"} size={16} />
         </button>
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            {renaming && onRename ? <InlineAssetRename asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> : <OverflowText
-              text={name}
-              className={`min-w-0 max-w-full line-clamp-2 text-[12px] font-medium [overflow-wrap:anywhere] ${used ? "text-panel-text-1" : "text-panel-text-3"}`}
-            />}
-            {!playing && (meta?.duration || subtypeLabel) && (
-              <OverflowText className="max-w-full truncate text-[11px] text-panel-text-5 shrink-0"
-                text={`${meta?.duration ? `${meta.duration}s${subtypeLabel ? " · " : ""}` : ""}${subtypeLabel ?? ""}`} />
-            )}
-            {used && (
-              <OverflowText className="max-w-full truncate text-[9px] font-medium text-accent-ink bg-panel-accent/10 px-1.5 py-px rounded-sm shrink-0" text={t("In use")} />
-            )}
-            {(isCopied || copyFailed) && (
-              <span
-                role="status"
-                className={`shrink-0 text-[9px] font-medium px-1.5 py-px rounded ${
-                  copyFailed
-                    ? "text-danger-ink bg-red-500/10"
-                    : "text-accent-ink bg-panel-accent/10"
-                }`}
-              >
-                {copyFailed ? t("Copy failed") : t("Copied")}
-              </span>
-            )}
+        <div className="motion-audio-content">
+          <div className="motion-audio-heading">
+            {renaming && onRename ? <InlineAssetRename displayName={displayName} asset={asset} onRename={onRename} onDone={() => setRenaming(false)} /> :
+              <OverflowText text={name} className="motion-audio-name" />}
+            {onAddAssetToTimeline && <AssetQuickAdd compact asset={asset} onAdd={onAddAssetToTimeline} />}
+            <button type="button" className="motion-audio-menu-button" aria-label={t("Actions for {value0}", { value0: name })} title={t("Actions for {value0}", { value0: name })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
           </div>
-          {bars.length > 0 && (
-            <div className="flex items-end gap-[2px] h-[14px] mt-0.5">
-              {bars.map((v, i) => (
-                <div
-                  key={i}
-                  className="flex-1 rounded-[1px]"
-                  style={{
-                    height: `${Math.max(10, v * 100)}%`,
-                    background: `linear-gradient(to top, rgba(60, 230, 172, ${0.3 + v * 0.5}), rgba(60, 230, 172, ${0.5 + v * 0.5}))`,
-                    transition: "height 80ms ease-out",
-                  }}
-                />
-              ))}
+          <div className="motion-audio-detail">
+            <div className="motion-audio-usages">
+              <span className={used ? "motion-audio-used" : "motion-audio-unused"}>{t(used ? "In use" : "Unused")}</span>
+              {usages.length > 1 && <button type="button" className="motion-audio-usage-toggle" aria-expanded={usageExpanded} aria-controls={usageListId}
+                onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()}
+                onClick={e => { e.stopPropagation(); setUsageExpanded(value => !value); }}>{t("{count} uses", { count: usages.length })}</button>}
+              <span id={usageListId} className={usages.length > 1 ? "motion-audio-usage-list" : "contents"} hidden={usages.length > 1 && !usageExpanded}>
+              {(usages.length > 1 && !usageExpanded ? [] : usages).map((usage, index) => {
+                const start = formatDuration(usage.start) || "00:00", end = formatDuration(usage.end) || "00:00";
+                return <button type="button" key={`${usage.clipId}-${index}`} className="motion-audio-usage-range"
+                  aria-label={t("Locate {name} at {start}–{end} on the timeline", { name, start, end })}
+                  onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()}
+                  onClick={e => { e.stopPropagation(); stop(); onRevealUsage?.(usage); }}>
+                  {start}–{end}
+                </button>;
+              })}
+              </span>
             </div>
-          )}
+            {!used && <span className="motion-audio-time">{timeLabel}</span>}
+          </div>
         </div>
-        <button type="button" className="motion-audio-menu-button" aria-label={t("Actions for {value0}", { value0: name })} title={t("Actions for {value0}", { value0: name })} aria-haspopup="menu" onPointerDown={e => e.stopPropagation()} onPointerUp={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); const rect = e.currentTarget.getBoundingClientRect(); setContextMenu({ x: rect.left, y: rect.bottom }); }}><RemixIcon name="more-line" size={16} /></button>
       </div>
+      <StudioToastViewport toasts={toasts} dismissToast={dismissToast} />
       {contextMenu && (
         <ContextMenu
           x={contextMenu.x}
@@ -315,6 +212,7 @@ export function AudioRow({
           onClose={() => setContextMenu(null)}
           onCopy={onCopy}
           onDelete={onDelete}
+          displayName={displayName}
           onRename={onRename}
           onStartRename={() => setRenaming(true)}
           onAddAtPlayhead={onAddAssetToTimeline}

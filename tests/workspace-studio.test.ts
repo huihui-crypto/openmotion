@@ -1,3 +1,4 @@
+import { readProjectAssetNames } from '../project-asset-names.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, writeFile, copyFile, readdir, rm, open, symlink } from 'node:fs/promises';
@@ -108,3 +109,27 @@ test('workspace host refuses unsupported, missing, ambiguous and incompatible na
     await assert.rejects(startWorkspaceStudio(root, root, root, 0), /missing or ambiguous/);
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('Studio project listing resolves imported UUID paths to original names and real font faces', () => fixture(async store => {
+  const audioPath = 'assets/imported/94dcfb95-f8f9-455d-bca3-382788fa3943.m4a';
+  const fontPath = 'assets/fonts/40da8f95-f670-4cbf-87cc-6f843570b7da.ttf';
+  await mkdir(path.join(store.projectDirectory, 'assets/imported'), { recursive: true });
+  await mkdir(path.join(store.projectDirectory, 'assets/fonts'), { recursive: true });
+  await writeFile(path.join(store.projectDirectory, audioPath), 'listing-only audio');
+  await copyFile(new URL('./fixtures/fonts/orbitron.ttf', import.meta.url), path.join(store.projectDirectory, fontPath));
+  await writeFile(path.join(store.projectDirectory, 'motion-assets.json'), JSON.stringify([{ path: audioPath, name: 'original-audio.m4a' }]));
+  await writeFile(path.join(store.projectDirectory, 'motion-project.json'), JSON.stringify({ namingLanguage: 'zh-CN' }));
+  const studio = await startWorkspaceStudio(pluginRoot, store.directory, store.projectDirectory, 0);
+  try {
+    const response = await fetch(`${studio.origin}/api/projects/${store.projectId}`);
+    assert.equal(response.status, 200);
+    const listing = await response.json();
+    assert.equal(listing.namingLanguage, 'zh-CN');
+    assert.equal(listing.assetNames[audioPath], 'original-audio');
+    assert.match(listing.assetNames[fontPath], /^Orbitron/);
+    const mcpNames = await readProjectAssetNames(store, undefined, undefined, pluginRoot);
+    assert.equal(mcpNames.assetNames[fontPath], listing.assetNames[fontPath]);
+    assert.ok(listing.files.includes(audioPath));
+    assert.equal((await fetch(`${studio.origin}/api/projects/${store.projectId}/preview/${audioPath}`)).status, 200);
+  } finally { await studio.close(); }
+}));

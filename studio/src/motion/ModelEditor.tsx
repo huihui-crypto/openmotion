@@ -4,9 +4,10 @@ import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { SettingsDialog } from './settingsPrimitives';
 import { defaultParameters, modelIdError } from './settingsValidation';
+import { Select } from '../components/ui/Select';
 
-export const kindLabels: Record<ModelKind, string> = { text: 'Language', image: 'Image', video: 'Video', audio: 'Audio', embedding: 'Embedding', reranker: 'Reranker' };
-export const typeIcons: Record<ModelKind, string> = { text: 'text', image: 'image-line', video: 'film-line', audio: 'music-2-line', embedding: 'stack-line', reranker: 'equalizer-line' };
+export const kindLabels: Record<ModelKind, string> = { text: 'Language', image: 'Image', video: 'Video', audio: 'Audio', transcription: 'Transcription', embedding: 'Embedding', reranker: 'Reranker' };
+export const typeIcons: Record<ModelKind, string> = { text: 'text', image: 'image-line', video: 'film-line', audio: 'music-2-line', transcription: 'text', embedding: 'stack-line', reranker: 'equalizer-line' };
 const capabilityIcons = { reasoning: 'flashlight-line', tools: 'plug-line', vision: 'eye-line', audio: 'music-2-line', video: 'film-line' };
 export const capabilityLabels = { reasoning: 'Reasoning', tools: 'Tools', vision: 'Vision', audio: 'Audio', video: 'Video' };
 const limits = [
@@ -82,10 +83,15 @@ export function ModelEditor({ provider, model, onClose, save }: { provider: Prov
     {field('id', 'Model ID', id, setId, true, Boolean(model))}
     {field('label', 'Display name', label, setLabel)}
     {field('group', 'Group name', group, setGroup)}
+    {kind === 'transcription' && <><p className="om-muted">{t('Choose a response supported by your model. Timed captions require timestamps; text-only results can still be reviewed and copied.')}</p>
+      <Select label={t('Transcription response')} value={(() => { try { return JSON.parse(defaults).response_format ?? 'auto'; } catch { return 'auto'; } })()} options={[
+        { value: 'auto', label: t('Model default') }, { value: 'verbose_json', label: t('Timed segments and words') }, { value: 'json', label: t('Plain transcript') }, { value: 'diarized_json', label: t('Speakers and timed segments') },
+      ]} onCommit={value => { try { const next = JSON.parse(defaults); if (value === 'auto') delete next.response_format; else next.response_format = value; if (value !== 'verbose_json') delete next.timestamp_granularities; if (value !== 'diarized_json') delete next.chunking_strategy; setDefaults(JSON.stringify(next, null, 2)); } catch { setValidated(true); setAdvanced(true); focusTarget.current = 'defaults'; setFocusRequest(value => value + 1); } }} />
+    </>}
     <button className="om-button om-disclosure" type="button" aria-expanded={advanced} onClick={() => setAdvanced(value => !value)}>{t('More settings')}<RemixIcon name={advanced ? 'arrow-up-line' : 'arrow-down-s-line'} size={15} /></button>
     {advanced && <div className="om-card-stack">
       <div className="om-card om-card-stack">
-        <div className="om-label">{t('Model type')}<div className="om-settings-tags">{modelKinds.filter(value => provider.protocol !== 'media' || ['image', 'video', 'audio'].includes(value)).map(value => <button type="button" className="om-button" key={value} aria-pressed={kind === value} disabled={Boolean(model) && ['media', 'agent', 'account'].includes(provider.protocol) && kind !== value} onClick={() => setKind(value)}><RemixIcon name={typeIcons[value]} size={14} />{t(kindLabels[value])}</button>)}</div></div>
+        <div className="om-label">{t('Model type')}<div className="om-settings-tags">{modelKinds.filter(value => (value !== 'transcription' || provider.protocol === 'openai') && (provider.protocol !== 'media' || ['image', 'video', 'audio'].includes(value))).map(value => <button type="button" className="om-button" key={value} aria-pressed={kind === value} disabled={Boolean(model) && ['media', 'agent', 'account'].includes(provider.protocol) && kind !== value} onClick={() => setKind(value)}><RemixIcon name={typeIcons[value]} size={14} />{t(kindLabels[value])}</button>)}</div></div>
         <div className="om-label">{t('Model capabilities')}<div className="om-settings-tags">{modelCapabilities.map(value => <button type="button" className="om-button" key={value} aria-pressed={capabilities.includes(value)} onClick={() => setCapabilities(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}><RemixIcon name={capabilityIcons[value]} size={14} />{t(capabilityLabels[value])}</button>)}</div></div>
         <div className="om-label">{t('Input modalities')}<div className="om-settings-tags">{inputModalities.map(value => <button type="button" className="om-button" key={value} aria-pressed={inputs.includes(value)} onClick={() => setInputs(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value])}><RemixIcon name={capabilityIcons[value]} size={14} />{t(capabilityLabels[value])}</button>)}</div></div>
       </div>

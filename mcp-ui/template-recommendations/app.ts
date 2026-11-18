@@ -1,3 +1,4 @@
+import { formatTemplatePrompt } from '../../shared/template-prompts.ts';
 import { templateIds } from './types.ts';
 import { isLanguage, resolveLanguage, translations } from './i18n.ts';
 import { createInlineFeedback } from '../../packages/design-system/inline-feedback.ts';
@@ -17,8 +18,7 @@ const record = (value: unknown): value is Record<string, unknown> => Boolean(val
 function sameKeys(value: Record<string, unknown>, keys: string[]) { return Object.keys(value).sort().join('|') === keys.sort().join('|'); }
 
 export function recreationPrompt(card: Pick<RecommendationCard, 'title' | 'templateId' | 'templateKind'>, language: Language = 'zh'): string {
-  const text = translations[language].prompt, colon = language === 'zh' ? '：' : ': ';
-  return `${text.brief}${colon}${text.instruction}${card.templateKind === 'reference' ? '\n' + text.referenceInstruction : ''}\n\n${text.template}${colon}${card.title}\n${text.id}${colon}${card.templateId}\n\n${text.requirements}${colon.trimEnd()}\n`;
+  return formatTemplatePrompt({ id: card.templateId, title: card.title }, language === 'pt' ? 'pt-br' : language);
 }
 
 function posterSource(asset: TemplateAsset): string {

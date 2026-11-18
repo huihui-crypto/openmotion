@@ -19,8 +19,8 @@ export function resolveSnapGuide(
 }
 
 /** Pixel radius within which a time snaps to a target (matches historical beat snap). */
-export const TIMELINE_SNAP_PX = 8;
-export const TIMELINE_SNAP_RELEASE_PX = 14;
+export const TIMELINE_SNAP_PX = 5;
+export const TIMELINE_SNAP_RELEASE_PX = 7;
 
 /** A gesture owns its target until the pointer leaves the wider release radius. */
 export function stickyTimelineTime(

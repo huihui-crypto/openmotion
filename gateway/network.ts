@@ -55,7 +55,7 @@ export function providerOrigin(raw: unknown): string {
   return url.origin;
 }
 /** Custom Cloud origins use pinned public DNS and never forward credentials on redirects. */
-export const publicProviderFetch: Fetcher = async (raw, init: RequestInit = {}) => {
+export async function publicProviderFetch(raw: Parameters<Fetcher>[0], init: RequestInit = {}, idleTimeoutMs = 60_000): Promise<Response> {
   const url = new URL(String(raw)); providerOrigin(url.origin);
   const addresses = await lookup(url.hostname, { all: true });
   if (!addresses.length || addresses.some(item => !publicAddress(item.address))) throw new Error('Provider points to a non-public address');
@@ -74,10 +74,10 @@ export const publicProviderFetch: Fetcher = async (raw, init: RequestInit = {}) 
           headers: Object.fromEntries(Object.entries(res.headers).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) }));
       });
     });
-    req.setTimeout(60_000, () => req.destroy(new Error('Provider request timed out'))); req.on('error', reject);
+    req.setTimeout(idleTimeoutMs, () => req.destroy(new Error('Provider request timed out'))); req.on('error', reject);
     if (init.body) req.write(init.body); req.end();
   });
-};
+}
 export const MAX_MEDIA_BYTES = 256 * 1024 * 1024;
 /** Download without credentials; pin validated DNS answers to prevent rebinding. */
 export async function downloadMedia(raw: string, signal: AbortSignal, redirects = 0): Promise<Buffer> {

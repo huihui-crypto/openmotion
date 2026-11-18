@@ -9,11 +9,11 @@ describe("makeStudioDebugLogger", () => {
     vi.restoreAllMocks();
   });
 
-  it("does no console work while its channel is disabled", () => {
+  it.each(["commit", "reload"])("does no console work while %s is disabled", (channel) => {
     const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
     const buildDetails = vi.fn(() => ({ expensive: true }));
 
-    makeStudioDebugLogger("commit")("persisted", buildDetails);
+    makeStudioDebugLogger(channel)("persisted", buildDetails);
 
     expect(buildDetails).not.toHaveBeenCalled();
     expect(log).not.toHaveBeenCalled();

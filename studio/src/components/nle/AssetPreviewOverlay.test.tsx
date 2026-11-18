@@ -168,11 +168,29 @@ describe("explicit preview insertion", () => {
     expect(addButton().disabled).toBe(true);
     await act(async () => finish(false));
     expect(document.querySelector('[role="alert"]')?.textContent).toBe("Failed to add media");
+    expect(document.querySelector('[role="alert"]')?.closest('.hf-toast-viewport')).not.toBeNull();
+    expect(document.querySelector('[role="dialog"] > p[role="alert"]')).toBeNull();
+    expect(document.querySelector('[role="dialog"] .motion-feedback-layer')).not.toBeNull();
     expect(useAssetPreviewStore.getState().previewAsset).toBe("assets/clip.mp4");
     act(() => addButton().click());
     await act(async () => finish(true));
     expect(useAssetPreviewStore.getState().previewAsset).toBeNull();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.querySelector('.hf-toast-viewport')).toBeNull();
+  });
+
+  it("shows thrown insertion failures as dismissible Toasts without closing the preview", async () => {
+    mountModal();
+    const add = vi.fn().mockRejectedValue(new Error("Private backend diagnostic"));
+    act(() => useAssetPreviewStore.getState().setPreviewAsset("assets/photo.png", "p1", add));
+    await act(async () => addButton().click());
+    expect(document.querySelector('.hf-toast-viewport [role="alert"]')?.textContent).toBe("Failed to add media");
+    expect(document.body.textContent).not.toContain("Private backend diagnostic");
+    expect(document.querySelector('[role="dialog"] img')?.getAttribute('alt')).toBe("photo.png");
+    expect(addButton().disabled).toBe(false);
+    act(() => document.querySelector<HTMLButtonElement>('button[aria-label="Dismiss error"]')!.click());
+    expect(document.querySelector('.hf-toast-exit')).not.toBeNull();
+    expect(useAssetPreviewStore.getState().previewAsset).toBe("assets/photo.png");
   });
 
   it("does not close a replacement preview when an older insertion finishes", async () => {

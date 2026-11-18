@@ -82,6 +82,7 @@ describe("timeline asset drop feedback", () => {
       { id: "main", domId: "main", tag: "div", start: 0, duration: 37.3, track: 0, authoredTrack: 0 },
       { id: "spill", domId: "spill", tag: "div", start: 7.2, duration: 0.6, track: 1, authoredTrack: 0 },
     ];
+    usePlayerStore.setState({ rippleEditEnabled: true });
     const view = mountDropEditor(peers);
     let task!: Promise<void>;
     act(() => { task = view.drop("assets/brand.svg", { start: 9, track: 1 }); });

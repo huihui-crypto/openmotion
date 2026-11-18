@@ -6,21 +6,13 @@ Based on the Cloud media API contract; reviewed 2026-11-17. This is a test-stage
 
 Open the [Cloud dashboard](https://open-design.ai/cloud/dashboard), select the workspace and open API keys. Save its Cloud Key and the gateway origin shown there in editor **Model providers**. Do not substitute the website origin. A trailing `/v1` is normalized away. Environment alternatives are `OPENDESIGN_API_KEY` and `OPENDESIGN_MEDIA_ORIGIN`; the saved configuration takes priority.
 
-The service injects `Authorization: Bearer ...`. Agents use `openmotion_media_use`, never credential files or key arguments. Shell examples describe the contract for implementation or user-run diagnostics, using environment placeholders only. Set `OPENDESIGN_MEDIA_ORIGIN` to the dashboard's HTTPS origin without `/v1` or a trailing slash.
+The service injects `Authorization: Bearer ...`. Agents discover with `openmotion_media_use` and generate with `openmotion_assets_use`, never with credential files or key arguments. `OPENDESIGN_MEDIA_ORIGIN` is the dashboard's HTTPS origin without `/v1` or a trailing slash.
 
 ```json
 {"action":"models","provider":"opendesign","refresh":true,"modality":"image","limit":20}
 ```
 
-Underlying authenticated query:
-
-```bash
-curl --fail-with-body --silent --show-error \
-  "${OPENDESIGN_MEDIA_ORIGIN:?Use dashboard API origin}/api/v1/media/models" \
-  -H "Authorization: Bearer ${OPENDESIGN_API_KEY:?Set OPENDESIGN_API_KEY locally}"
-```
-
-The response is `{models:[{model,kind,capabilities}]}`. Change/omit modality to discover video/audio. Account/workspace availability comes from this list, not the example names below. Tool entries are normalized; check the current contract/model capabilities for required options. Cached entries do not establish current entitlement. Billing and credentials belong to the Cloud workspace, not its upstream model vendor; workspace allowance is used first and additional use may consume recharge balance.
+Discovery calls the authenticated `GET /api/v1/media/models` on the dashboard API origin. The response is `{models:[{model,kind,capabilities}]}`. Change/omit modality to discover video/audio. Account/workspace availability comes from this list, not the example names below. Tool entries are normalized; check the current contract/model capabilities for required options. Cached entries do not establish current entitlement. Billing and credentials belong to the Cloud workspace, not its upstream model vendor; workspace allowance is used first and additional use may consume recharge balance.
 
 The catalogue is bound to the configured key and API origin. Use `action: "models"` with `refresh: true` or Settings → Sync models to refresh it. Explicit `capabilities.edits: false` disables image references; absent or malformed values mean unknown and remain disabled. Refreshing never submits a generation request. Model names and generic image-input metadata do not establish editing access.
 
@@ -28,24 +20,24 @@ Cloud catalogue kinds `audio_speech` and `audio_music` both appear as `modality:
 
 ## Request templates
 
-These are `openmotion_media_use` arguments. Replace the project ID and select a model actually enabled for this workspace. Each new intended generation needs a unique requestId and may incur charges.
+These are `openmotion_assets_use` arguments. Select a model actually enabled for this workspace. Each new intended generation needs a unique requestId and may incur charges.
 
 Image:
 
 ```json
-{"action":"generate","provider":"opendesign","projectId":"project","requestId":"cloud-image-01","model":"seedream-5.0-flash","modality":"image","mode":"text-to-image","prompt":"A ceramic cup on a wooden table, soft morning light","parameters":{}}
+{"action":"generate","requestId":"cloud-image-01","model":"opendesign:seedream-5.0-flash","modality":"image","mode":"text-to-image","prompt":"A ceramic cup on a wooden table, soft morning light","parameters":{}}
 ```
 
 Video:
 
 ```json
-{"action":"generate","provider":"opendesign","projectId":"project","requestId":"cloud-video-01","model":"doubao-seedance-2-5-260628","modality":"video","mode":"text-to-video","prompt":"Steam rises from a ceramic cup as the camera slowly moves closer","parameters":{"duration":5,"resolution":"720p"}}
+{"action":"generate","requestId":"cloud-video-01","model":"opendesign:doubao-seedance-2-5-260628","modality":"video","mode":"text-to-video","prompt":"Steam rises from a ceramic cup as the camera slowly moves closer","parameters":{"duration":5,"resolution":"720p"}}
 ```
 
 Speech:
 
 ```json
-{"action":"generate","provider":"opendesign","projectId":"project","requestId":"cloud-speech-01","model":"elevenlabs-v3","modality":"audio","mode":"text-to-speech","prompt":"Welcome to a quiet morning.","parameters":{"voice":"JBFqnCBsd6RMkjVDRZzb"}}
+{"action":"generate","requestId":"cloud-speech-01","model":"opendesign:elevenlabs-v3","modality":"audio","mode":"text-to-speech","prompt":"Welcome to a quiet morning.","parameters":{"voice":"JBFqnCBsd6RMkjVDRZzb"}}
 ```
 
 For Chinese, use model `byteplus-tts-2` with voice `zh_female_vv_uranus_bigtts`. For `elevenlabs-v3` and `byteplus-tts-2`, the `models` action lists checked voices and the default voice in `generationOptions`, and another voice ID belonging to that model is passed through unchecked; other speech models require a voice ID belonging to that model. Neither example proves workspace access.
@@ -69,7 +61,7 @@ Native speech options pass through `parameters` unchanged, such as ElevenLabs `v
 Music:
 
 ```json
-{"action":"generate","provider":"opendesign","projectId":"project","requestId":"cloud-music-01","model":"elevenlabs-music-v2","modality":"audio","mode":"text-to-audio","prompt":"Gentle instrumental piano, warm and calm, no vocals","parameters":{"music_length_ms":10000}}
+{"action":"generate","requestId":"cloud-music-01","model":"opendesign:elevenlabs-music-v2","modality":"audio","mode":"text-to-audio","prompt":"Gentle instrumental piano, warm and calm, no vocals","parameters":{"music_length_ms":10000}}
 ```
 
 `elevenlabs-music-v2` is a built-in entry: the Cloud catalogue does not list it yet, so discovery shows it with `source: "builtin"`. Like the speech examples, it does not prove workspace access. Music does not require a voice. The example requests 10 seconds using the provider-native `music_length_ms` option; accepted parameters and duration limits depend on the selected model. OpenMotion passes music options through without rounding the duration to a preset.
@@ -83,38 +75,20 @@ Wire mapping (all paths are relative to the dashboard API origin):
 | Speech | `/api/v1/media/audio/speech` | `{model,voice,parameters:{text,...options}}` | `/api/v1/media/audio/tasks/{task_id}` |
 | Music | `/api/v1/media/audio/music` | `{model,parameters:{prompt,...options}}` | `/api/v1/media/audio/tasks/{task_id}` |
 
-The speech adapter extracts `parameters.voice` and nests the remaining options, using the tool's prompt as `parameters.text`. Do not send fal-style flat speech fields. For example, the speech wire request is:
-
-```bash
-# New intended task: choose a new idempotency token. An exact retry must reuse it.
-curl --fail-with-body --silent --show-error \
-  "${OPENDESIGN_MEDIA_ORIGIN:?Use dashboard API origin}/api/v1/media/audio/speech" \
-  -H "Authorization: Bearer ${OPENDESIGN_API_KEY:?Set OPENDESIGN_API_KEY locally}" \
-  -H "Idempotency-Key: ${CLOUD_IDEMPOTENCY_KEY:?Choose a stable token for this submission}" \
-  -H 'Content-Type: application/json' \
-  --data '{"model":"elevenlabs-v3","voice":"JBFqnCBsd6RMkjVDRZzb","parameters":{"text":"Welcome to a quiet morning."}}'
-```
+The speech adapter extracts `parameters.voice` and nests the remaining options, using the tool's prompt as `parameters.text`. Do not send fal-style flat speech fields.
 
 Every provider submission includes `Idempotency-Key`. The service maps a stable tool requestId to its persisted local job and uses that job's UUID as the provider header; the strings need not match. Repeating an identical tool requestId/body returns the original local job and does not restart it. An exact provider-level submission retry must retain its original idempotency header/body. Changed inputs require a new intended task, not reuse of an old token.
 
 ## Polling and output retrieval
 
-Submission returns HTTP 202 and `task_id`; this is acceptance, not an output file. For example, speech polling is:
-
-```bash
-curl --fail-with-body --silent --show-error \
-  "${OPENDESIGN_MEDIA_ORIGIN:?Use dashboard API origin}/api/v1/media/audio/tasks/${CLOUD_TASK_ID:?Use original task_id}" \
-  -H "Authorization: Bearer ${OPENDESIGN_API_KEY:?Set OPENDESIGN_API_KEY locally}"
-```
-
-Wait through `queued`, `pending`, `running`, `processing` or `submitted`. `succeeded` retrieves output; `failed` / `cancelled` ends local work. In the Agent workflow, poll the local ID:
+Submission returns HTTP 202 and `task_id`; this is acceptance, not an output file. The adapter polls the matching path in the wire mapping above. Wait through `queued`, `pending`, `running`, `processing` or `submitted`. `succeeded` retrieves output; `failed` / `cancelled` ends local work. In the Agent workflow, poll the local ID:
 
 ```json
-{"action":"status","projectId":"project","jobId":"LOCAL_JOB_ID_FROM_GENERATE"}
+{"action":"status","jobId":"LOCAL_JOB_ID_FROM_GENERATE"}
 ```
 
 - Image/audio: download `assets[].url` without Cloud Authorization. If a signed URL expires, query the same task for renewed links rather than generating again.
-- Video: after success, authenticated GET `/api/v1/media/videos/tasks/{task_id}/content`. The adapter handles direct bytes or a redirect, downloading the redirected media without forwarding Cloud credentials. Do not use an authenticated cross-origin redirect with `--location-trusted`.
+- Video: after success, authenticated GET `/api/v1/media/videos/tasks/{task_id}/content`. The adapter handles direct bytes or a redirect, downloading the redirected media without forwarding Cloud credentials.
 - Only local `completed` with imported assets establishes project media availability. Generation alone does not insert timeline clips.
 
 ## Error interpretation
@@ -142,6 +116,4 @@ Cloud speech and music use distinct submit endpoints and share audio task pollin
 
 ## Original Cloud task recovery
 
-Use resume with the original jobId and a stable requestId to check a failed/interrupted Cloud task with a known remoteId, without uploading inputs or submitting another paid generation. Cancelled jobs and confirmed remote failures cannot resume. Use retry_save only for retained local outputs (savePending); regeneration is a separate paid request requiring authorization. Studio offers Check original task on eligible failed jobs. Reference counts follow the selected model before any reference file is read; there is no fixed library count ceiling. Local Codex/account editing remains one image, video remains one first frame, and project referenceAsset remains image-only.
-
-Cloud tasks keep bounded read retries (five attempts) and local timeouts (30 minutes for video, 15 for other media). Interrupted tasks remain failed until explicitly resumed; reconnection never retries upload or generation POSTs. Status and generated asset versions preserve bounded, redacted structured result metadata. Confirmed remote failures retain short error codes and retryable flags and cannot resume, even if the provider labels them retryable. Every returned output is saved with existing media validation. Non-empty parameters.images selects image edits; combining it with pinned local references is rejected before submission.
+`resume`, `retry_save` and regeneration follow the [job procedure](../jobs.md). Cloud tasks keep bounded read retries (five attempts) and local timeouts (30 minutes for video, 15 for other media). Interrupted tasks remain failed until explicitly resumed; reconnection never retries upload or generation POSTs. Status and generated asset versions preserve bounded, redacted structured result metadata. Confirmed remote failures retain short error codes and retryable flags and cannot resume, even if the provider labels them retryable. Every returned output is saved with existing media validation. Non-empty parameters.images selects image edits; combining it with pinned local references is rejected before submission.

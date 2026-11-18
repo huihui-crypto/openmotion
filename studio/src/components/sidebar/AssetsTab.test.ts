@@ -181,3 +181,7 @@ describe("globalAssetRows", () => {
     expect(globalAssetRows(recs, "  ").length).toBe(3);
   });
 });
+
+it('recognizes a nested audio reference even when its composition row is collapsed', () => {
+  expect(deriveUsedPaths([], [{ assetUrl: '/api/projects/p/preview/assets/lfs/original-audio.m4a' }])).toContain('assets/lfs/original-audio.m4a');
+});

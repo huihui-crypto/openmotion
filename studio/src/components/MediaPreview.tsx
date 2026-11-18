@@ -1,3 +1,4 @@
+import { useFileManagerContextOptional } from '../contexts/FileManagerContext';
 import { useI18n } from "../i18n/I18n";
 import { buildProjectApiPath } from "../utils/projectRouting";
 import { useEffect, useState } from "react";
@@ -33,7 +34,8 @@ function MediaErrorPanel({ name, filePath }: { name: string; filePath: string })
 export function MediaPreview({ projectId, filePath }: { projectId: string; filePath: string }) {
   const { t } = useI18n();
   const serveUrl = buildProjectApiPath(projectId, `/preview/${encodeUrlPath(filePath)}`);
-  const name = filePath.split("/").pop() ?? filePath;
+  const names = useFileManagerContextOptional()?.assetNames;
+  const name = names?.[filePath] ?? filePath.split("/").pop() ?? filePath;
   const [failure, setFailure] = useState<{ source: string; failed: boolean }>({
     source: serveUrl,
     failed: false,

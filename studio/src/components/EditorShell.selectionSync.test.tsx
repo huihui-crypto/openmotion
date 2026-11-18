@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 
-import React, { act } from "react";
+import React, { act, type ComponentProps } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "./EditorShellTestMocks";
@@ -11,6 +11,15 @@ const hookMocks = vi.hoisted(() => ({
   useTimelineSelectionPreviewSync: vi.fn(),
 }));
 const previewOverlaysProbe = vi.hoisted(() => ({ readOnly: null as boolean | null }));
+const dockHostProbe = vi.hoisted(() => ({ width: undefined as (() => number) | undefined }));
+
+vi.mock("./dock/Dock", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./dock/Dock")>();
+  return { ...actual, Dock: { ...actual.Dock, Root: (props: ComponentProps<typeof actual.Dock.Root>) => {
+    dockHostProbe.width = props.dockWidth;
+    return <actual.Dock.Root {...props} />;
+  } } };
+});
 
 vi.mock("../hooks/useTimelineSelectionPreviewSync", () => hookMocks);
 vi.mock("./nle/PreviewPane", () => ({
@@ -70,6 +79,23 @@ const shell = (readOnlyPreview?: boolean) => (
 );
 
 describe("EditorShell timeline selection sync", () => {
+  it("reports a hidden editor as zero width instead of fitting it to the browser window", () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    act(() => root.render(shell()));
+    const editor = host.querySelector('div.flex[tabindex="-1"]')!;
+    // Happy DOM has no layout engine. Emulate display:none while the workspace
+    // shows model settings, keeping the same mounted editor and callback.
+    Object.defineProperty(editor, "clientWidth", { get: () => host.hidden ? 0 : 980 });
+    expect(dockHostProbe.width?.()).toBe(980);
+    host.hidden = true;
+    expect(dockHostProbe.width?.()).toBe(0);
+    host.hidden = false;
+    expect(dockHostProbe.width?.()).toBe(980);
+    act(() => root.unmount());
+  });
+
   it("keeps the timeline store mirrored into the preview selection", () => {
     const host = document.createElement("div");
     document.body.append(host);

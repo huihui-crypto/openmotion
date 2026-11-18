@@ -121,7 +121,7 @@ describe("getTimelineAssetKind", () => {
 
   it("returns null for unknown extensions", () => {
     expect(getTimelineAssetKind("assets/data.json")).toBeNull();
-    expect(getTimelineAssetKind("assets/font.woff2")).toBeNull();
+    expect(getTimelineAssetKind("assets/font.woff2")).toBe("text");
   });
 });
 
@@ -321,4 +321,23 @@ it("writes a dropped file's name as a URL, so %, #, ? and apostrophes load", () 
     zIndex: 1,
   });
   expect(html).toContain('src="../assets/50%25%20off%20%231%3F%27s%20take.mp4"');
+});
+
+
+it("escapes font filenames and resolves the font URL relative to the composition", () => {
+  const html = buildTimelineAssetInsertHtml({ id: "text", hfId: "hf-text", kind: "text", assetPath: resolveTimelineAssetSrc("compositions/scene.html", 'assets/A<B&Font.ttf'), start: 2, duration: 3, track: 1, zIndex: 2 });
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  expect(doc.querySelectorAll("p")).toHaveLength(1);
+  expect(doc.querySelector("p")?.textContent).toBe("A<B&Font");
+  expect(doc.querySelector("style")?.textContent).toContain("../assets/A%3CB%26Font.ttf");
+  expect(doc.querySelector("p")?.style.fontFamily).toContain("font-hf-text");
+});
+
+it("inserts fonts with literal percent and punctuation in their filenames", () => {
+  const html = buildTimelineAssetInsertHtml({ id: "text", hfId: "hf-text", kind: "text", assetPath: "../assets/50% off #1?'s.ttf", start: 0, duration: 3, track: 1, zIndex: 2 });
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  expect(doc.querySelector("p")?.textContent).toBe("50% off #1?'s");
+  expect(doc.querySelector("style")?.textContent).toContain("../assets/50%25%20off%20%231%3F%27s.ttf");
+  expect(doc.querySelector("p")?.style.color).toBe("rgb(255, 255, 255)");
+  expect(html).not.toContain("var(--motion-");
 });

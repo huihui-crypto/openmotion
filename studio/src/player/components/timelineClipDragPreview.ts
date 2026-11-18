@@ -176,7 +176,7 @@ function resolveDropPlacement(
     order: trackOrder,
     audioTracks,
     elements: group.obstacles,
-    magneticMainTrack: ctx.rippleEditEnabled ? mainVisualTrack(elements) : null,
+    magneticMainTrack: ctx.rippleEditEnabled && !drag.snapDisabled ? mainVisualTrack(elements) : null,
     desiredTrack,
     deliberateInsertRow: aim.insertRow,
     allowedInsertRows: ctx.allowedInsertRows,
@@ -300,7 +300,7 @@ export function computeDragPreview(
   const floored = Math.max(snap.start, group.floor);
   const previewStart = origin + Math.max(shift.min, Math.min(floored - origin, shift.max));
   const placement = resolveDropPlacement(drag, aim, previewStart, nextMove.track, ctx, group);
-  const reorder = ctx.rippleEditEnabled && aim.insertRow === null && nextMove.track === drag.element.track
+  const reorder = ctx.rippleEditEnabled && !drag.snapDisabled && aim.insertRow === null && nextMove.track === drag.element.track
     ? planMainTrackReorder(ctx.elements, drag.element, previewStart, group.moving,
         ctx.timelineLinkageEnabled ?? false,
         drag.mainTrackReorder && ctx.pps > 0

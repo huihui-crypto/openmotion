@@ -4,51 +4,45 @@ Checked against official documentation on 2026-11-13. Sections: discovery, reque
 
 ## Setup and discovery
 
-Save the key in editor **Model providers**. `ATLASCLOUD_API_KEY` is the environment alternative; the saved key wins. The service injects `Authorization: Bearer ...`. Agents use `openmotion_media_use`; never read credential files or put keys in arguments. Shell examples document the wire protocol for service implementation or user-run diagnostics, using environment placeholders only.
+Save the key in editor **Model providers**. `ATLASCLOUD_API_KEY` is the environment alternative; the saved key wins. The service injects `Authorization: Bearer ...`. Agents discover with `openmotion_media_use` and generate with `openmotion_assets_use`; never read credential files or put keys in arguments.
 
 ```json
 {"action":"models","provider":"atlascloud","refresh":true,"modality":"image","query":"nano-banana","limit":20}
 ```
 
-Underlying public catalogue request:
-
-```bash
-curl --fail-with-body --silent --show-error 'https://api.atlascloud.ai/api/v1/models'
-```
-
-Read the response `data` array. Change or omit modality/query for video/audio. The tool returns normalized metadata, not every model's input schema. Confirm the selected model in the current [model library](https://www.atlascloud.ai/models) and read its API schema. Public discovery and cached/built-in examples do not establish key validity, balance or model entitlement.
+Discovery reads the public catalogue `GET https://api.atlascloud.ai/api/v1/models`. Read the response `data` array. Change or omit modality/query for video/audio. The tool returns normalized metadata, not every model's input schema. Confirm the selected model in the current [model library](https://www.atlascloud.ai/models) and read its API schema. Public discovery and cached/built-in examples do not establish key validity, balance or model entitlement.
 
 ## Request templates
 
-These JSON objects are `openmotion_media_use` arguments. Replace the project ID and assign a unique requestId per intended generation. Verify current availability and schema first; generation can incur charges.
+These JSON objects are `openmotion_assets_use` arguments. Assign a unique requestId per intended generation. Verify current availability and schema first; generation can incur charges.
 
 Image — [Nano Banana 2 text-to-image](https://www.atlascloud.ai/models/google/nano-banana-2/text-to-image):
 
 ```json
-{"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-image-01","model":"google/nano-banana-2/text-to-image","modality":"image","mode":"text-to-image","prompt":"A ceramic cup on a wooden table, soft morning light","parameters":{"aspect_ratio":"1:1","resolution":"1k","output_format":"png"}}
+{"action":"generate","requestId":"atlas-image-01","model":"atlascloud:google/nano-banana-2/text-to-image","modality":"image","mode":"text-to-image","prompt":"A ceramic cup on a wooden table, soft morning light","parameters":{"aspect_ratio":"1:1","resolution":"1k","output_format":"png"}}
 ```
 
 Video — [Seedance 2.0 text-to-video](https://www.atlascloud.ai/models/bytedance/seedance-2.0/text-to-video):
 
 ```json
-{"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-video-01","model":"bytedance/seedance-2.0/text-to-video","modality":"video","mode":"text-to-video","prompt":"Steam rises from a ceramic cup as the camera slowly moves closer","parameters":{"duration":5,"resolution":"720p","aspect_ratio":"16:9","generate_audio":false}}
+{"action":"generate","requestId":"atlas-video-01","model":"atlascloud:bytedance/seedance-2.0/text-to-video","modality":"video","mode":"text-to-video","prompt":"Steam rises from a ceramic cup as the camera slowly moves closer","parameters":{"duration":5,"resolution":"720p","aspect_ratio":"16:9","generate_audio":false}}
 ```
 
 Speech — [audio input guide](https://www.atlascloud.ai/docs/models/audio):
 
 ```json
-{"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-speech-01","model":"bytedance/seed-audio-1.0","modality":"audio","mode":"text-to-speech","prompt":"Welcome to a quiet morning.","parameters":{"format":"mp3","sample_rate":24000}}
+{"action":"generate","requestId":"atlas-speech-01","model":"atlascloud:bytedance/seed-audio-1.0","modality":"audio","mode":"text-to-speech","prompt":"Welcome to a quiet morning.","parameters":{"format":"mp3","sample_rate":24000}}
 ```
 
 Instrumental music — the same audio guide documents Suno's non-custom prompt input:
 
 ```json
-{"action":"generate","provider":"atlascloud","projectId":"project","requestId":"atlas-music-01","model":"suno/chirp-v5","modality":"audio","mode":"text-to-audio","prompt":"A gentle instrumental piano piece for a quiet morning","parameters":{"instrumental":true}}
+{"action":"generate","requestId":"atlas-music-01","model":"atlascloud:suno/chirp-v5","modality":"audio","mode":"text-to-audio","prompt":"A gentle instrumental piano piece for a quiet morning","parameters":{"instrumental":true}}
 ```
 
 Suno can return multiple tracks. Custom lyrics/style modes have different required fields; consult the schema rather than reusing this minimal prompt template.
 
-Wire mapping:
+Wire mapping (paths relative to `https://api.atlascloud.ai`):
 
 | Modality | POST path | JSON body |
 | --- | --- | --- |
@@ -57,31 +51,14 @@ Wire mapping:
 | Speech (`text-to-speech`) | `/api/v1/model/generateAudio` | `{model,text,...parameters}` |
 | Music (`text-to-audio`) | `/api/v1/model/generateAudio` | `{model,prompt,...parameters}` |
 
-For example, the image request on the wire is:
-
-```bash
-curl --fail-with-body --silent --show-error 'https://api.atlascloud.ai/api/v1/model/generateImage' \
-  -H "Authorization: Bearer ${ATLASCLOUD_API_KEY:?Set ATLASCLOUD_API_KEY locally}" \
-  -H 'Content-Type: application/json' \
-  --data '{"model":"google/nano-banana-2/text-to-image","prompt":"A ceramic cup on a wooden table, soft morning light","aspect_ratio":"1:1","resolution":"1k","output_format":"png"}'
-```
-
 Reference-media URLs, if the selected model supports them, belong in provider-native parameters. This tool does not upload local paths. Speech transcription, lyrics-only, LLM and 3D outputs are outside the media-file adapter.
 
 ## Polling and result
 
-Read the envelope `code` and `data.id`. Query that same prediction:
-
-```bash
-curl --fail-with-body --silent --show-error \
-  "https://api.atlascloud.ai/api/v1/model/prediction/${ATLAS_PREDICTION_ID:?Use original data.id}" \
-  -H "Authorization: Bearer ${ATLASCLOUD_API_KEY:?Set ATLASCLOUD_API_KEY locally}"
-```
-
-The adapter waits through nonterminal states; `completed` / `succeeded` imports media from `data.outputs`. `failed`, `timeout`, `cancelled` or `canceled` ends local processing. Image Base64 output is also recognized. Agent polling uses the local ID, not the remote prediction ID:
+Read the envelope `code` and `data.id`; the adapter polls that same prediction at `GET /api/v1/model/prediction/{data.id}`. It waits through nonterminal states; `completed` / `succeeded` imports media from `data.outputs`. `failed`, `timeout`, `cancelled` or `canceled` ends local processing. Image Base64 output is also recognized. Agent polling uses the local ID, not the remote prediction ID:
 
 ```json
-{"action":"status","projectId":"project","jobId":"LOCAL_JOB_ID_FROM_GENERATE"}
+{"action":"status","jobId":"LOCAL_JOB_ID_FROM_GENERATE"}
 ```
 
 Submission is never automatically retried. Polling failure/local timeout does not prove a remote stop; cancellation is local and does not guarantee refunds. Query the original prediction before creating another billable task.

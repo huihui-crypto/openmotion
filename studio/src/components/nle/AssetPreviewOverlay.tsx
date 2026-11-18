@@ -1,3 +1,4 @@
+import { useFileManagerContextOptional } from '../../contexts/FileManagerContext';
 import { AssetPreviewDialog } from "./AssetPreviewDialog";
 import { RemixIcon } from "../../icons/RemixIcons";
 import { useI18n } from "../../i18n/I18n";
@@ -69,6 +70,7 @@ function AssetPreviewMedia({
 export function AssetPreviewOverlay({ modal = false, onOpen }: { modal?: boolean; onOpen?: () => void }) {
   const { t } = useI18n();
   const previewAdd = useAssetPreviewStore((s) => s.previewAdd);
+  const assetNames = useFileManagerContextOptional()?.assetNames;
   const previewAsset = useAssetPreviewStore((s) => s.previewAsset);
   const previewProjectId = useAssetPreviewStore((s) => s.previewProjectId);
   const clearPreviewAsset = useAssetPreviewStore((s) => s.clearPreviewAsset);
@@ -114,7 +116,7 @@ export function AssetPreviewOverlay({ modal = false, onOpen }: { modal?: boolean
   }, [previewKey, clearPreviewAsset, modal, onOpen]);
 
   if (modal && previewKey) {
-    const name = catalogPreview?.title ?? basename(previewAsset!);
+    const name = catalogPreview?.title ?? assetNames?.[previewAsset!] ?? basename(previewAsset!);
     const url = catalogPreview
       ? catalogPreview.videoUrl ?? catalogPreview.posterUrl
       : previewProjectId ? resolveMediaPreviewUrl(previewAsset!, previewProjectId) : undefined;
@@ -128,7 +130,7 @@ export function AssetPreviewOverlay({ modal = false, onOpen }: { modal?: boolean
   if (!previewAsset || !previewProjectId) return null;
 
   const serveUrl = resolveMediaPreviewUrl(previewAsset, previewProjectId);
-  const name = basename(previewAsset);
+  const name = assetNames?.[previewAsset] ?? basename(previewAsset);
 
   return (
     <div

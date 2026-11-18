@@ -378,7 +378,8 @@
     "kinds": [
       "text",
       "image",
-      "audio"
+      "audio",
+      "transcription"
     ],
     "category": "multimodal",
     "website": "https://platform.openai.com/api-keys",
@@ -550,7 +551,8 @@
     "protocol": "openai",
     "baseUrl": "https://api.groq.com/openai/v1",
     "kinds": [
-      "text"
+      "text",
+      "transcription"
     ],
     "category": "language",
     "website": "https://console.groq.com/keys",

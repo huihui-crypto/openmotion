@@ -174,7 +174,7 @@ export function useTimelineAssetDropOps({
         if (!stillActive()) return undefined;
         const resolvedAssetSrc = resolveTimelineAssetSrc(targetPath, assetPath);
 
-        const tag = kind === "image" ? "img" : kind;
+        const tag = kind === "image" ? "img" : kind === "text" ? "p" : kind;
 
         let newId = "";
         let newElementZIndex = 1;
@@ -314,7 +314,7 @@ export function useTimelineAssetDropOps({
       const scope = dropScopeRef.current;
       let cursor = initialPlacement.start;
       const uploading = files.map(file => {
-        const duration = getTimelineAssetKind(file.name) === "image" ? 3 : undefined;
+        const duration = ["image", "text"].includes(getTimelineAssetKind(file.name) ?? "") ? 3 : undefined;
         const id = beginPendingAssetDrop(file.name, { ...initialPlacement, start: cursor }, duration);
         cursor += duration ?? 5;
         return { id, name: file.name };

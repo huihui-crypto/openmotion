@@ -70,6 +70,24 @@ function renderDropHook(
 }
 
 describe("useTimelineAssetDropOps handleTimelineAssetDrop", () => {
+  it("inserts editable text with the chosen font at the current position", async () => {
+    const source = '<main data-composition-id="scene" data-duration="2" data-width="1920" data-height="1080"></main>';
+    const write = vi.fn().mockResolvedValue(undefined);
+    const drop = renderDropHook(source, write);
+    await act(async () => { await drop()("assets/AlbertSans.ttf", { start: 4, track: 0, newTrack: "top" }, undefined, true); });
+    expect(write).toHaveBeenCalledOnce();
+    const doc = new DOMParser().parseFromString(write.mock.calls[0][1], "text/html");
+    const text = doc.querySelector("p.clip")!;
+    expect(text.textContent).toBe("Albert Sans");
+    expect(text.getAttribute("data-start")).toBe("4");
+    expect(text.getAttribute("data-duration")).toBe("3");
+    expect(text.hasAttribute("src")).toBe(false);
+    expect(doc.querySelector("style")?.textContent).toContain('url("assets/AlbertSans.ttf")');
+    expect(doc.querySelector("main")?.getAttribute("data-duration")).toBe("7");
+    expect(usePlayerStore.getState().pendingAssetDrops[0]?.element?.tag).toBe("p");
+    expect(drop.toasts()).toEqual([]);
+  });
+
   it("grows the root duration when the drop lands past the current end", async () => {
     const source =
       '<main data-composition-id="scene" data-duration="10" data-width="1920" data-height="1080"></main>';
@@ -221,6 +239,7 @@ describe("useTimelineAssetDropOps handleTimelineAssetDrop", () => {
   }
 
   it("keeps a multi-file drop's clips off each other and off the row's clips", async () => {
+    usePlayerStore.setState({ rippleEditEnabled: true });
     const landed = await twoFileDrop([rowClip("a", 0, 4), rowClip("b", 8, 2)], {
       start: 1,
       track: 0,

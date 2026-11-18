@@ -55,6 +55,8 @@ interface PopoverProps extends Omit<ComponentPropsWithoutRef<typeof BasePopover.
    * element), which is what a rename field wants.
    */
   initialFocus?: ComponentPropsWithoutRef<typeof BasePopover.Popup>["initialFocus"];
+  /** Preserve form choices while closed; Base UI keeps the popup hidden and inert. */
+  keepMounted?: boolean;
   className?: string;
   "data-preview-state"?: PopupPreviewState;
 }
@@ -72,6 +74,7 @@ export function Popover({
   container,
   className,
   initialFocus,
+  keepMounted,
   "aria-label": ariaLabel,
   "aria-describedby": describedBy,
   "data-preview-state": previewState,
@@ -84,7 +87,7 @@ export function Popover({
         <Tooltip label={tooltip} wrap><BasePopover.Trigger render={trigger} openOnHover={openOnHover} aria-describedby={describedBy} /></Tooltip>
       )}
       {inline.host}
-      <BasePopover.Portal {...inline.portal}>
+      <BasePopover.Portal {...inline.portal} keepMounted={keepMounted}>
         <BasePopover.Positioner
           side={side}
           align={align}

@@ -3,6 +3,8 @@ import { trackStudioClick } from "../motion/editorTracking";
 import { useI18n } from "../i18n/I18n";
 import { memo, useCallback, type ReactNode } from "react";
 import { SourceEditor } from "./editor/SourceEditor";
+import { TranscriptPanel } from '../motion/TranscriptPanel';
+import { CaptionsPanel } from '../motion/CaptionsPanel';
 import { FileTree } from "./editor/FileTree";
 import { MediaPreview } from "./MediaPreview";
 import { AssetsTab } from "./sidebar/AssetsTab";
@@ -52,10 +54,12 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
   onAddCompositionToTimeline,
 }: StudioLeftPanelsProps) {
   const mvp = useMvpEditor();
-  const { projectId, renderQueue, waitForPendingDomEditSaves } = useStudioShellContext();
+  const { projectId, activeCompPath, renderQueue, waitForPendingDomEditSaves } = useStudioShellContext();
   const {
     compositions,
     assets,
+    assetNames,
+    handleRenameAsset,
     editingFile,
     fileTree,
     revealSourceOffset,
@@ -127,11 +131,14 @@ export const StudioLeftPanels = memo(function StudioLeftPanels({
             onImport={importAssets}
             onLibraryImport={refreshFileTree}
             onDelete={handleDeleteFile}
-            onRename={handleRenameFile}
+            assetNames={assetNames}
+            onRename={handleRenameAsset}
             onAddAssetToTimeline={onAddAssetToTimeline}
           />
         </PanelColumn>
       </Dock.Panel>
+      <Dock.Panel id="transcript"><TranscriptPanel onAddToTimeline={onAddAssetToTimeline} /></Dock.Panel>
+      <Dock.Panel id="captions"><CaptionsPanel /></Dock.Panel>
       <Dock.Panel id="code">
         <PanelColumn footer={lintButton}>
           <div className="flex min-h-0 flex-1">

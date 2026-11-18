@@ -1,5 +1,5 @@
 /** Settings contracts contain public metadata only. Credentials remain service-owned. */
-export const modelKinds = ['text', 'image', 'video', 'audio', 'embedding', 'reranker'] as const;
+export const modelKinds = ['text', 'image', 'video', 'audio', 'transcription', 'embedding', 'reranker'] as const;
 export type ModelKind = typeof modelKinds[number];
 export type ProviderProtocol = 'openai' | 'anthropic' | 'google' | 'media' | 'account' | 'agent';
 export type ProviderCategory = 'account' | 'multimodal' | 'language' | 'media' | 'local' | 'custom';

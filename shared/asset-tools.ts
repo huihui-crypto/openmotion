@@ -1,4 +1,5 @@
 import { brandKitToolArguments } from './brand-kit-tool.ts';
+import { transcriptToolArguments, transcriptToolDescription } from './transcript-tool.ts';
 
 const id = { type: 'string', pattern: '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$' };
 const object = <T extends Record<string, unknown>>(properties: T, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false });
@@ -10,7 +11,7 @@ export const assetLibraryTool = {
     action: { enum: ['list', 'get', 'import', 'update', 'generate', 'jobs', 'status', 'cancel', 'retry_save', 'resume', 'import_to_project'] },
     requestId: { type: 'string', pattern: '^[\\w-]{1,100}$' }, assetId: id, versionId: id, parentVersionId: id, jobId: id,
     projectId: { type: 'string', pattern: '^(project|[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12})$' },
-    name: { type: 'string', minLength: 1, maxLength: 200 }, sourcePath: { type: 'string', minLength: 1, maxLength: 4096 },
+    name: { type: 'string', minLength: 1, maxLength: 200, description: 'Readable display name: preserve meaningful user/source names; for generated, derived or unnamed media use content plus optional purpose, in the project namingLanguage. Supply with generate/import; import_to_project defaults to the saved library name and accepts a name only for explicit renames or missing-name repairs. Keep UUIDs in IDs and the full prompt in prompt.' }, sourcePath: { type: 'string', minLength: 1, maxLength: 4096 },
     modality: { enum: ['image', 'video', 'audio'] }, source: { enum: ['upload', 'generated'] }, query: { type: 'string', maxLength: 200 },
     trash: { type: 'boolean' }, sort: { enum: ['newest', 'oldest', 'name'] }, offset: { type: 'integer', minimum: 0 }, limit: { type: 'integer', minimum: 1, maximum: 100 },
     model: { type: 'string', minLength: 1, maxLength: 300 }, prompt: { type: 'string', minLength: 1, maxLength: 20000 },
@@ -37,11 +38,11 @@ export const assetUseTool = {
 };
 export const workspaceAssetUseTool = {
   ...assetUseTool,
-  description: assetUseTool.description + ' Use action=brand_kit with a brandKit command to browse, extract and manage style-only Brand Kits. Use get to read job status and expectedUpdatedAt for package or edits. Brand Kits never determine the film timeline.',
+  description: assetUseTool.description + ' Use action=brand_kit with a brandKit command to browse, extract and manage style-only Brand Kits. Use get to read job status and expectedUpdatedAt for package or edits. Brand Kits never determine the film timeline.' + transcriptToolDescription,
   annotations: { ...assetUseTool.annotations, destructiveHint: true },
   inputSchema: {
     ...assetUseTool.inputSchema, properties: { ...assetUseTool.inputSchema.properties,
-      action: { enum: [...assetUseTool.inputSchema.properties.action.enum, 'brand_kit'] }, brandKit: brandKitToolArguments },
-    oneOf: [...assetUseTool.inputSchema.oneOf, { type: 'object', properties: { action: { enum: ['brand_kit'] } }, required: ['brandKit'], additionalProperties: true }],
+      action: { enum: [...assetUseTool.inputSchema.properties.action.enum, 'brand_kit', 'transcript'] }, brandKit: brandKitToolArguments, transcript: transcriptToolArguments },
+    oneOf: [...assetUseTool.inputSchema.oneOf, ...['brand_kit', 'transcript'].map(action => ({ type: 'object', properties: { action: { enum: [action] } }, required: [action === 'brand_kit' ? 'brandKit' : 'transcript'], additionalProperties: true }))],
   },
 };
