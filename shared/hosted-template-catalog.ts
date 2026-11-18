@@ -5,7 +5,9 @@ import { boundedMediaBody } from './repository-media.ts';
 import type { PublishedTemplate, TemplatePublication } from './repository-template-catalog.ts';
 
 export const hostedCatalogUrl = 'https://releases.open-design.ai/open-motion/templates/main/catalog.json';
-const maxJsonBytes = 16 * 1024 * 1024;
+const maxJsonBytes = 1024 * 1024;
+// The main catalog embeds library Skill instructions; per-file reads keep the 1 MB cap.
+const maxCatalogBytes = 16 * 1024 * 1024;
 
 type Request = typeof fetch;
 type TemplateRecord = { templateId: string; entry: Record<string, any>; locales: Record<string, Record<string, any>>; [key: string]: any };
@@ -55,7 +57,7 @@ async function fetchJson(request: Request, url: string): Promise<any> {
   return JSON.parse((await responseBytes(await request(url, {
     headers: { accept: 'application/json', 'user-agent': 'openmotion-template-catalog' },
     redirect: 'error', signal: AbortSignal.timeout(30_000),
-  }), maxJsonBytes)).toString('utf8'));
+  }), maxCatalogBytes)).toString('utf8'));
 }
 
 function createCatalog(manifest: any, publication: TemplatePublication, records: Map<string, TemplateRecord>, request: Request, warning?: string): HostedRepositoryCatalog {
