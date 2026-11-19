@@ -197,9 +197,17 @@ export class TemplateCatalog {
   }
 
   private async skills(snapshot: Snapshot) {
-    const skills = this.source === 'repository' ? await loadLibrarySkills() : snapshot.hosted?.skills ?? [];
+    // CMS publishes templates only; Skills come from the library/skills shipped with this application.
+    const skills = this.source === 'hosted' ? snapshot.hosted?.skills ?? [] : await loadLibrarySkills();
     assertSkillIds(skills, this.templates(snapshot).map(item => item.id));
     return skills;
+  }
+
+  // CMS Skill reads never wait on (or fail with) a template publication download.
+  private async skillSource() {
+    if (this.source === 'cms') return { skills: await loadLibrarySkills(), snapshot: undefined };
+    const snapshot = await this.refresh();
+    return { skills: await this.skills(snapshot), snapshot };
   }
 
   async index() {
@@ -215,22 +223,21 @@ export class TemplateCatalog {
 
   // Library Skills have their own index and detail tools; they share only the hosted publication and object store.
   async skillIndex() {
-    const snapshot = await this.refresh();
-    const skills = await this.skills(snapshot);
+    const { skills } = await this.skillSource();
     const skillVersion = hash(JSON.stringify(skills));
     const indexPath = path.join(this.directory, `skills.${skillVersion.slice(0, 16)}.index.jsonl`);
     const lines = skills.map(({ instructions: _instructions, files: _files, objects: _objects, ...skill }) => JSON.stringify({ ...skill, skillId: skill.id })).join('\n');
     await atomicWrite(indexPath, lines ? lines + '\n' : '');
     return { indexPath, total: skills.length, skillVersion, source: this.source,
-      ...(this.source === 'cms' ? { warning: 'CMS mode publishes templates only; library Skills are available from a repository checkout or the hosted main catalog.' } : this.warning ? { warning: this.warning } : {}) };
+      ...(this.source !== 'cms' && this.warning ? { warning: this.warning } : {}) };
   }
 
   async skillDetail(id: string) {
-    const snapshot = await this.refresh();
-    const skill = (await this.skills(snapshot)).find(item => item.id === id);
+    const { skills, snapshot } = await this.skillSource();
+    const skill = skills.find(item => item.id === id);
     if (!skill) throw new Error('Skill 不存在，请先调用 openmotion_list_skills 获取 Skill 目录');
     // Hosted/npm installs have no library files; publish them as hash-verified objects like template sources.
-    const objects = skill.localSource ? undefined : skill.objects?.map(file => ({ ...file, url: `${snapshot.hosted!.objectBaseUrl}/${file.sha256}` }));
+    const objects = skill.localSource ? undefined : skill.objects?.map(file => ({ ...file, url: `${snapshot!.hosted!.objectBaseUrl}/${file.sha256}` }));
     return { ...skill, ...(objects ? { objects } : {}), skillId: skill.id, motionDocument: { path: skill.localSource ? path.join(skill.localSource, 'SKILL.md') : 'SKILL.md', content: skill.instructions }, source: this.source,
       workflowGuide: { workflow: 'skill', nextStep: objects ? skillNextStep + ' Supporting files are not installed locally: download only the ones SKILL.md references from objects[].url into your working directory at objects[].path, and check bytes and sha256 before running scripts or reading references.' : skillNextStep } };
   }

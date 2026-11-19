@@ -90,3 +90,18 @@ test('uncarded Skills use frontmatter and hosted publication preserves instructi
   await assert.rejects(catalog.detail('uncarded'), /openmotion_get_skill/);
   assert.deepEqual(restoreHostedCatalog(JSON.parse(serializeHostedCatalog(hosted)), request as typeof fetch).skills, hosted.skills);
 });
+
+test('CMS Skill tools read the shipped library without waiting on the template publication', async t => {
+  const dir = await mkdtemp(path.join(tmpdir(), 'skill-cms-'));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  const offline = (async () => { throw new Error('template publication unavailable'); }) as unknown as typeof fetch;
+  const catalog = new TemplateCatalog(dir, { source: 'cms', fetch: offline });
+  const skills = await loadLibrarySkills();
+  const index = await catalog.skillIndex();
+  assert.equal(index.total, skills.length);
+  assert.equal(index.source, 'cms');
+  assert.equal((await readFile(index.indexPath, 'utf8')).trim().split('\n').length, skills.length);
+  const detail = await catalog.skillDetail('openmotion-design-remix');
+  assert.equal(detail.instructions, await readFile(path.join(detail.localSource as string, 'SKILL.md'), 'utf8'));
+  await assert.rejects(catalog.index(), /unavailable|模板/);
+});

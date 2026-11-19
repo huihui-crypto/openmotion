@@ -67,6 +67,8 @@ try{
  assert.deepEqual(await readFile(path.join(p.project.directory,fontImport.items[0].license.path)),await readFile(fontLicense));
  const catalog=await tool('openmotion_list_templates',{});assert.ok(path.isAbsolute(catalog.indexPath));assert.equal('items' in catalog,false);assert.match(await readFile(catalog.indexPath,'utf8'),/test-motion-1/);
  const template=await tool('openmotion_get_template',{templateId:'test-motion-1'});assert.equal(template.catalogVersion,catalog.catalogVersion);assert.equal(template.instructions,contents['TEMPLATE.md']);
+ const skillIndex=await tool('openmotion_list_skills',{});assert.ok(path.isAbsolute(skillIndex.indexPath));assert.equal(skillIndex.total,librarySkills.length);assert.match(await readFile(skillIndex.indexPath,'utf8'),/"skillId":"openmotion-design-remix"/);
+ const skill=await tool('openmotion_get_skill',{skillId:'openmotion-design-remix'});assert.equal(skill.instructions,await readFile(path.join(root,'library/skills/openmotion-design-remix/SKILL.md'),'utf8'));assert.ok(skill.files.includes('SKILL.md'));
  const wav=path.join(work,'tone.wav');assert.equal(spawnSync('ffmpeg',['-v','error','-f','lavfi','-i','sine=duration=1',wav]).status,0);
  const wavSha256=createHash('sha256').update(await readFile(wav)).digest('hex');
  const assetInput={action:'import',requestId:'asset-import',sourcePath:wav,name:'Packaged tone'};
