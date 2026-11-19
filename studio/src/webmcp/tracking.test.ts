@@ -71,10 +71,10 @@ describe('WebMCP registration and invocation tracking', () => {
     expect(JSON.stringify(track.mock.calls)).not.toContain('PRIVATE_ACTION');
   });
 
-  it('covers exactly the 21 public descriptors through the real registrar, preserving schema, signals and replies', async () => {
+  it('covers exactly the 23 public descriptors through the real registrar, preserving schema, signals and replies', async () => {
     const original = [...buildOpenMotionWebMcpTools(vi.fn()), ...buildStudioTools({ current: {} as never })];
     expect([...webMcpToolNames].sort()).toEqual(original.map(tool => tool.name).sort());
-    expect(webMcpToolNames).toHaveLength(21);
+    expect(webMcpToolNames).toHaveLength(23);
     expect(original.slice(0, phase1Tools.length).map(tool => tool.inputSchema)).toEqual(phase1Tools.map(tool => tool.inputSchema));
     const reply = { ok: true, privateResult: 'PRIVATE_CONTENT' };
     const handlers = original.map(() => vi.fn(async () => reply));
