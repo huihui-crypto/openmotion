@@ -122,8 +122,8 @@ Follow `SKILL.md` and use existing tools such as `openmotion_create_project(proj
 
 The MCP `initialize` instructions and the `openmotion_list_skills` description carry the same timing rule (`skillDiscoveryGuide` in `shared/workflow-entry.js`):
 
-- **Call it** when the user asks which Skill, technique or recipe fits a video (for example de-AI copy, long-to-short clips, a growth teardown, a product launch or a holiday sale), asks to see or recommend Skills, or describes a recurring video format before an approach is chosen.
-- **Recommend, then wait**: search the index by scenario and offer at most three Skills, each with title, `skillId` and a one-line reason; the user chooses unless they asked the Agent to proceed. Then read the choice with `openmotion_get_skill` and follow its SKILL.md.
+- **Call it** when the user asks which Skill, technique or recipe fits a video (for example de-AI copy, long-to-short clips, a growth teardown, a product launch or a holiday sale), asks to see or recommend Skills, or describes a recurring video format before an approach is chosen. This last case is deliberately more proactive than template browsing, which only recommends when asked.
+- **Recommend, then wait**: search the index by scenario and usually offer two or three Skills (one if only one fits; never pad), each with title, `skillId` and a one-line reason; the user chooses unless they asked the Agent to proceed. Then read the choice with `openmotion_get_skill` and follow its SKILL.md.
 - **Installed Skills first**: Skills already installed in the host stay the first choice and need no listing.
 - **No side effects**: listing, recommending or reading a Skill does not authorize project creation, downloads or export.
 
