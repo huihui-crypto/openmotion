@@ -106,12 +106,12 @@ it('reads library skills through MCP and runs a generator skill through its own 
     skillPrompt(motionSkills.find(skill => skill.id === id)!, { subject: 'x', duration, aspect, style: '' }, locale, 'https://example.test/install.md');
   for (const locale of ['en', 'zh-CN', 'ja', 'ko', 'ru', 'de', 'fr', 'es', 'pt-BR', 'it', 'tr']) {
     const growth = brief('openmotion-growth-teardown', locale);
-    expect(growth).toContain('openmotion_get_template');
+    expect(growth).toContain('openmotion_get_skill');
     expect(growth).toContain('openmotion-growth-teardown');
     expect(growth).not.toContain('install-library-skill');
     expect(growth).toContain('1:1');
     const recipe = brief('openmotion-whiteboard-doodle', locale);
-    expect(recipe).toContain('openmotion_get_template');
+    expect(recipe).toContain('openmotion_get_skill');
     expect(recipe).toContain('openmotion-whiteboard-doodle');
     expect(recipe).toContain('HTML/CSS/JS');
   }
@@ -120,16 +120,16 @@ it('reads library skills through MCP and runs a generator skill through its own 
   expect(brief('openmotion-whiteboard-doodle')).not.toContain("own generator");
   const borrowed = brief('anime-js');
   expect(borrowed).toContain('Author a native HTML/CSS/JS composition');
-  expect(borrowed).not.toContain('openmotion_get_template');
+  expect(borrowed).not.toContain('openmotion_get_skill');
 });
 
 it('routes the shortcut command through MCP for library skills and the generator for generator skills', () => {
   const short = (id: string, locale: string) => skillShortcut(motionSkills.find(skill => skill.id === id)!, { subject: 'x', duration: 10, aspect: '9:16', style: '' }, locale, 'https://example.test/install.md');
   for (const locale of ['en', 'zh-CN', 'ja', 'ko', 'ru', 'de', 'fr', 'es', 'pt-BR', 'it', 'tr']) {
-    expect(short('openmotion-growth-teardown', locale)).toContain('openmotion_get_template');
+    expect(short('openmotion-growth-teardown', locale)).toContain('openmotion_get_skill');
     expect(short('openmotion-growth-teardown', locale)).toContain('openmotion-growth-teardown');
     expect(short('openmotion-whiteboard-doodle', locale)).toContain('openmotion-whiteboard-doodle');
-    expect(short('anime-js', locale)).not.toContain('openmotion_get_template');
+    expect(short('anime-js', locale)).not.toContain('openmotion_get_skill');
   }
   expect(short('openmotion-growth-teardown', 'en')).toContain('own generator');
   expect(short('openmotion-whiteboard-doodle', 'en')).not.toContain('own generator');

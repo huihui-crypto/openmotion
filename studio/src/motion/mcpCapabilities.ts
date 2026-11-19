@@ -78,7 +78,7 @@ export const mcpScenarios = [{
 }, ...creativeStudios.filter(studio => studio.surface === 'techniques' && studio.id !== '3d').map(studio => ({
   id: studio.id, icon: studio.icon, title: studio.title, description: studio.briefHint,
   tools: ['openmotion_get_template', 'openmotion_create_project', 'openmotion_edit_project'],
-  prompt: 'Read the selected Skill with openmotion_get_template. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.',
+  prompt: 'Read the selected Skill with openmotion_get_skill. Confirm the source footage or brief, then use openmotion_create_project and openmotion_edit_project to produce an editable result. If an input is missing, ask for it before editing.',
 })), {
   id: 'platform-export', icon: 'sparkling-line', title: 'Prepare a platform version',
   description: 'In Export → Platform export, choose a platform and goal. Defaults preserve the full video and captions; expand Customize version for language, canvas and duration. Copy the brief to your Agent to create editable versions and export MP4.',
