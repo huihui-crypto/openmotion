@@ -175,9 +175,10 @@ async function invokeRpc(message: any, store: WorkspaceStore, registry: ReturnTy
         const args = { ...input };
         if (internalName === 'motion_open_preview' && args.target !== 'templates' && args.target !== 'providers' && !args.projectId && !args.sessionId && args.action !== 'record_review') args.sessionId = selections.get(store)?.sessionId;
         if (args.sessionId === undefined) delete args.sessionId;
-        if (['repository', 'hosted'].includes(templateConfig().source) && ['motion_list_templates', 'motion_get_template'].includes(internalName)) {
+        if (['repository', 'hosted'].includes(templateConfig().source) && ['motion_list_templates', 'motion_get_template', 'motion_list_skills', 'motion_get_skill'].includes(internalName)) {
           const catalog = templateCatalogFor(store.directory);
-          const value = internalName === 'motion_list_templates' ? await catalog.index() : await catalog.detail(args.templateId);
+          const value = internalName === 'motion_list_templates' ? await catalog.index() : internalName === 'motion_get_template' ? await catalog.detail(args.templateId)
+            : internalName === 'motion_list_skills' ? await catalog.skillIndex() : await catalog.skillDetail(args.skillId);
           return result({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value });
         }
         const transportName = finalVideo ? 'openmotion_get_project' : name;

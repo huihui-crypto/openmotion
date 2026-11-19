@@ -14,7 +14,7 @@ import { callTool } from '../mcp-tools.ts';
 import { buildTemplatePublication } from '../.github/scripts/publish-template-catalog.mjs';
 import { loadHostedCatalog, serializeHostedCatalog, restoreHostedCatalog } from '../shared/hosted-template-catalog.ts';
 
-test('repository MCP index and details include all Skills without polluting galleries or recommendations', async t => {
+test('repository Skill tools index and read all Skills without polluting templates, galleries or recommendations', async t => {
   const dir = await mkdtemp(path.join(tmpdir(), 'skill-index-'));
   t.after(() => rm(dir, { recursive: true, force: true }));
   const catalogRoot = path.join(dir, 'catalog');
@@ -27,20 +27,27 @@ test('repository MCP index and details include all Skills without polluting gall
   const skillDirs = (await readdir(path.join(process.cwd(), 'library/skills'), { withFileTypes: true })).filter(entry => entry.isDirectory() && existsSync(path.join(process.cwd(), 'library/skills', entry.name, 'SKILL.md')));
   assert(skills.length > 0);
   assert.equal(skills.length, skillDirs.length);
-  const index = await catalog.index();
+  const index = await catalog.skillIndex();
+  assert.equal(index.total, skills.length);
   const rows = (await readFile(index.indexPath, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-  assert.equal(rows.filter(row => row.kind === 'skill').length, skills.length);
-  assert.equal(new Set(rows.map(row => row.templateId)).size, rows.length);
+  assert.equal(rows.length, skills.length);
+  assert(rows.every(row => row.kind === 'skill' && row.skillId === row.id && !('instructions' in row)));
+  assert.equal(new Set(rows.map(row => row.skillId)).size, rows.length);
+  const templateIndex = await catalog.index();
+  assert(!(await readFile(templateIndex.indexPath, 'utf8')).includes('"kind":"skill"'));
+  assert.equal('skillTotal' in templateIndex, false);
   const id = 'openmotion-design-remix';
-  const detail = await catalog.detail(id);
+  const detail = await catalog.skillDetail(id);
   assert.equal(detail.instructions, await readFile(path.join(detail.localSource as string, 'SKILL.md'), 'utf8'));
   assert(detail.files.includes('SKILL.md'));
   assert.match(JSON.stringify(detail.workflowGuide), /natural_language/);
   assert(!JSON.stringify(detail.workflowGuide).includes('apply_template'));
+  await assert.rejects(catalog.detail(id), /openmotion_get_skill/);
+  await assert.rejects(catalog.skillDetail('sample'), /openmotion_list_skills/);
   const page = await catalog.page();
   assert(!JSON.stringify(page).includes('"kind":"skill"'));
   assert(skills.every(skill => !recommendationTemplateIds.includes(skill.id as never)));
-  await assert.rejects(catalog.get(id), /Skills are instructions/);
+  await assert.rejects(catalog.get(id), /openmotion_get_skill/);
   await assert.rejects(callTool('motion_apply_template', { templateId: id, expectedRevision: 'a'.repeat(64) }), /Skills are instructions/);
   const service = new Phase1Service(new WorkspaceStore(dir), process.cwd(), {} as any);
   await assert.rejects(service.call('openmotion_create_project', { requestId: 'skill-reject', projectType: 'template', templateId: id, title: 'Skill', requirements: 'Create a film' }), /Skills are instructions/);
@@ -70,7 +77,8 @@ test('uncarded Skills use frontmatter and hosted publication preserves instructi
   const request = async (url: any) => new Response(JSON.stringify(String(url).endsWith('/template.json') ? record : built.catalog));
   const hosted = await loadHostedCatalog(request as typeof fetch);
   const catalog = new TemplateCatalog(root, { source: 'hosted', fetch: request as typeof fetch });
-  const detail = await catalog.detail('uncarded');
+  assert.equal((await catalog.skillIndex()).total, 1);
+  const detail = await catalog.skillDetail('uncarded');
   assert.equal(detail.instructions, skills[0].instructions);
   assert.equal(detail.localSource, undefined);
   const object = detail.objects?.find((file: { path: string }) => file.path === 'references/example.md');
@@ -79,5 +87,6 @@ test('uncarded Skills use frontmatter and hosted publication preserves instructi
   assert(built.uploads.some(upload => upload.object && upload.key.endsWith('/objects/' + object?.sha256)));
   assert.match(detail.workflowGuide.nextStep, /sha256/);
   await assert.rejects(catalog.get('uncarded'), /Skills are instructions/);
+  await assert.rejects(catalog.detail('uncarded'), /openmotion_get_skill/);
   assert.deepEqual(restoreHostedCatalog(JSON.parse(serializeHostedCatalog(hosted)), request as typeof fetch).skills, hosted.skills);
 });

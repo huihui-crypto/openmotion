@@ -1,4 +1,3 @@
-import { loadLibrarySkills } from '../shared/library-skill-catalog.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises';
@@ -42,7 +41,7 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }) {
 test('repository index, detail and gallery read local files with no CMS dependency and observe edits', async t => {
   const f = await fixture(t);
   const first = await f.catalog.index();
-  assert.equal(first.source, 'repository'); assert.equal(first.total, 5); assert.equal(first.skillTotal, (await loadLibrarySkills()).length);
+  assert.equal(first.source, 'repository'); assert.equal(first.total, 5);
   const row = JSON.parse((await readFile(first.indexPath, 'utf8')).split('\n')[0]);
   assert.equal(row.localSource.directory, await realpath(f.folder));
   const detail = await f.catalog.detail(f.id);
@@ -157,9 +156,8 @@ test('the real stdio MCP resolves the loaded checkout from a different cwd witho
   const manifest = JSON.parse(await readFile(path.join(repositoryCatalogRoot, 'catalog.json'), 'utf8'));
   const index = responses[0].result.structuredContent;
   const rows = (await readFile(index.indexPath, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
-  const skillIds = (await loadLibrarySkills()).map(skill => skill.id);
-  const expectedIds = [...manifest.templateIds, ...builtinTemplates.map(template => template.id), ...skillIds];
-  assert.equal(index.total, expectedIds.length - skillIds.length); assert.equal(index.skillTotal, skillIds.length);
+  const expectedIds = [...manifest.templateIds, ...builtinTemplates.map(template => template.id)];
+  assert.equal(index.total, expectedIds.length);
   assert.deepEqual(rows.map(row => row.templateId).sort(), expectedIds.sort());
   assert.equal(responses[1].result.isError, undefined);
   const detail = responses[1].result.structuredContent;

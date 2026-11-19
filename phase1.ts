@@ -146,6 +146,8 @@ export class Phase1Service {
     }
     if (name === 'motion_list_templates') return templateCatalogFor(this.store.directory).index();
     if (name === 'motion_get_template') return templateCatalogFor(this.store.directory).detail(args.templateId);
+    if (name === 'motion_list_skills') return templateCatalogFor(this.store.directory).skillIndex();
+    if (name === 'motion_get_skill') return templateCatalogFor(this.store.directory).skillDetail(args.skillId);
     if (name === 'motion_get_project' && !args.projectId) return this.dispatch(name, args, host);
     const run = async () => {
       if (!this.recovered) { await recoverProjectTransactions(this.store, this.runtimeRoot); this.recovered = true; }

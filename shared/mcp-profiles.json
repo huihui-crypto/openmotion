@@ -12,6 +12,8 @@
       "openmotion_media_use",
       "openmotion_list_templates",
       "openmotion_get_template",
+      "openmotion_list_skills",
+      "openmotion_get_skill",
       "openmotion_create_project",
       "openmotion_open_preview",
       "openmotion_import_assets",

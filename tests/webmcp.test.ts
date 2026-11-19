@@ -16,6 +16,8 @@ const inputs: Record<string, object> = {
   openmotion_media_use: { action: 'inspect' },
   openmotion_list_templates: {},
   openmotion_get_template: { templateId: 'decision-tree' },
+  openmotion_list_skills: {},
+  openmotion_get_skill: { skillId: 'openmotion-design-remix' },
   openmotion_create_project: { requestId: 'create', projectType: 'natural_language', title: 'WebMCP', requirements: 'Silent test' },
   openmotion_open_preview: { projectId },
   openmotion_import_assets: { projectId, requestId: 'import', items: [{ itemId: 'one', sourcePath: '/tmp/asset.png' }] },
@@ -27,11 +29,11 @@ const inputs: Record<string, object> = {
   openmotion_export_cancel: { projectId, requestId: 'cancel', jobId: 'job' },
 };
 
-test('all sixteen registered domain names reuse public schemas and forward unchanged inputs and results', async () => {
+test('all eighteen registered domain names reuse public schemas and forward unchanged inputs and results', async () => {
   const calls: { url: string; init?: RequestInit }[] = [];
   const result = { projectId, previewHandoff: { state: 'pending' }, nested: { value: 42 } };
   const tools = buildOpenMotionWebMcpTools(async (url, init) => { calls.push({ url, init }); return Response.json(result); });
-  assert.equal(tools.length, 16);
+  assert.equal(tools.length, 18);
   assert.deepEqual(tools.map(tool => tool.name).sort(), Object.keys(inputs).sort());
   for (const [i, tool] of tools.entries()) {
     assert.equal(tool.inputSchema, phase1Tools[i].inputSchema);
