@@ -27,7 +27,11 @@ export type CreativeNavigationProps = {
   trackingPage?: CreativePage;
 };
 
-function MediaChoices({ kind, onModel, destination, onNavigate, onSkill, openProviders, catalog, failed, retry }: Pick<CreativeNavigationProps, 'destination' | 'onModel' | 'onNavigate' | 'openProviders' | 'onSkill'> & ReturnType<typeof useMediaCatalog> & { kind: Modality }) {
+function MediaChoices({ kind, onModel, destination, onNavigate, onModelNavigate, onSkill, openProviders, catalog, failed, retry }: Pick<CreativeNavigationProps, 'destination' | 'onModel' | 'onNavigate' | 'openProviders' | 'onSkill'> & ReturnType<typeof useMediaCatalog> & {
+  kind: Modality;
+  /** A model chosen from the list, which opens its scene with that model. */
+  onModelNavigate: CreativeNavigationProps['onNavigate'];
+}) {
   const { t } = useI18n();
   const [modelScene, setModelScene] = useState(destination?.scene.modality === kind ? destination.scene : null);
   const modelsHeading = useRef<HTMLHeadingElement>(null);
@@ -55,7 +59,7 @@ function MediaChoices({ kind, onModel, destination, onNavigate, onSkill, openPro
     </section>
     <section><h2 className="om-eyebrow" ref={modelsHeading}>{t('Models')}</h2>
       {modelScene && <button className="om-nav-item om-model-scene-chip" aria-label={t('Clear filters')} onClick={() => setModelScene(null)}>{t(modelScene.label)}<RemixIcon name="close-line" size={14} /></button>}
-      <MediaModelChoices scene={modelScene} {...{ kind, onModel, destination, onNavigate, openProviders, catalog, failed, retry }} />
+      <MediaModelChoices scene={modelScene} onNavigate={onModelNavigate} {...{ kind, onModel, destination, openProviders, catalog, failed, retry }} />
     </section>
     {kind === 'video' && <section className="om-creative-related-skills"><h2 className="om-eyebrow">{t('Skills')}</h2><div>
       {editingPresets.map(skill => <button className="om-nav-item" key={skill.id} onClick={() => onSkill(skill.id)}><RemixIcon name="movie-line" size={15} /><span>{t(skill.title)}</span></button>)}
@@ -157,6 +161,7 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
             </> : expanded && <MediaChoices {...catalog} kind={id} destination={destination}
               onModel={model => { track('select_model', { ...where, model }); choose(() => onModel(model)); }}
               onNavigate={next => { track('select_scene', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }}
+              onModelNavigate={next => { track('select_model', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }}
               onSkill={skill => { track('select_skill', { ...where, skill }); choose(() => onSkill(skill)); }}
               openProviders={() => { track('open_providers', where); choose(openProviders); }} />}
           </Popover>
