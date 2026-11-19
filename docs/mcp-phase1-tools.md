@@ -118,6 +118,16 @@ Library Skills have their own tools. `openmotion_list_skills` takes no arguments
 
 Follow `SKILL.md` and use existing tools such as `openmotion_create_project(projectType="natural_language")` when needed. Skills are not editable template projects: template indexes do not list them, and `openmotion_get_template`, template creation and `openmotion_apply_template` reject Skill IDs with a pointer to `openmotion_get_skill`. Studio template galleries, website/plugin template lists and onboarding recommendations remain template-only.
 
+### When Agents call the Skill tools
+
+The MCP `initialize` instructions and the `openmotion_list_skills` description carry the same timing rule (`skillDiscoveryGuide` in `shared/workflow-entry.js`):
+
+- **Call it** when the user asks which Skill, technique or recipe fits a video (for example de-AI copy, long-to-short clips, a growth teardown, a product launch or a holiday sale), asks to see or recommend Skills, or describes a recurring video format before an approach is chosen.
+- **Recommend, then wait**: search the index by scenario and offer at most three Skills, each with title, `skillId` and a one-line reason; the user chooses unless they asked the Agent to proceed. Then read the choice with `openmotion_get_skill` and follow its SKILL.md.
+- **Installed Skills first**: Skills already installed in the host stay the first choice and need no listing.
+- **No side effects**: listing, recommending or reading a Skill does not authorize project creation, downloads or export.
+
+
 ### openmotion_create_project
 
 必填 requestId、projectType、title、requirements；可选 sessionId 归入已有会话。projectType 为 natural_language/template/reference_video。template 必须给实际可复制的 builtin 或 Prism templateId；reference_video 必须给已知目录 referenceVideoId 或 HTTP(S) referenceUrl。

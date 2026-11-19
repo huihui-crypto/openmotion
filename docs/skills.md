@@ -210,3 +210,13 @@ MT05 原先同批补读/执行的问题未重现，但读取完整性未全面�
 Library Skills have their own tools. `openmotion_list_skills` takes no arguments and returns `indexPath` (local JSONL, one row per Skill with `skillId`, title, description, tags and optional repository/license/localSource), `total` and `skillVersion`; it covers every Skill in `library/skills`, installed in the host or not. Search the file, then call `openmotion_get_skill(skillId)`: it returns the complete `SKILL.md` in `instructions` and `motionDocument.content`, plus a relative file inventory (including references, scripts and assets). Repository mode includes an absolute `localSource` directory. Hosted/npm mode reads embedded instructions and inventory from the published main catalog without claiming local files exist; `objects` lists every supporting file with its path, bytes and SHA-256 and a URL in the same content-addressed object store as template sources, so the Agent downloads and verifies only what SKILL.md references. CMS mode returns no Skills. Skills installed in the host Agent keep working through the host without these tools.
 
 Follow `SKILL.md` and use existing tools such as `openmotion_create_project(projectType="natural_language")` when needed. Skills are not editable template projects: template indexes do not list them, and `openmotion_get_template`, template creation and `openmotion_apply_template` reject Skill IDs with a pointer to `openmotion_get_skill`. Studio template galleries, website/plugin template lists and onboarding recommendations remain template-only.
+
+### When Agents call the Skill tools
+
+The MCP `initialize` instructions and the `openmotion_list_skills` description carry the same timing rule (`skillDiscoveryGuide` in `shared/workflow-entry.js`):
+
+- **Call it** when the user asks which Skill, technique or recipe fits a video (for example de-AI copy, long-to-short clips, a growth teardown, a product launch or a holiday sale), asks to see or recommend Skills, or describes a recurring video format before an approach is chosen.
+- **Recommend, then wait**: search the index by scenario and offer at most three Skills, each with title, `skillId` and a one-line reason; the user chooses unless they asked the Agent to proceed. Then read the choice with `openmotion_get_skill` and follow its SKILL.md.
+- **Installed Skills first**: Skills already installed in the host stay the first choice and need no listing.
+- **No side effects**: listing, recommending or reading a Skill does not authorize project creation, downloads or export.
+
