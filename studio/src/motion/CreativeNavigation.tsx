@@ -10,6 +10,7 @@ import { mcpClients, type McpClient } from './mcpClients';
 import { useMediaCatalog } from './useMediaCatalog';
 import { editingPresets } from './skillCatalog';
 import { MediaModelChoices } from './MediaModelChoices';
+import { destinationTarget, navigationPage, reportCreativeClick, type CreativePage, type CreativeTarget } from './exploreTracking';
 
 export type CreativeNavigationProps = {
   onModel: (id: string) => void;
@@ -22,6 +23,8 @@ export type CreativeNavigationProps = {
   onSkill: (id: string) => void;
   currentPage: 'explore' | 'api' | 'mcp' | null;
   onOpenPage: (page: 'explore' | 'api' | 'mcp', client?: McpClient) => void;
+  /** The page this navigation is shown on, when it is not derived from the current destination (the template library). */
+  trackingPage?: CreativePage;
 };
 
 function MediaChoices({ kind, onModel, destination, onNavigate, onSkill, openProviders, catalog, failed, retry }: Pick<CreativeNavigationProps, 'destination' | 'onModel' | 'onNavigate' | 'openProviders' | 'onSkill'> & ReturnType<typeof useMediaCatalog> & { kind: Modality }) {
@@ -60,13 +63,15 @@ function MediaChoices({ kind, onModel, destination, onNavigate, onSkill, openPro
   </div>;
 }
 
-export function CreativeNavigation({ specialty, onModel, onChooseStudio, destination, motionActive, onNavigate, openProviders, onSkill, currentPage, onOpenPage, overflowActions }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
+export function CreativeNavigation({ specialty, onModel, onChooseStudio, destination, motionActive, onNavigate, openProviders, onSkill, currentPage, onOpenPage, overflowActions, trackingPage }: CreativeNavigationProps & { overflowActions?: (close: () => void) => ReactNode }) {
   const { t } = useI18n();
   const [open, setOpen] = useState<Modality | 'mcp' | null>(null);
   const [popupHost, setPopupHost] = useState<HTMLElement>();
   const navId = useId();
   const rail = useRef<HTMLElement>(null);
   const catalog = useMediaCatalog(open !== null && open !== 'mcp');
+  const trackPage = trackingPage ?? navigationPage(currentPage, motionActive, Boolean(specialty));
+  const track = (element: Parameters<typeof reportCreativeClick>[2], target: CreativeTarget) => reportCreativeClick(trackPage, 'creative_nav', element, target);
 
   const [visibleCount, setVisibleCount] = useState(Infinity);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -137,33 +142,36 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
   function splitItem(index: number, inPanel: boolean) {
     const { id, label, current, menuLabel, onActivate } = menuDestinations[index - splitStart];
     const expanded = open === id && (index >= visibleCount) === inPanel;
+    const where = { navTarget: id, inOverflow: inPanel };
     return <div className="om-nav-row om-creative-split" data-active={Boolean(current)}>
           <Popover container={popupHost} modal={false} openOnHover={!inPanel} open={expanded}
             onOpenChange={value => setOpen(previous => value ? id : previous === id ? null : previous)}
             aria-label={menuLabel} align="start" className={id === 'mcp' ? 'om-selection-panel om-creative-client-menu' : 'om-selection-panel om-creative-menu'}
-            primaryAction={<button className="om-nav-item om-nav-row-link" aria-current={current} onClick={() => choose(onActivate)}>{label}</button>}
+            primaryAction={<button className="om-nav-item om-nav-row-link" aria-current={current} onClick={() => { track(id === 'mcp' ? 'nav_mcp' : 'nav_media', where); choose(onActivate); }}>{label}</button>}
             trigger={<button className="om-nav-item om-nav-row-action" aria-label={menuLabel} aria-expanded={expanded}><RemixIcon name="arrow-down-s-line" size={12} /></button>}>
             {id === 'mcp' ? <>
               <h2 className="om-eyebrow">{t('Agent client')}</h2>
-              {mcpClients.map(client => <button className="om-nav-item" key={client.id} onClick={() => choose(() => onOpenPage('mcp', client.id))}>
+              {mcpClients.map(client => <button className="om-nav-item" key={client.id} onClick={() => { track('select_client', { ...where, client: client.id }); choose(() => onOpenPage('mcp', client.id)); }}>
                 {t(client.name)}{client.host === 'chatgpt' && <small className="om-muted">{t('Remote connection unavailable')}</small>}
               </button>)}
             </> : expanded && <MediaChoices {...catalog} kind={id} destination={destination}
-              onModel={model => choose(() => onModel(model))} onNavigate={next => choose(() => onNavigate(next))}
-              onSkill={skill => choose(() => onSkill(skill))} openProviders={() => choose(openProviders)} />}
+              onModel={model => { track('select_model', { ...where, model }); choose(() => onModel(model)); }}
+              onNavigate={next => { track('select_scene', { ...where, ...destinationTarget(next) }); choose(() => onNavigate(next)); }}
+              onSkill={skill => { track('select_skill', { ...where, skill }); choose(() => onSkill(skill)); }}
+              openProviders={() => { track('open_providers', where); choose(openProviders); }} />}
           </Popover>
         </div>;
   }
 
   function item(index: number, inPanel = false) {
     if (index === 0) return <button className="om-nav-item om-explore-link" aria-label={t('Explore')} title={t('Explore')}
-      aria-current={currentPage === 'explore' ? 'page' : undefined} onClick={() => choose(() => onOpenPage('explore'))}>
+      aria-current={currentPage === 'explore' ? 'page' : undefined} onClick={() => { track('nav_explore', { navTarget: 'explore', inOverflow: inPanel }); choose(() => onOpenPage('explore')); }}>
       <RemixIcon name="global-line" size={17} /><span>{t('Explore')}</span>
     </button>;
     if (index < apiIndex) return splitItem(index, inPanel);
     if (index === apiIndex) return (
       <a className="om-nav-item" href={workspacePageHref(location.href, { api: true, tool: null, templates: false })} aria-current={currentPage === 'api' ? 'page' : undefined}
-        onClick={event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); choose(() => onOpenPage('api')); }}>API</a>
+        onClick={event => { if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); track('nav_api', { navTarget: 'api', inOverflow: inPanel }); choose(() => onOpenPage('api')); }}>API</a>
     );
     const studio = creativeStudios[index - studioStart];
     const isCurrent = studio.surface === 'editor' ? motionActive
@@ -171,7 +179,7 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
     const badge = 'navBadge' in studio ? studio.navBadge : undefined;
     const badgeId = badge ? navId + '-' + studio.id + (inPanel ? '-more' : '') : undefined;
     return <button className="om-nav-item" aria-current={isCurrent ? 'page' : undefined}
-      aria-label={t(studio.title)} aria-describedby={badgeId} onClick={() => choose(() => onChooseStudio(studio))}>
+      aria-label={t(studio.title)} aria-describedby={badgeId} onClick={() => { track('nav_studio', { navTarget: studio.id, studio: studio.id, inOverflow: inPanel }); choose(() => onChooseStudio(studio)); }}>
       {inPanel && <RemixIcon name={studio.icon} size={17} />}
       {t(studio.title)}{badge && <span className="om-badge" data-nav-badge={badge} id={badgeId} lang="en">{badge}</span>}
     </button>;

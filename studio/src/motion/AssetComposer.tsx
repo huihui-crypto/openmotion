@@ -70,6 +70,7 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
   const latest = jobs.find(job => job.id === taskIds.direct);
   const submit = async () => {
     if (!selected || !draft.prompt.trim() || busy || invalidReferences) return; setBusy(true);
+    const studioContext = studio ? { studio: studio.destination.studio.id, scene: studio.destination.scene.id, model: selected.id } : undefined;
     try {
       const parsed = requestParameters(parameters, selected, draft.references.length > 0);
       const result = await assetRequest<{ job: GenerationJob }>({ action: 'generate', requestId: crypto.randomUUID(), modality: draft.modality, prompt: draft.prompt, model: selected.id, mode: selected.mode, parameters: parsed,
@@ -78,9 +79,9 @@ export function AssetComposer({ active, studio, draft, setDraft, agentReferences
         setDraft(current => current === draft ? { ...current, model: selected.id, parameters: parsed } : current);
         onCreated(result.job);
       }
-      tracking.reportAssetGenerationSubmit(draft.modality, 'success', draft.references.length, Boolean(draft.target));
+      tracking.reportAssetGenerationSubmit(draft.modality, 'success', draft.references.length, Boolean(draft.target), studioContext);
     } catch (error) {
-      tracking.reportAssetGenerationSubmit(draft.modality, 'failure', draft.references.length, Boolean(draft.target));
+      tracking.reportAssetGenerationSubmit(draft.modality, 'failure', draft.references.length, Boolean(draft.target), studioContext);
       if (mounted.current) onError((error as Error).message);
     } finally { if (mounted.current) setBusy(false); }
   };

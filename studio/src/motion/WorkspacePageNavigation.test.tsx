@@ -428,6 +428,40 @@ it('opens a Cinema still from Explore and restores its studio when changing hist
   expect(container.querySelector('.om-code-block')?.textContent).toContain('modality');
 });
 
+it('reports Explore once per arrival and its tabs, filters, index links and top navigation as catalogue ids', async () => {
+  const { trackMotion } = await import('./tracking') as unknown as { trackMotion: ReturnType<typeof vi.fn> };
+  // Load the (mocked) transport first so every report below is delivered before it is read.
+  await (await import('./reporting')).loadReportingTransport();
+  trackMotion.mockClear();
+  const rows = () => trackMotion.mock.calls.map(([event, properties]) => ({ event: event as string, properties: properties as Record<string, unknown> }));
+  const clicks = () => rows().filter(row => row.event === 'ui_click').map(row => row.properties);
+  const exploreViews = () => rows().filter(row => row.event === 'page_view' && row.properties.page_name === 'explore');
+  const inside = (selector: string, label: string) => [...container.querySelectorAll<HTMLButtonElement>(selector + ' button')]
+    .find(node => node.getAttribute('aria-label') === label || node.textContent?.trim() === label)!;
+  await mount(); await click('Explore');
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'studio', area: 'creative_nav', element: 'nav_explore', nav_target: 'explore' });
+  expect(exploreViews()).toHaveLength(1);
+  expect(exploreViews()[0].properties).toMatchObject({ medium: 'all', has_project: true });
+  await act(async () => inside('.om-explore-masthead', 'Product films').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_tabs', element: 'community_tab', explore_community: 'product-films' });
+  await act(async () => inside('.om-explore-masthead', 'Discover').click());
+  await click('Next');
+  expect(clicks().at(-1)).toMatchObject({ area: 'explore_spotlight', element: 'slide_select', slide_id: 'black-friday' });
+  await act(async () => inside('.om-explore-feed', 'Video').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'explore_feed', element: 'media_filter', medium: 'video' });
+  expect(exploreViews()).toHaveLength(1);
+  await act(async () => inside('.om-capability-index', 'Cinema Studio').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'explore', area: 'capability_index', element: 'open_studio', studio_id: 'cinema' });
+  await act(async () => inside('.om-studio-bar', 'Image to video').click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'creative_studio', area: 'studio_bar', element: 'scene_tab', studio_id: 'cinema', scene_id: 'image-to-video' });
+  const nav = container.querySelector('.om-creative-navigation')!;
+  await act(async () => [...nav.querySelectorAll<HTMLButtonElement>('button')].find(node => node.getAttribute('aria-label') === 'Design Studio')!.click());
+  expect(clicks().at(-1)).toMatchObject({ page_name: 'creative_studio', area: 'creative_nav', element: 'nav_studio', studio_id: 'design', in_overflow: false });
+  const { validProperties } = await import('../../../tracking/core.ts');
+  const { studioEvents } = await import('../../../tracking/events.ts');
+  for (const row of rows()) expect(validProperties(studioEvents, row.event as keyof typeof studioEvents, row.properties), JSON.stringify(row)).toBe(true);
+});
+
 it('filters Explore by media and opens a reusable editing preset or template detail', async () => {
   await mount(); await click('Explore');
   const filter = container.querySelectorAll<HTMLButtonElement>('.om-explore-feed .om-choice-tabs button');

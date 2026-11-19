@@ -1,4 +1,5 @@
 import * as tracking from './pageTracking';
+import { destinationTarget, reportCreativePageView } from './exploreTracking';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { assetVersion, type LibraryAsset } from '../../../shared/asset-library';
 import type { GenerationJob } from '../../../shared/gateway';
@@ -43,8 +44,13 @@ export function AssetsPage({ active, hasProject = false, studio, routeId, routeV
   const selectedAsset = useRef<LibraryAsset | undefined>(undefined), assetReadRequest = useRef(0);
   const pendingWrites = useRef(new Set<string>()), [updatingAssets, setUpdatingAssets] = useState<Set<string>>(new Set());
   const browser = useAssetBrowser({ kind, revision, active });
-  // One page view each time the library is shown; the page stays mounted while hidden.
-  useEffect(() => { if (active) tracking.reportAssetsPageView(hasProject); }, [active]);
+  // One page view each time the library is shown; the page stays mounted while hidden. Inside a Design, Cinema or
+  // Sound Studio the same page is that Studio's form, so it reports the Studio and scene instead of the library.
+  useEffect(() => {
+    if (!active) return;
+    if (studio) reportCreativePageView('creative_studio', hasProject, { ...destinationTarget(studio.destination), landing: Boolean(studio.destination.landing) });
+    else tracking.reportAssetsPageView(hasProject);
+  }, [active, studio?.destination.studio.id, studio?.destination.scene.id, studio?.destination.landing]);
   const hasGuide = studio?.destination.landing || layout === 'workbench';
   const guide = Boolean(hasGuide && (studioTab ? studioTab === 'guide' : studio?.destination.landing || browser.data?.total === 0));
   const applyPrompt = (prompt: string) => { setDraft(current => ({ ...current, prompt })); setMobileView('create'); };

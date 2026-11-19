@@ -5,6 +5,9 @@ import { motionStudio, sceneDestination, studioScenes, type StudioDestination, t
 import { sceneExamples } from './sceneShowcase';
 import { motionSkills } from './skillCatalog';
 import { useSkillPreview } from './useSkillPreview';
+import { destinationTarget, reportCreativeClick } from './exploreTracking';
+
+const track = (element: Parameters<typeof reportCreativeClick>[2], target: Parameters<typeof reportCreativeClick>[3]) => reportCreativeClick('explore', 'explore_spotlight', element, target);
 
 export const featuredSceneIds: readonly StudioScene['id'][] = ['shot-image', 'text-to-video', 'text-to-image'];
 const slideDuration = 6000;
@@ -103,23 +106,26 @@ export function ExploreSpotlight({ active, onNavigate, onOpenMotion, onOpenBlack
         <div className="om-discovery-hero-copy" onFocus={() => setReadingSlide(true)} onBlur={() => setReadingSlide(false)}>
           <span><RemixIcon name={slide.icon} size={16} />{t(slide.subtitle)}</span>
           <h2>{t(slide.title)}</h2><p>{t(slide.hint)}</p>
-          {blackFriday ? <button className="om-button" data-primary="media" onClick={event => onOpenBlackFriday(event.currentTarget)}>
+          {blackFriday ? <button className="om-button" data-primary="media" onClick={event => { track('slide_action', { slide: slide.id, position: i }); onOpenBlackFriday(event.currentTarget); }}>
             {t('View collection')}<RemixIcon name="arrow-right-line" size={16} />
-          </button> : <button className="om-button" data-primary="media" onClick={scene ? () => onNavigate(scene.target, t(scene.prompt)) : onOpenMotion}>
+          </button> : <button className="om-button" data-primary="media" onClick={() => {
+            track('slide_action', { slide: slide.id, position: i, ...(scene ? destinationTarget(scene.target) : { studio: motionStudio.id }) });
+            if (scene) onNavigate(scene.target, t(scene.prompt)); else onOpenMotion();
+          }}>
             {scene ? t(scene.target.scene.label) : t('Open in {studio}', { studio: t(motionStudio.title) })}<RemixIcon name="arrow-right-line" size={16} />
           </button>}
         </div>
       </div>;
     })}
     <div className="om-feature-controls om-media-pagination">
-      <button type="button" aria-label={t(paused ? 'Play' : 'Pause')} onClick={() => setPaused(!paused)}><RemixIcon name={paused ? 'play-fill' : 'pause-fill'} size={16} /></button>
+      <button type="button" aria-label={t(paused ? 'Play' : 'Pause')} onClick={() => { track('slide_toggle', { selected: paused, slide: slides[index].id }); setPaused(!paused); }}><RemixIcon name={paused ? 'play-fill' : 'pause-fill'} size={16} /></button>
       <div className="om-media-segments">
-        {slides.map((slide, i) => <button type="button" key={slide.id} aria-label={t('Featured') + ' · ' + t(slide.title)} aria-current={i === index ? 'true' : undefined} onClick={() => setIndex(i)}>
+        {slides.map((slide, i) => <button type="button" key={slide.id} aria-label={t('Featured') + ' · ' + t(slide.title)} aria-current={i === index ? 'true' : undefined} onClick={() => { track('slide_select', { slide: slide.id, position: i }); setIndex(i); }}>
           <span className="om-media-track">{i === index && <span className="om-media-progress" style={{ animationPlayState: playing ? 'running' : 'paused' }} />}</span>
         </button>)}
       </div>
-      <button type="button" aria-label={t('Previous')} onClick={() => step(-1)}><RemixIcon name="arrow-right-s-line" mirrored size={16} /></button>
-      <button type="button" aria-label={t('Next')} onClick={() => step(1)}><RemixIcon name="arrow-right-s-line" size={16} /></button>
+      <button type="button" aria-label={t('Previous')} onClick={() => { track('slide_select', { slide: slides[(index - 1 + slides.length) % slides.length].id }); step(-1); }}><RemixIcon name="arrow-right-s-line" mirrored size={16} /></button>
+      <button type="button" aria-label={t('Next')} onClick={() => { track('slide_select', { slide: slides[(index + 1) % slides.length].id }); step(1); }}><RemixIcon name="arrow-right-s-line" size={16} /></button>
     </div>
   </section>;
 }

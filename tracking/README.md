@@ -402,6 +402,16 @@ backend/data directory. Deterministic coverage lives in
   at load the timeline and file tree have usually not arrived, so the load values
   are mostly `unknown` and the export request is the reliable reading. No raw
   duration, count or file size is sent.
+- Explore, the top creative navigation and the creative Studios (`studio/src/motion/exploreTracking.ts`):
+  one `page_view` per arrival on Explore (`page_name=explore`, with `explore_community` and `medium`), the
+  Motion Studio landing and the Design, Cinema and Sound forms (`page_name=creative_studio`, with `studio_id`,
+  `scene_id` and `landing`), the API page (`api`) and a model overview (`model_overview`). Filter and tab
+  changes inside Explore are clicks, not further views. Clicks use areas `creative_nav` (reported with the page
+  the navigation is shown on), `explore_tabs`, `explore_spotlight`, `explore_featured`, `explore_feed`,
+  `explore_collection`, `capability_index`, `studio_bar` and `model_overview`. A generation submitted from a
+  Studio form reports `asset_generation_submit_result` with `page_name=creative_studio` and the Studio, scene
+  and model. Destinations are catalogue ids accepted only as `slug`s (a model id that is not one is left out);
+  prompts, example copy and model labels are never fields.
 - The template gallery shared with the website (`web/template-gallery.ts`, shown in the
   connection dialog):
   copy click and the actual copy result, preview open, use, category change and
