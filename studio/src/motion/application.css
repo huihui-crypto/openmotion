@@ -273,7 +273,7 @@
 .om-creative-client-menu { display: grid; gap: var(--motion-space-4); max-height: min(var(--available-height), 72dvh); overflow: auto; }
 .om-creative-client-menu h2 { padding: var(--motion-space-4) var(--motion-space-8); }
 .om-creative-menu h2 { padding: var(--motion-space-4) var(--motion-space-10); }
-.om-creative-model-list { display: grid; align-content: start; gap: var(--motion-space-2); overflow: auto; max-height: min(320px, 40dvh); overscroll-behavior: contain; }
+.om-creative-model-list { display: grid; grid-auto-rows: max-content; align-content: start; gap: var(--motion-space-2); overflow: auto; max-height: min(320px, 40dvh); overscroll-behavior: contain; }
 .om-creative-model-list > p { padding: var(--motion-space-8); }
 .om-creative-model-skeleton { height: var(--motion-space-64); }
 .om-creative-option { width: 100%; min-width: 0; }

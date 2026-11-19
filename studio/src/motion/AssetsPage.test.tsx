@@ -532,11 +532,18 @@ it('hands the selected still version to the Cinema first-frame draft', async () 
 it('prepares a first-frame draft from a guide and an uploaded image without submitting it', async () => {
   const { findMediaStudio } = await import('../../../shared/studio-catalog');
   const { studioDestination } = await import('./creativeStudios');
+  const { skillPreviewSnapshot } = await import('./skillCatalog');
+  const fetchPreview = vi.fn(async () => new Response('sample', { headers: { 'Content-Type': 'application/octet-stream' } }));
+  vi.stubGlobal('fetch', fetchPreview);
   const remember = vi.fn();
   const studio = { destination: studioDestination(findMediaStudio('cinema')!, 'image-to-video'),
     catalog: { catalog: undefined, failed: false, retry: vi.fn() }, remember, chooseModel: vi.fn() };
   await act(async () => root.render(<AssetsPage active studio={studio} />)); await flush();
   expect(container.querySelector('.om-scene-guide')).toBeTruthy();
+  expect(fetchPreview).not.toHaveBeenCalled();
+  await click('Play');
+  expect(fetchPreview).toHaveBeenCalledWith(skillPreviewSnapshot + 'light-shadow-product.mp4', expect.anything());
+  expect(container.querySelector('.om-scene-example-media video')?.getAttribute('src')).toMatch(/^blob:/);
   await click('Use prompt');
   expect(remember.mock.lastCall?.[0].prompt).toMatch(/supplied frame/);
   const file = new File(['data'], 'still.png', { type: 'image/png' });

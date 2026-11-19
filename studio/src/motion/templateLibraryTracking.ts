@@ -44,11 +44,11 @@ export function reportLibraryShown(context: Pick<ListContext, 'libraryViewId'> =
   send('surface_view', { ...studio, area: 'template_library', element: 'library', ...contextIds(context) });
 }
 /** The denominator for a card's click-through rate. The caller decides when a card was really seen and reports it once per result set. */
-export function reportCardShown(template: Template, position: number, context: ListContext) {
-  send('surface_view', { ...studio, area: 'template_card', element: 'card', ...templateId(template), ...resource(template), placement: 'catalog', position, ...list(context) });
+export function reportCardShown(template: Template, position: number, context: ListContext, placement: Extract<Placement, 'catalog' | 'black_friday'> = 'catalog') {
+  send('surface_view', { ...studio, area: 'template_card', element: 'card', ...templateId(template), ...resource(template), placement, position, ...list(context) });
 }
 /** A gallery card or a related-template thumbnail was opened. */
-export function reportCardOpened(template: Template, placement: Extract<Placement, 'catalog' | 'related'>, position: number, context: ListContext, source?: Template, view?: DetailView) {
+export function reportCardOpened(template: Template, placement: Extract<Placement, 'catalog' | 'related' | 'black_friday'>, position: number, context: ListContext, source?: Template, view?: DetailView) {
   send('ui_click', { ...studio, area: 'template_card', element: 'open_detail', ...templateId(template), ...resource(template), placement, position, ...list(context),
     ...(source ? slugField('source_template_id', source.id) : {}), ...(source ? detail(view) : {}) });
 }
@@ -107,6 +107,10 @@ export function reportSearchResult(searchId: string, query: string, resultCount:
   send('template_search_result', { ...studio, area: 'template_discovery', search_id: searchId, search_keyword: keyword, query_length: query.trim().length,
     result_count: resultCount, outcome: 'success', sort: context.sort, applied_filter_count: context.filterCount, ...contextIds(context) });
 }
+export function reportBlackFridayEntry() {
+  send('ui_click', { ...studio, area: 'template_discovery', element: 'open_collection', placement: 'black_friday', position: 2 });
+}
+
 export function reportDiscoveryClick(element: Extract<Click['element'], 'category_select' | 'filter_open' | 'filter_clear' | 'filter_option' | 'sort_option' | 'submit_video'>,
   context: ListContext, extra: Pick<Click, 'filter_group' | 'selected' | 'previous_sort' | 'changed'> & { option?: string } = {}) {
   const { option, ...fields } = extra;

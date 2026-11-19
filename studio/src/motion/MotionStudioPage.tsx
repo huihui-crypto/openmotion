@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import { StudioTemplateShelf } from './StudioTemplateShelf';
-import motionPoster from './skill-covers/bubble-field.jpg?url';
+import motionPoster from './skill-covers/bubble-field.webp?url';
 
 export function MotionStudioPage({ active, onExplore, onOpenEditor }: {
   active: boolean; onExplore: () => void; onOpenEditor: () => void;

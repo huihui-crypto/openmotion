@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile, mkdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -189,4 +189,54 @@ test('the existing standalone gate rejects failed, cancelled, skipped and missin
     assert.equal(run({ ...manual, maintainability: { result } }, true).status, 1);
   }
   assert.equal(run({ ...manual, studio: { result: 'skipped' } }, true).status, 1);
+});
+
+// Root test files that no workflow names yet. The root `npm test` script is not invoked
+// by any lane, so a file only runs when a workflow names it. Freezing the current gap
+// keeps it visible: a new test file must either be scheduled or added here deliberately.
+const unscheduledSuites = [
+  'asset-routing.test.ts', 'assets-use.test.ts', 'brand-story-tracking.test.ts', 'browser.test.ts',
+  'codex-host-handoff.test.ts', 'cold-start.test.ts', 'final-video-delivery.test.ts', 'final-video-ui.test.ts',
+  'inline-video-preview.test.ts', 'inline-video-result.test.ts', 'install-public-skill.test.ts', 'integration.test.ts',
+  'legacy.test.ts', 'library-skill-catalog.test.ts', 'lint.test.ts', 'mcp-client.test.ts', 'mcp-config.test.ts', 'mcp.test.ts', 'media-save.test.ts',
+  'onboarding-recovery.test.ts', 'page-metadata.test.ts', 'phase1-runtime.test.ts', 'phase1-shared.test.ts',
+  'recreate-rendering.test.ts', 'registry-material-compat.test.ts', 'registry.test.ts', 'shared-editor.test.ts',
+  'source-build-state.test.ts', 'source-native-runtime.test.ts', 'studio-history-availability.test.ts',
+  'template-metadata.test.ts', 'template-playback.test.ts', 'templates.test.ts', 'tracking-task-ledger.test.ts',
+  'verify-export.test.ts', 'video-compare.test.ts', 'vision-runtime-native.test.mjs', 'vision-runtime.test.mjs',
+  'welcome-template.test.ts', 'work-generation.test.ts', 'workflow-layering.test.ts',
+];
+
+// Only shell bodies execute. A suite mentioned in a comment, a `paths:` filter or a
+// job name is documentation, not a scheduled run, so the scan reads `run:` bodies only.
+function runCommands(workflow) {
+  const commands = [];
+  let blockIndent = null;
+  for (const raw of workflow.split(/\r?\n/)) {
+    const line = raw.replace(/(^|\s)#.*$/, '');
+    if (!line.trim()) continue;
+    const indent = line.match(/^\s*/)[0].length;
+    if (blockIndent !== null) {
+      if (indent > blockIndent) { commands.push(line.trim()); continue; }
+      blockIndent = null;
+    }
+    const block = line.match(/^\s*(?:-\s+)?run:\s*\|\s*$/);
+    if (block) { blockIndent = indent; continue; }
+    const inline = line.match(/^\s*(?:-\s+)?run:\s*(\S.*)$/);
+    if (inline) commands.push(inline[1].trim());
+  }
+  return commands.join('\n');
+}
+
+test('root test suites are either scheduled by a workflow or recorded as unscheduled', async () => {
+  const suites = (await readdir(fileURLToPath(new URL('../tests/', import.meta.url))))
+    .filter(file => /\.(test|spec)\.(ts|mjs|js)$/.test(file)).sort();
+  const directory = fileURLToPath(new URL('../.github/workflows/', import.meta.url));
+  const workflows = await Promise.all((await readdir(directory)).filter(file => /\.ya?ml$/.test(file))
+    .map(file => readFile(path.join(directory, file), 'utf8')));
+  const corpus = workflows.map(runCommands).join('\n');
+  const unscheduled = suites.filter(file => !corpus.includes('tests/' + file));
+  assert.deepEqual(unscheduled, unscheduledSuites,
+    'Every root suite must be named by a workflow or listed in unscheduledSuites');
+  assert.ok(suites.length > unscheduled.length, 'Expected scheduled suites to exist');
 });

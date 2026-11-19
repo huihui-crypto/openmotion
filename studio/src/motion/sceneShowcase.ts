@@ -1,14 +1,12 @@
 import type { StudioDestination, StudioScene } from './creativeStudios';
 import { motionSkills } from './skillCatalog';
 import lunar from './scene-art/apollo-11.jpg';
-import product from './skill-covers/light-shadow-product.jpg';
-import relight from './skill-covers/relight-reveal.jpg';
-import splash from './skill-covers/splash-float-product.jpg';
+import product from './skill-covers/light-shadow-product.webp';
+import relight from './skill-covers/relight-reveal.webp';
+import splash from './skill-covers/splash-float-product.webp';
 import soundtrackCover from './scene-art/ambient-piano.webp';
-import narration from './skill-covers/talking-head-recreation.jpg';
-import camera from './skill-covers/babylon-js.jpg';
-import splashClip from './skill-covers/splash-float-product.mp4';
-import productClip from './skill-covers/light-shadow-product.mp4';
+import narration from './skill-covers/talking-head-recreation.webp';
+import camera from './skill-covers/babylon-js.webp';
 import welcomeMusic from '../../../template-library/openmotion-welcome/assets/soundtrack.m4a?url';
 
 export interface SceneExample { title: string; prompt: string; poster: string; posterPosition?: string; credit?: string; clip?: string; audio?: string; waveform?: readonly number[] }
@@ -20,6 +18,9 @@ const welcomeWaveform = [
   85, 40, 13, 14, 9, 10, 15, 84, 85, 67, 73, 83, 87, 61, 77, 88, 86, 63, 81, 80, 89, 57, 80, 87,
   84, 59, 86, 83, 85, 56, 86, 92, 85, 23, 93, 82, 88, 55, 87, 87, 77, 66, 92, 83, 52, 36, 2, 2,
 ];
+
+const splashClip = motionSkills.find(skill => skill.id === 'openmotion-splash-float-product')?.cover?.video;
+const productClip = motionSkills.find(skill => skill.id === 'openmotion-light-shadow-product')?.cover?.video;
 
 const portrait = { title: 'Product portrait', prompt: 'Photograph an amber glass bottle in warm sidelight, with soft leaf shadows on stone.', poster: product, clip: productClip };
 const cameraStudy = { title: 'Vintage camera study', prompt: 'Frame a vintage camera in soft sidelight. Let the background fall into shadow.', poster: camera };

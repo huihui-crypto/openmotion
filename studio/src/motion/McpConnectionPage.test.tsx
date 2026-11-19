@@ -8,6 +8,9 @@ import { I18nProvider, type Locale } from '../i18n/I18n';
 import { McpConnectionPage } from './McpConnectionPage';
 import { containerIntegration, type IntegrationInfo } from '../../../shared/integration';
 
+// Reporting is covered separately. Its lazy initialization/retries must not
+// add transport requests to this page's discovery and read-only assertions.
+vi.mock('./tracking', () => ({ trackMotion: vi.fn(async () => 'disabled') }));
 vi.mock('./useWorkspace', () => ({ motionApi: async (path: string, options: RequestInit) => {
   const response = await fetch('/motion-api' + path, options);
   if (!response.ok) throw new Error('Unavailable');
@@ -117,6 +120,7 @@ it.each(['zh-CN', 'en', 'ja'] as const)('links the FAQ and footer to the README 
 });
 
 it('switches client-specific setup, copies exact template instructions and performs no mutations', async () => {
+  await (await import('./reporting')).loadReportingTransport();
   const fetcher = vi.fn(async (url: string) => Response.json(url.includes('template-catalog') ? { items: [template] } : info));
   vi.stubGlobal('fetch', fetcher);
   const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();

@@ -3,7 +3,8 @@ import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SkillsPage, skillSubmissionUrl } from './SkillsPage';
-import { motionSkills, skillPrompt, skillShortcut, studioSkillDefaults } from './skillCatalog';
+import { SkillMedia } from './SkillMedia';
+import { motionSkills, skillPreviewSnapshot, skillPrompt, skillShortcut, studioSkillDefaults } from './skillCatalog';
 import { readWorkspacePage, workspacePageHref } from './workspacePageRouting';
 import { findTechniqueStudio } from '../../../shared/studio-catalog';
 import { isWorkspaceSettingsPage } from '../../../shared/workspace-url';
@@ -13,8 +14,11 @@ vi.mock('../i18n/I18n', () => ({ useI18n: () => ({ locale: 'en', t: (text: strin
 vi.mock('./useWorkspace', () => ({ motionApi: vi.fn().mockRejectedValue(new Error('Offline test')) }));
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root, container: HTMLDivElement;
-beforeEach(() => { container = document.createElement('div'); document.body.append(container); root = createRoot(container); });
-afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); });
+beforeEach(() => {
+  container = document.createElement('div'); document.body.append(container); root = createRoot(container);
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }));
+});
+afterEach(() => { act(() => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function Host() {
   const [skill, setSkill] = useState<string | null>(null);
@@ -269,26 +273,22 @@ it('opens the contribution guide section for submitting a skill, like the templa
   expect(section).toContain('draft pull request');
 });
 
-it('bundles the GIF covers as local assets', () => {
-  for (const id of ['anime-js', 'lottie-web']) {
-    const gif = motionSkills.find(skill => skill.id === id)?.cover?.gif;
-    expect(gif, id).toBeDefined();
-    expect(gif, id).not.toMatch(/^https?:/);
-  }
-});
-
-it('falls back to the poster when a cover video cannot load', () => {
-  act(() => root.render(<Host />));
-  const card = container.querySelector('[data-skill-id="motionmaxxing"]')!;
-  const videos = [...card.querySelectorAll('video')];
-  expect(videos.length).toBeGreaterThan(0);
-  act(() => videos.forEach(node => node.dispatchEvent(new Event('error'))));
-  expect(card.querySelector('.om-skill-cover')).toBeNull();
-  expect(card.querySelectorAll('img').length).toBe(videos.length);
-});
-
-it('serves no cover video from raw GitHub, which sends it as an undecodable octet-stream', () => {
-  expect(motionSkills.filter(skill => skill.cover?.video?.includes('raw.githubusercontent.com')).map(skill => skill.id)).toEqual([]);
+it('ships static WebP posters and waits to fetch archived video until playback starts', async () => {
+  const archived = motionSkills.filter(skill => (skill.cover?.video ?? skill.cover?.gif)?.startsWith(skillPreviewSnapshot));
+  expect(archived.length).toBeGreaterThan(100);
+  for (const skill of archived) expect(skill.cover?.poster, skill.id).toMatch(/\.webp(?:\?|$)/);
+  const skill = motionSkills.find(skill => skill.id === 'motionmaxxing')!;
+  const fetcher = vi.mocked(fetch).mockResolvedValue(new Response('sample', { headers: { 'Content-Type': 'application/octet-stream' } }));
+  const create = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:skill-preview');
+  act(() => root.render(<SkillMedia skill={skill} />));
+  expect(container.querySelectorAll('img')).toHaveLength(2);
+  expect(fetcher).not.toHaveBeenCalled();
+  await act(async () => root.render(<SkillMedia skill={skill} playing />));
+  expect(create).toHaveBeenCalled();
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  act(() => root.render(<SkillMedia skill={skill} playing={false} />));
+  expect(container.querySelectorAll('video')).toHaveLength(0);
+  expect(container.querySelectorAll('img')).toHaveLength(2);
 });
 
 it('merges same-repository cover credits while retaining external sources and attribution', () => {

@@ -34,7 +34,9 @@ export async function probeLibraryMedia(file: string) {
   if (!stream) throw new Error('Unsupported media type');
   const images: Record<string, [string, string]> = { png: ['image/png', 'png'], mjpeg: ['image/jpeg', 'jpg'], webp: ['image/webp', 'webp'], gif: ['image/gif', 'gif'], av1: ['image/avif', 'avif'] };
   const format = String(media.format?.format_name ?? '');
-  const image = /image2|_pipe|^gif$|^avif$/.test(format) ? images[stream.codec_name] : undefined;
+  // ffprobe reads AVIF through the ISO base media demuxer, so only the brand tells it from MP4.
+  const avif = format.includes('mov') && /^avi[fs]$/.test(String(media.format?.tags?.major_brand ?? '').trim());
+  const image = avif || /image2|_pipe|^gif$/.test(format) ? images[stream.codec_name] : undefined;
   const kind = image ?? (stream.codec_type === 'video' && format.includes('mov') ? ['video/mp4', 'mp4']
     : stream.codec_type === 'video' && /webm|matroska/.test(format) ? ['video/webm', 'webm']
     : stream.codec_type === 'audio' ? ({ wav: ['audio/wav', 'wav'], mp3: ['audio/mpeg', 'mp3'], ogg: ['audio/ogg', 'ogg'], flac: ['audio/flac', 'flac'], aac: ['audio/aac', 'aac'] } as Record<string, string[]>)[format]

@@ -9,6 +9,8 @@ import { TranscriptionService, transcriptsFor, closeTranscripts } from '../gatew
 import { transcriptionParameters } from '../gateway/transcription-provider.ts';
 import { exportTranscript, normalizeTranscript, parseTranscriptSubtitles, type TranscriptDocument } from '../shared/transcript.ts';
 import { createCaptionSourceOperations } from '../shared/transcript-captions.ts';
+import { exportCaptionSource } from '../shared/caption-export.ts';
+import { parseHTML } from 'linkedom';
 import * as htmlParser from '@hyperframes/parsers/html-attribute-spans';
 import { Phase1Service } from '../phase1.ts';
 import { validateInput, phase1Tools } from '../shared/phase1-tools.ts';
@@ -41,6 +43,8 @@ test('real timestamps, text-only results, diarization and subtitle interchange r
   for (const format of ['srt', 'vtt'] as const) {
     const parsed = parseTranscriptSubtitles(exportTranscript(document(), format).content);
     assert.equal(parsed[0].text, 'Hello world.'); assert.equal(parsed[0].end, 1.5);
+    const markup = 'Q&A: <3 if a < b, "&lt;" stays';
+    assert.equal(parseTranscriptSubtitles(exportTranscript(document([{ id: 'markup', text: markup, start: 0, end: 1 }]), format).content)[0].text, markup);
   }
   assert.throws(() => normalizeTranscript({ segments: [{ text: 'Broken', start: 4, end: 3 }] }), /invalid segment/);
   assert.throws(() => transcriptionParameters('custom', { file: '/private/path' }), /Unsupported/);
@@ -208,6 +212,20 @@ test('word highlight uses supplied word clocks, keeps punctuation and refuses mi
   assert.throws(() => transcriptCaptionSource(html, missing, placement, { pacing: 'word' }), /real word timestamps/);
   const mismatch = document(); mismatch.segments[0].text = 'Changed words';
   assert.throws(() => transcriptCaptionSource(html, mismatch, placement, { pacing: 'word' }), /do not match/);
+});
+
+test('word highlight cues still meet after a playback rate moves them off whole milliseconds', () => {
+  const html = '<div data-composition-id="main" data-duration="6"></div>';
+  const starts = [0, 0.32, 0.64, 1.02, 1.5, 2];
+  const words = ['The', 'quick', 'brown', 'fox', 'jumps'].map((text, i) => ({ text, start: starts[i], end: starts[i + 1] }));
+  const spoken = document([{ id: 'segment-1', text: 'The quick brown fox jumps', start: 0, end: 2, words }]);
+  const result = transcriptCaptionSource(html, spoken, { sourceStart: 0, sourceEnd: 3, timelineStart: 0, playbackRate: 1.5 }, { pacing: 'word' });
+  const cues = [...result.content.matchAll(/data-start="([\d.]+)" data-duration="([\d.]+)"/g)].map(match => ({ start: Number(match[1]), length: Number(match[2]) }));
+  assert.equal(cues.length, 5);
+  // 0.64 / 1.5 = 0.42667: the second cue has to end on 0.427 where the third begins, not on 0.213 + 0.213.
+  for (let i = 1; i < cues.length; i++) assert.equal(Math.round((cues[i - 1].start + cues[i - 1].length) * 1000), Math.round(cues[i].start * 1000));
+  const srt = exportCaptionSource(result.content, 'srt', parseHTML);
+  assert.equal(srt.content, '1\n00:00:00,000 --> 00:00:01,333\nThe quick brown fox jumps\n');
 });
 
 test('public caption track controls share revision guards, request replay and reversible native history', () => fixture(async store => {

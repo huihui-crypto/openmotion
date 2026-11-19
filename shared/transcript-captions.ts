@@ -146,9 +146,11 @@ export function createCaptionSourceOperations({ decodeAuthoredAttribute, scanHtm
       return words.map((word, i) => ({ ...segment, id: `${segment.id}-word-${i}`, start: i === 0 ? segment.start : word.start, end: words[i + 1]?.start ?? segment.end,
         html: escape(segment.text.slice(0, spans[i].start)) + `<span style="color:var(--caption-highlight)">${escape(segment.text.slice(spans[i].start, spans[i].end))}</span>` + escape(segment.text.slice(spans[i].end)) }));
     });
-    const cues = styled.filter(segment => segment.end > segment.start).map(segment => {
+    // Round both edges, not start and length: adjacent cues must still meet after rounding.
+    const edge = (value: number) => Math.round(value * 1000) / 1000;
+    const cues = styled.map(segment => ({ ...segment, start: edge(segment.start), end: edge(segment.end) })).filter(segment => segment.end > segment.start).map(segment => {
       const start = segment.start, length = segment.end - segment.start;
-      requiredEnd = Math.max(requiredEnd, start + length); count++;
+      requiredEnd = Math.max(requiredEnd, segment.end); count++;
       return `<div id="${kind === 'text' ? 'text' : 'transcript'}-${doc.id}-${segment.id}" data-hf-id="${kind === 'text' ? 'txt' : 'tr'}-${doc.id}-${segment.id}" class="clip" data-label="${escape(segment.text.slice(0, 200))}" data-timeline-role="${kind}" data-caption-track="${doc.id}" data-caption-label="${escape(label)}" ${settingsAttributes(settings)} data-start="${number(start)}" data-duration="${number(length)}" data-track-index="${track}" style="position:absolute;box-sizing:border-box;z-index:${overlayZ};${styleText(captionArtwork(settings, fontSize))}">${segment.html}</div>`;
     });
     if (!count) throw new Error('No transcript cues overlap this source range');

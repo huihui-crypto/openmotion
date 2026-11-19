@@ -24,6 +24,16 @@ it('retains the library return page and selected detail, and clears page-specifi
   expect(workspacePageHref(providers.href, { settings: 'general' })).toBe('/?page=settings&section=general');
 });
 
+it('round-trips the Black Friday collection and its selected Skill without leaking either into the regular library', () => {
+  const origin = 'http://localhost/?page=explore';
+  const collection = new URL(workspacePageHref(origin, { templates: true, blackFriday: true, skill: 'openmotion-sale-promo' }), origin);
+  expect(readWorkspacePage(collection.search)).toMatchObject({ explore: true, templates: true, blackFriday: true, skill: 'openmotion-sale-promo' });
+  expect(readWorkspacePage('?templates=1&collection=black-friday&skill=unknown').skill).toBeNull();
+  expect(readWorkspacePage('?templates=1&view=creators&collection=black-friday').blackFriday).toBe(false);
+  expect(workspacePageHref(collection.href, { templates: false })).toBe('/?page=explore');
+  expect(workspacePageHref(collection.href, { blackFriday: false, skill: null })).toBe('/?page=explore&templates=1');
+});
+
 it('keeps legacy editor and template URLs and safely defaults unknown options', () => {
   expect(readWorkspacePage('?templates=1').templates).toBe(true);
   expect(readWorkspacePage('?project=project').settings).toBeNull();

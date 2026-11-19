@@ -1,3 +1,4 @@
+import { blackFridayReference } from './shared/black-friday-collection.ts';
 import { loadLibrarySkills, assertSkillIds, skillUsage, skillNextStep } from './shared/library-skill-catalog.ts';
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
@@ -247,7 +248,7 @@ export class TemplateCatalog {
     if (builtin) return builtin;
     const snapshot = await this.refresh();
     if ((await this.skills(snapshot)).some(item => item.id === id)) throw new Error(skillUsage);
-    const template = this.templates(snapshot).find(item => item.id === id);
+    const template = this.templates(snapshot).find(item => item.id === id) ?? blackFridayReference(id, this.locale);
     if (!template) throw new Error('模板不存在，请重新获取模板目录');
     return template;
   }
@@ -258,8 +259,13 @@ export class TemplateCatalog {
       workflowGuide: { workflow: 'template', section: 'start', status: 'ready' }, warning: this.warning };
     const snapshot = await this.refresh();
     if ((await this.skills(snapshot)).some(item => item.id === id)) throw new Error(skillUsage);
-    const template: EditableTemplate | undefined = this.templates(snapshot).find(item => item.id === id);
-    if (!template) throw new Error('模板不存在，请重新获取模板目录');
+    const template = this.templates(snapshot).find(item => item.id === id);
+    if (!template) {
+      const reference = blackFridayReference(id, this.locale);
+      if (!reference) throw new Error('模板不存在，请重新获取模板目录');
+      return { ...reference, instructions: templateRecipe(reference), source: this.source,
+        workflowGuide: { workflow: 'recreate', section: 'start', status: 'ready' }, warning: this.warning };
+    }
     if (template.localSource) {
       const instructions = (await readRepositoryFile(this.repositoryRoot, id + '/TEMPLATE.md')).toString('utf8');
       const content = (await readRepositoryFile(this.repositoryRoot, id + '/source/motion.md')).toString('utf8');

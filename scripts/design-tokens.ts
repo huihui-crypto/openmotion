@@ -15,7 +15,7 @@ import { renderPageMetadata } from '../packages/design-system/metadata.js';
 
 export async function designTokens(checkOnly = false) {
   const tokens = JSON.parse(await readFile(new URL('tokens.json', directory), 'utf8'));
-  for (const [file, css] of Object.entries(renderDesignTokens(tokens))) {
+  for (const [file, css] of Object.entries(renderDesignTokens(tokens) as Record<string, string>)) {
     if (checkOnly) {
       if (await readFile(new URL(file, directory), 'utf8') !== css) throw new Error(`${file} is stale. Run npm run design:tokens.`);
     } else await writeFile(new URL(file, directory), css);

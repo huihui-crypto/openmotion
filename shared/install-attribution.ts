@@ -6,8 +6,9 @@ async function recordInstallationEvent(directory: string, host: string, source: 
   if (trackingLocked() || !trackingPreference(directory)) return;
   await saveInstallationSource(path.join(directory, 'tracking'), source);
   const tracking = await createAppTracking(directory, 'installer');
-  const hostProduct = ['codex', 'claude', 'deepseek', 'workbuddy'].includes(host) ? host : 'other';
-  tracking.track(event, event === 'installation_result' ? { outcome: 'success', host_product: hostProduct } : { host_product: hostProduct });
+  const hostProduct = (['codex', 'claude', 'deepseek', 'workbuddy'] as const).find(product => product === host) ?? 'other';
+  if (event === 'installation_result') tracking.track(event, { outcome: 'success', host_product: hostProduct });
+  else tracking.track(event, { host_product: hostProduct });
   await closeTracking(tracking);
 }
 

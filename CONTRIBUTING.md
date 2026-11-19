@@ -19,6 +19,23 @@ Use the [entry checklist](library/ENTRY_TEMPLATE.md), link the new entry from it
 
 For published motion guidance source and locale metadata, use the [catalog contribution loop](https://github.com/nexu-io/openmotion/tree/main/library/templates/catalog#change-a-template). Stage changes before running the storage-policy check. New media needs no CMS account; maintainers prepare final media on the original PR before Squash merge.
 
+## Media in the default npm package
+
+A Skill card can ship a small static WebP poster. For optional animation, add
+`studio/src/motion/skill-covers/<name>.mp4` (or WebM/GIF) to the same PR and
+use `skillCover('<name>')` in `skillCatalog.ts` (pass the format for WebM/GIF).
+Vite development can preview the draft media. The existing
+[Prepare and merge PR workflow](docs/repository-storage.md#prepare-final-pr-media-before-merging)
+uploads the clip and records its immutable URL. The storage check names any clip
+awaiting preparation. If replacing a previously prepared clip, stage the new bytes
+with `git add -f`. Include media attribution with the source.
+
+The distribution job reports the actual compressed default npm package and the
+largest file and directory changes. Growth of 1 MiB raises a warning. The default
+package has a 24 MiB budget. If a feature needs new offline media, list its
+runtime purpose beside its path in `scripts/distribution.ts` and review any
+necessary budget change in the same PR.
+
 ## PR workflow
 
 ### Follow through on review

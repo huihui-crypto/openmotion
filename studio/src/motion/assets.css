@@ -320,11 +320,11 @@
   .om-scene-audio { grid-template-columns: minmax(0, 1fr); }
   .om-sound-sleeve { width: 96px; }
 }
-.om-scene-example-media:has(.om-scene-retry) { min-height: 190px; }
+.om-scene-example-media:has(.om-scene-preview-action) { min-height: 190px; }
 .om-speech-script { padding: clamp(var(--motion-space-20), 5vw, var(--motion-space-64)); display: grid; gap: var(--motion-space-16); }
 .om-speech-script p { max-width: 30ch; font: var(--motion-weight-medium) var(--motion-text-display)/var(--motion-leading-tight) var(--motion-font-display); }
 .om-assets-heading .om-choice-tabs .om-nav-item { flex: none; white-space: nowrap; }
-.om-scene-retry { position: absolute; bottom: var(--motion-space-12); left: var(--motion-space-12); }
+.om-scene-preview-action { position: absolute; bottom: var(--motion-space-12); left: var(--motion-space-12); }
 .om-scene-source, .om-scene-source-files { display: grid; gap: var(--motion-space-8); }
 .om-scene-source-files button img { height: var(--motion-space-40); width: var(--motion-space-56); object-fit: cover; border-radius: var(--motion-radius-sm); }
 .om-scene-source-files button span { flex: 1; overflow-wrap: anywhere; }

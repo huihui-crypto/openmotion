@@ -1,3 +1,5 @@
+import { blackFridayReference, blackFridayTemplates } from '../../../shared/black-friday-collection';
+import { BlackFridayCollection } from './BlackFridayCollection';
 import { TemplateCreators } from './TemplateCreators';
 import { templateCredit } from './templateCredits';
 import { GalleryIntro } from './GalleryIntro';
@@ -74,7 +76,7 @@ function DetailMedia({ template }: { template: GalleryTemplate }) {
 }
 
 
-type Props = { inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
+type Props = { blackFriday?: boolean; onBrowseTemplates?: () => void; onOpenSkill?: (id: string, trigger: HTMLButtonElement) => void; inWorkspace?: boolean; navigation?: ReactNode; returnFocus?: HTMLElement | null; open: boolean; busy: boolean; openingDisabled?: boolean; error: string; onClose: () => void; onOpen: (id: string) => void; creators?: boolean; creator?: string | null; onCreatorChange?: (creator: string | null) => void; templateId?: string | null; onTemplateChange?: (id: string | null) => void; projectId?: string; onPrepareTemplate?: (template: GalleryTemplate, requestId: string) => Promise<PreparedTemplateProject>; onOpenProject?: (id: string) => Promise<boolean> };
 
 /** Full-window discovery using the existing catalog and guarded editable-project actions. */
 function DetailScroll({ enabled, container, children }: { enabled: boolean; container: RefObject<HTMLDivElement | null>; children: ReactNode }) {
@@ -108,6 +110,9 @@ export function TemplateLibraryDialog(props: Props) {
   const [filterTab, setFilterTab] = useState<Facet>('uses');
   const [facetQuery, setFacetQuery] = useState('');
   const [brandsOnly, setBrandsOnly] = useState(false);
+  const blackFriday = Boolean(props.blackFriday);
+  const campaignStages = useMemo(() => blackFridayTemplates(catalog, locale), [catalog, locale]);
+  const campaignItems = useMemo(() => campaignStages.flatMap(stage => stage.items), [campaignStages]);
   const [promptExpanded, setPromptExpanded] = useState(false), [guideOpen, setGuideOpen] = useState(false);
   const handoffPreview = templateHandoffEnabled() && !brandStory;
   const reviewBody = useRef<HTMLDivElement>(null), reviewFooter = useRef<HTMLDivElement>(null), reviewScroll = useRef<HTMLDivElement>(null);
@@ -225,7 +230,7 @@ export function TemplateLibraryDialog(props: Props) {
     const trigger = props.returnFocus ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
     if (!props.inWorkspace) openedDialog?.showModal();
     if (openedDialog?.open && !libraryShown.current) { libraryShown.current = true; tracking.reportLibraryShown(currentSearchContext.current.read()); }
-    libraryClose.current?.focus({ preventScroll: true });
+    if (openedDialog?.querySelector('[data-black-friday] h1') !== document.activeElement) libraryClose.current?.focus({ preventScroll: true });
     return () => {
       detail.current?.close();
       if (!props.inWorkspace) openedDialog?.close();
@@ -267,7 +272,7 @@ export function TemplateLibraryDialog(props: Props) {
     return () => { controller.abort(); clearInterval(timer); };
   }, [props.open, attempt, locale]);
   const available = useMemo(() => facets.map(([key, label]) => ({ key, label, values: [...new Set(catalog.flatMap(item => values(item, key)))] })).filter(facet => facet.values.length), [catalog]);
-  const missingTemplate = Boolean(props.templateId && shown.current && !loading && !error && !catalog.some(item => item.id === props.templateId));
+  const missingTemplate = Boolean(props.templateId && shown.current && !loading && !error && !catalog.some(item => item.id === props.templateId) && !blackFridayReference(props.templateId, locale));
   const categories = [...(available.find(facet => facet.key === 'uses')?.values ?? [])].sort((a, b) => {
     const rank = (value: string) => purposeOrder.includes(value) ? purposeOrder.indexOf(value) : purposeOrder.length;
     return rank(a) - rank(b);
@@ -282,7 +287,7 @@ export function TemplateLibraryDialog(props: Props) {
     if (props.creators) return props.creator ? searchable.filter(item => templateCredit(item)?.id === props.creator) : [];
     return searchable.filter(item => matchesFilters(item, selected, editableOnly)).sort((a, b) => sort === 'recommended' ? (a.sortOrder ?? Infinity) - (b.sortOrder ?? Infinity) : sort === 'duration' ? (a.duration ?? Infinity) - (b.duration ?? Infinity) : a.title.localeCompare(b.title, locale) * (sort === 'reverse' ? -1 : 1));
   }, [searchable, selected, sort, locale, editableOnly, props.creators, props.creator]);
-  useEffect(() => { if (dialog.current) dialog.current.scrollTop = 0; }, [query, selected, sort, editableOnly, brandsOnly, compareWithout]);
+  useEffect(() => { if (dialog.current) dialog.current.scrollTop = 0; }, [query, selected, sort, editableOnly, brandsOnly, compareWithout, blackFriday]);
   const filterCount = Object.values(selected).flat().length + Number(editableOnly) + Number(brandsOnly) + Number(Boolean(compareWithout));
   const hasAppliedFilters = filterCount > 0;
   const searchContextKey = JSON.stringify([normalizedTemplateQuery(query), Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b))), editableOnly, brandsOnly, compareWithout, sort, catalogVersion]);
@@ -290,7 +295,8 @@ export function TemplateLibraryDialog(props: Props) {
   const currentSearchContext = useRef(searchContext); currentSearchContext.current = searchContext;
   // A search id belongs to exactly one keyword: once the box holds something else, events stop carrying it.
   // The list state is read when a handler, timer or effect fires, not when it was scheduled.
-  const latest = useRef({ items: visible, query, sort, filterCount, covered: false }); latest.current = { items: visible, query, sort, filterCount, covered: Boolean(preview || brandStory) };
+  const galleryItems = blackFriday ? campaignItems : visible;
+  const latest = useRef({ items: galleryItems, query, sort, filterCount, covered: false, blackFriday }); latest.current = { items: galleryItems, query, sort, filterCount, covered: Boolean(preview || brandStory), blackFriday };
   const listContext = useCallback(() => {
     const { query, sort, filterCount } = latest.current, keyword = query.trim();
     return { searchId: keyword && normalizedTemplateQuery(keyword) === reportedQuery.current ? searchId.current : undefined, sort, filterCount, ...currentSearchContext.current.read() };
@@ -339,7 +345,7 @@ export function TemplateLibraryDialog(props: Props) {
   }, [selected, sort, query, editableOnly, brandsOnly]);
   // One result set per search, filter and sort combination: a card is reported again only when that combination changes.
   // Empty groups are dropped and groups and values sorted, so the same choices always make the same key.
-  const resultSet = JSON.stringify([query.trim(), sort, editableOnly, brandsOnly, compareWithout, Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b)))]);
+  const resultSet = JSON.stringify([blackFriday, query.trim(), sort, editableOnly, brandsOnly, compareWithout, Object.entries(selected).filter(([, items]) => items?.length).map(([key, items]) => [key, [...items!].sort()]).sort(([a], [b]) => String(a).localeCompare(String(b)))]);
   const seriesLists = useRef(new Map<string, string>()), shownSeries = useRef(new Set<string>());
   if (!seriesLists.current.has(resultSet)) seriesLists.current.set(resultSet, tracking.newTrackingId());
   const seriesListId = seriesLists.current.get(resultSet)!;
@@ -351,7 +357,7 @@ export function TemplateLibraryDialog(props: Props) {
     if (index < 0 || shownCards.current.has(key)) return true;
     shownCards.current.add(key);
     settleLatest.current();
-    tracking.reportCardShown(items[index], index + 1, listContext());
+    tracking.reportCardShown(items[index], index + 1, listContext(), latest.current.blackFriday ? 'black_friday' : 'catalog');
     return true;
   }, [listContext]);
   const referenceSeen = (context = listContext()) => {
@@ -362,9 +368,9 @@ export function TemplateLibraryDialog(props: Props) {
     }
     return true;
   };
-  const referenceVisible = props.open && !loading && !error && !query.trim() && visible.length > 0 && !preview && !brandStory && !referenceTrigger;
+  const referenceVisible = props.open && !blackFriday && !loading && !error && !query.trim() && visible.length > 0 && !preview && !brandStory && !referenceTrigger;
   useTemplateImpressions(dialog, 'library_home', referenceVisible, searchContextKey, () => referenceSeen(), 'data-reference-entry');
-  useTemplateImpressions(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, resultSet, cardSeen);
+  useTemplateImpressions(dialog, galleryItems.map(item => item.id).join(','), props.open && !preview && !brandStory, resultSet, cardSeen);
   const brandGroups = useMemo(() => groupBrandSeries(catalog), [catalog]);
   const visibleBrandGroups = useMemo(() => groupBrandSeries(visible), [visible]);
   const insertions = useMemo(() => discoveryInsertions(visible, brandGroups, storiesPreview && !hasFilters, discoverySeed), [visible, brandGroups, storiesPreview, hasFilters, discoverySeed]);
@@ -382,7 +388,7 @@ export function TemplateLibraryDialog(props: Props) {
     reportSeriesCard(seriesContext(row.series, row.placement, row.position, row.rank, seriesListId, listContext()));
     return true;
   };
-  useTemplateImpressions(dialog, seriesCards.map(row => seriesId(row.series.name)).join(','), props.open && storiesPreview && !preview && !brandStory, seriesListId, seriesSeen, 'data-series-id');
+  useTemplateImpressions(dialog, seriesCards.map(row => seriesId(row.series.name)).join(','), props.open && storiesPreview && !blackFriday && !preview && !brandStory, seriesListId, seriesSeen, 'data-series-id');
   const openBrand = (series: BrandSeries, element: HTMLButtonElement, placement: 'top100' | 'discovery') => {
     const row = seriesCards.find(row => row.series.name === series.name && row.placement === placement);
     if (!row) return;
@@ -391,9 +397,12 @@ export function TemplateLibraryDialog(props: Props) {
     brandTrigger.current = element; setBrandStory({ series, view });
   };
   const closeBrand = () => { setBrandStory(null); brandTrigger.current?.focus({ preventScroll: true }); };
-  const active = useTemplatePlayback(dialog, visible.map(item => item.id).join(','), props.open && !preview && !brandStory, true, priority);
-  const related = useMemo(() => preview ? (handoffPreview ? relatedTemplatesByTags(preview, catalog) : relatedTemplates(preview, catalog)) : [], [preview, catalog, handoffPreview]);
-  const previewIndex = visible.findIndex(item => item.id === preview?.id);
+  const active = useTemplatePlayback(dialog, galleryItems.map(item => item.id).join(','), props.open && !preview && !brandStory, !blackFriday, priority);
+  const campaignStage = blackFriday && campaignStages.find(stage => stage.items.some(item => item.id === preview?.id));
+  const detailItems = campaignStage ? campaignStage.items : galleryItems;
+  const related = useMemo(() => preview ? (campaignStage ? campaignStage.items.filter(item => item.id !== preview.id)
+    : handoffPreview ? relatedTemplatesByTags(preview, catalog) : relatedTemplates(preview, catalog)) : [], [preview, catalog, handoffPreview, campaignStage]);
+  const previewIndex = detailItems.findIndex(item => item.id === preview?.id);
   const clear = () => { setSelected({}); setEditableOnly(false); setBrandsOnly(false); setCompareWithout(''); };
   const reset = () => {
     setCompareWithout('');
@@ -468,22 +477,23 @@ export function TemplateLibraryDialog(props: Props) {
   useEffect(() => {
     if (!props.open || props.templateId === undefined) return;
     if (!props.templateId) { detail.current?.close(); return; }
-    const item = catalog.find(template => template.id === props.templateId);
-    if (item && item.id !== preview?.id) show(item, 'catalog', false);
-  }, [props.open, props.templateId, catalog, preview?.id, show]);
+    const item = catalog.find(template => template.id === props.templateId) ?? blackFridayReference(props.templateId, locale);
+    if (item && item.id !== preview?.id) show(item, blackFriday ? 'black_friday' : 'catalog', false);
+  }, [props.open, props.templateId, catalog, preview?.id, show, locale, blackFriday]);
   const openCard = useCallback((item: GalleryTemplate) => {
     settleLatest.current();
-    tracking.reportCardOpened(item, 'catalog', latest.current.items.findIndex(candidate => candidate.id === item.id) + 1, listContext());
-    show(item, 'catalog');
+    const placement = latest.current.blackFriday ? 'black_friday' : 'catalog';
+    tracking.reportCardOpened(item, placement, latest.current.items.findIndex(candidate => candidate.id === item.id) + 1, listContext());
+    show(item, placement);
   }, [show, listContext]);
   const openRelated = (item: GalleryTemplate, position: number) => {
     tracking.reportCardOpened(item, 'related', position, listContext(), preview ?? undefined, detailView.current);
     show(item, 'related', true, detailView.current?.series);
   };
   const navigate = (step: number) => {
-    if (visible.length < 2) return;
+    if (detailItems.length < 2) return;
     tracking.reportDetailStep(preview, step, detailView.current);
-    show(visible[previewIndex < 0 ? (step > 0 ? 0 : visible.length - 1) : (previewIndex + step + visible.length) % visible.length], 'navigation', true, detailView.current?.series);
+    show(detailItems[previewIndex < 0 ? (step > 0 ? 0 : detailItems.length - 1) : (previewIndex + step + detailItems.length) % detailItems.length], 'navigation', true, detailView.current?.series);
   };
   const surprise = () => {
     settleSearch();
@@ -516,7 +526,7 @@ export function TemplateLibraryDialog(props: Props) {
     async function loadPrompt() {
       try {
         const connection = info.current ?? await motionApi<IntegrationInfo>('/integration'); info.current = connection;
-        if (!cancelled) setPrompt(handoffPreview ? templateHandoffPrompt(preview!, locale) : templatePrompt(connection, 'codex', preview!, locale));
+        if (!cancelled) setPrompt(handoffPreview || blackFridayReference(preview!.id, locale) ? templateHandoffPrompt(preview!, locale) : templatePrompt(connection, 'codex', preview!, locale));
       } catch { if (!cancelled) setPromptError(true); }
     }
     void loadPrompt();
@@ -578,7 +588,7 @@ export function TemplateLibraryDialog(props: Props) {
     } catch { showToast('Download failed. Please try again.', 'error', 'feedback'); tracking.reportDownloadResult(template, attemptId, 'fetch_failed', errorCode, view); }
     finally { setDownloading(false); }
   }
-  const filterBy = (key: Facet, value: string) => { picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setCompareWithout(''); if (storiesPreview) setBrandStory(null); setQuery(''); setEditableOnly(false); setBrandsOnly(false); closeDetail(); };
+  const filterBy = (key: Facet, value: string) => { if (blackFriday) props.onBrowseTemplates?.(); picked('filter_option', key, value, true); setSelected({ [key]: [value] }); setCompareWithout(''); if (storiesPreview) setBrandStory(null); setQuery(''); setEditableOnly(false); setBrandsOnly(false); closeDetail(); };
   const chooseCreator = (creator: string | null) => {
     clear();
     setBrandStory(null);
@@ -596,10 +606,12 @@ export function TemplateLibraryDialog(props: Props) {
   }} onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); if (!props.busy) props.onClose(); }}>
     <div className={styles.stickyHeader}>
       <header className={styles.header}>
-        <div className="om-gallery-wordmark">{!props.inWorkspace && <BrandLogo compact />}<span className="om-gallery-page-label">{t(props.creators ? 'Creators' : 'Template library')}</span></div>
+        <div className="om-gallery-wordmark">{blackFriday
+          ? <button type="button" className="om-button" onClick={props.onClose}><MotionIcon name="arrow-left" size={16} />{t('Back to Explore')}</button>
+          : !props.inWorkspace && <BrandLogo compact />}<span className="om-gallery-page-label">{t(props.creators ? 'Creators' : 'Template library')}</span></div>
         {props.navigation && <fieldset className="contents" disabled={props.busy}>{props.navigation}</fieldset>}
         <div className="om-control-row om-gallery-header-actions">
-          <label className="om-field om-search-field"><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => setQuery(event.target.value)}
+          <label className="om-field om-search-field"><MotionIcon name="search" size={16} /><input ref={search} type="search" maxLength={200} value={query} onChange={event => { if (blackFriday) props.onBrowseTemplates?.(); setQuery(event.target.value); }}
             onFocus={() => { currentSearchContext.current.activity(); tracking.reportRecoveryAction('search_focus', listContext()); }}
             onCompositionStart={() => { composing.current = true; setSearchComposing(true); }}
             onCompositionEnd={() => { composing.current = false; setSearchComposing(false); setSettle(value => value + 1); }}
@@ -608,7 +620,7 @@ export function TemplateLibraryDialog(props: Props) {
           <Tooltip label={t('Close template library')}><button ref={libraryClose} className="om-button om-icon-button" disabled={props.busy} onClick={props.onClose} aria-label={t('Close template library')}><MotionIcon name="close" size={16} /></button></Tooltip>
         </div>
       </header>
-      {!props.creators && <div className={styles.toolbar}>
+      {!props.creators && !blackFriday && <div className={styles.toolbar}>
         <div className={`om-control-row ${styles.categories}`} role="group" aria-label={t('Video purpose')}>
           <button className="om-button om-filter-pill" aria-pressed={!brandsOnly && !selected.uses?.length} onClick={() => chooseCategory('uses', undefined)}>{t('All')}</button>
           <button className="om-button om-filter-pill" aria-label={t('TOP 100 brands')} aria-pressed={brandsOnly} onClick={() => chooseBrands(true)}><span className="ui-collection-label" aria-hidden="true"><span className="ui-collection-label__title">TOP 100</span><span>{t('Brands')}</span></span></button>
@@ -632,9 +644,10 @@ export function TemplateLibraryDialog(props: Props) {
           <GallerySortMenu value={sort} options={sortOptions} onChange={changeSort} />
         </div>
       </div>}
-      {!props.creators && hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={clearSearch} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}{hasAppliedFilters && <button onClick={reset}>{t('Clear filters')}</button>}<span>{t('{count} templates', { count: visible.length })}</span></div>}
+      {!props.creators && !blackFriday && hasFilters && <div className={styles.chips}>{brandsOnly && <button onClick={() => chooseBrands(false)} aria-label={t('Remove filter {value}', { value: t('TOP 100 brands') })}>{t('TOP 100 brands')}<MotionIcon name="close" size={12} /></button>}{query && <button onClick={clearSearch} aria-label={t('Remove filter {value}', { value: query })}><MotionIcon name="search" size={12} />{query}<MotionIcon name="close" size={12} /></button>}{facets.flatMap(([key]) => (selected[key] ?? []).map(value => <button key={key + value} onClick={() => toggle(key, value)} aria-label={t('Remove filter {value}', { value: t(value) })}>{key === 'brand' ? value : t(value)}<MotionIcon name="close" size={12} /></button>))}{compareWithout && <button onClick={() => setCompareWithout('')}>{t('Excluding {brand}', { brand: compareWithout })}<MotionIcon name="close" size={12} /></button>}{editableOnly && <button onClick={() => toggleEditable(false)}>{t('Ready to edit')}<MotionIcon name="close" size={12} /></button>}{hasAppliedFilters && <button onClick={reset}>{t('Clear filters')}</button>}<span>{t('{count} templates', { count: visible.length })}</span></div>}
     </div>
-    {props.creators ? <TemplateCreators catalog={catalog} creator={props.creator ?? null} query={query} works={visible} loading={loading}
+    {blackFriday && !props.creators ? <BlackFridayCollection stages={campaignStages} active={active} onPreview={openCard} onPriority={setPriority} onOpenSkill={props.onOpenSkill} />
+    : props.creators ? <TemplateCreators catalog={catalog} creator={props.creator ?? null} query={query} works={visible} loading={loading}
       error={error} retry={() => retry(value => value + 1)} choose={chooseCreator} open={openCard} active={active} onPriority={setPriority} /> :
     <main className={styles.results} aria-busy={loading}>
       {missingTemplate && <div className={styles.empty} role="alert"><p>{t('This template is no longer available.')}</p><button onClick={closeDetail}>{t('View all templates')}</button></div>}
@@ -685,18 +698,18 @@ export function TemplateLibraryDialog(props: Props) {
           <div className={styles.stageGlass} />
           <DetailMedia key={preview.id} template={preview} />
           {handoffPreview && <nav className={styles.stageNavigation} aria-label={t('Browse videos')}>
-            <button className="om-button" disabled={visible.length < 2} onClick={() => navigate(-1)}><MotionIcon name="arrow-left" size={16} />{t('Previous template')}</button>
-            <span>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span>
-            <button className="om-button" disabled={visible.length < 2} onClick={() => navigate(1)}>{t('Next template')}<MotionIcon name="arrow-right" size={16} /></button>
+            <button className="om-button" disabled={detailItems.length < 2} onClick={() => navigate(-1)}><MotionIcon name="arrow-left" size={16} />{t('Previous template')}</button>
+            <span>{previewIndex >= 0 ? `${previewIndex + 1} / ${detailItems.length}` : t('Related templates')}</span>
+            <button className="om-button" disabled={detailItems.length < 2} onClick={() => navigate(1)}>{t('Next template')}<MotionIcon name="arrow-right" size={16} /></button>
           </nav>}
         </div>
         <div ref={detailInfo} className={styles.detailInfo}>
           <div className={styles.detailNav}>
             {handoffPreview && <button className="om-button" aria-label={t('Back to current project')} onClick={() => { tracking.reportDetailAction(preview, 'back_to_project', detailView.current); props.onClose(); }}>{t('Back to project')}</button>}
             <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus={!handoffPreview} onClick={closeDetail} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
-            <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${visible.length}` : t('Related templates')}</span>
-            <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
-            <Tooltip withinDialog wrap label={t('Next template')}><button className={styles.iconButton} disabled={visible.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
+            <span className={styles.detailCount}>{previewIndex >= 0 ? `${previewIndex + 1} / ${detailItems.length}` : t('Related templates')}</span>
+            <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={detailItems.length < 2} onClick={() => navigate(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
+            <Tooltip withinDialog wrap label={t('Next template')}><button className={styles.iconButton} disabled={detailItems.length < 2} onClick={() => navigate(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
           </div>
           <div ref={reviewBody} className={styles.detailBody}>
             <h2 ref={detailTitle} tabIndex={handoffPreview ? -1 : undefined} className="om-media-detail-title">{preview.title}</h2>

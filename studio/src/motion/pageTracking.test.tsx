@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+// @vitest-environment-options {"settings":{"enableImageFileLoading":false}}
 import { act, useState } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -23,6 +24,7 @@ const kit: BrandKit = { id: '11111111-1111-4111-8111-111111111111', kind: 'brand
   state: 'ready', progress: 100, createdAt: '2026-11-15', updatedAt: '2026-11-15', preview: false, packagePath: '/local/brand/package' };
 beforeEach(() => {
   sent.length = 0;
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 404 }));
   container = document.createElement('div'); document.body.append(container); root = createRoot(container);
   copy = vi.fn(async () => {});
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: copy } });

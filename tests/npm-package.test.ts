@@ -269,6 +269,9 @@ test('test npm artifacts contain their application, locked manifest and no bundl
     for (const file of ['rebuild.md', 'reconstruction.md', 'rendering.md', 'verify.md']) assert(entries.includes('skills/openmotion-recreate/references/' + file), 'Missing recreation reference: ' + file);
     assert(entries.includes('skills/openmotion-recreate/assets/reconstruction.js'));
     assert(entries.includes('studio/build/index.html'));
+    assert.match(entries, /studio\/build\/editor-assets\/three-js-.*\.webp/);
+    assert.doesNotMatch(entries, /studio\/build\/.*\.(?:mp4|webm|gif)$/m);
+    assert(entries.includes('studio/skill-cover-attribution.md'));
     assert(entries.includes('scripts/inline-onboarding.mjs'));
     assert(entries.includes('mcp-ui/template-recommendations/inline.fragment.html'));
     assert(entries.includes('shared/editor-launch.pl'), 'macOS shared editor launcher must ship');

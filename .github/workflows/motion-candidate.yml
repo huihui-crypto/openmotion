@@ -141,6 +141,9 @@ jobs:
           MOTION_VERSION: ${{ steps.source.outputs.version }}
         run: |
           node source/scripts/package-npm.mjs "$RUNNER_TEMP/build" "$MOTION_VERSION" --template-env="$MOTION_TEMPLATE_ENVIRONMENT"
+          budget=()
+          if [[ ! -f source/.github/scripts/npm-package-size.py ]]; then budget=(--report-only); fi
+          python3 control/.github/scripts/npm-package-size.py "$RUNNER_TEMP/build/openmotion-app-$MOTION_VERSION.tgz" "${budget[@]}"
           cp "$RUNNER_TEMP/source-scan.json" "$RUNNER_TEMP/build/source-scan.json"
           node control/.github/scripts/motion-scan.mjs package "$RUNNER_TEMP/build/openmotion-app-$MOTION_VERSION.tgz" "$RUNNER_TEMP/build/package-scan.json" "$RUNNER_TEMP/scanner/gitleaks"
       - name: Prepare read-only release notes for this exact candidate

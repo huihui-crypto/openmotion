@@ -285,6 +285,19 @@ describe("parseTimelineFromDOM — hfId from data-hf-id", () => {
     expect(hero?.hidden).toBe(true);
   });
 
+  it('keeps session locks during manifest rediscovery and reflects an explicit unlock', () => {
+    const doc = makeDoc('<div id="cue" data-timeline-locked></div>');
+    const hostEl = doc.getElementById('cue')!;
+    const read = () => createTimelineElementFromManifestClip({
+      clip: { id: 'cue', label: 'Caption', kind: 'element', tagName: 'div', start: 0, duration: 2,
+        track: 0, compositionId: null, parentCompositionId: null, compositionSrc: null, assetUrl: null },
+      fallbackIndex: 0, doc, hostEl,
+    });
+    expect(read().timelineLocked).toBe(true);
+    hostEl.removeAttribute('data-timeline-locked');
+    expect(read().timelineLocked).toBeUndefined();
+  });
+
   it("marks manifest timeline elements hidden when the host has data-hidden", () => {
     const doc = makeDoc(`
       <div data-composition-id="root">

@@ -75,6 +75,25 @@ async function fill(element: HTMLInputElement | HTMLTextAreaElement, value: stri
 const searchInput = () => host.querySelector<HTMLInputElement>('input[type=search]')!;
 const confirmSearch = () => act(async () => searchInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })));
 const clearKeyword = () => act(async () => button(`Remove filter ${searchInput().value}`).click());
+it('opens the Black Friday collection without the category row and previews videos in campaign order', async () => {
+  const onClose = vi.fn();
+  await act(async () => root.render(<I18nProvider initialLocale="en"><TemplateLibraryDialog blackFriday open busy={false} error="" onClose={onClose} onOpen={vi.fn()} /></I18nProvider>));
+  expect(host.querySelector('[aria-label="Video purpose"]')).toBeNull();
+  expect(host.querySelector('[data-black-friday] h1')?.textContent).toBe('Black Friday.');
+  expect(cards()).toHaveLength(10);
+  expect(host.querySelectorAll('[data-black-friday] .ui-text-link')).toHaveLength(5);
+  expect(document.activeElement).toBe(host.querySelector('[data-black-friday] h1'));
+  await act(async () => preview('Black Friday | 3D Type and Product Reveal'));
+  expect(current()).toBe('Black Friday | 3D Type and Product Reveal');
+  expect(events('ui_click', { area: 'template_card', element: 'open_detail' }).at(-1)).toMatchObject({ placement: 'black_friday' });
+  const detail = host.querySelector<HTMLDialogElement>('dialog[aria-label="Template preview"]')!;
+  await act(async () => button('Next template', detail).click());
+  expect(current()).toBe('Agentcard | Black-and-Gold Type and Card Launch');
+  await act(async () => button('Close template preview', detail).click());
+  await act(async () => button('Back to Explore').click());
+  expect(onClose).toHaveBeenCalledOnce();
+});
+
 it('keeps the search in the header and preserves filters when clearing the keyword', async () => {
   await mount();
   expect(host.querySelectorAll('input[type=search]')).toHaveLength(1);

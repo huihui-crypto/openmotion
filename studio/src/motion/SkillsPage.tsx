@@ -39,7 +39,7 @@ function githubRepositoryOf(source?: string): string | null {
 }
 
 /** Open-source motion techniques the user can hand to an Agent through OpenMotion MCP. */
-export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate, briefs, previewsEnabled = true, hasProject = false }: { studio?: TechniqueStudio; previewsEnabled?: boolean; briefs?: Map<string, SkillParameters>; onCreate?: (destination: StudioDestination, draft?: AssetDraft) => void; onExplore?: () => void; skillId: string | null; onSkillChange: (id: string | null) => void; hasProject?: boolean }) {
+export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate, briefs, previewsEnabled = true, hasProject = false, detailOnly = false }: { detailOnly?: boolean; studio?: TechniqueStudio; previewsEnabled?: boolean; briefs?: Map<string, SkillParameters>; onCreate?: (destination: StudioDestination, draft?: AssetDraft) => void; onExplore?: () => void; skillId: string | null; onSkillChange: (id: string | null) => void; hasProject?: boolean }) {
   const { t, locale } = useI18n(), toast = useToast(), displayName = displayNameOf(t);
   const chrome = useOptionalWorkspaceChrome();
   const [query, setQuery] = useState(''), [category, setCategory] = useState<SkillCategory | null>(null);
@@ -49,6 +49,7 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
   const main = useRef<HTMLDivElement>(null);
   const captureLayout = useSkillLayoutMotion(main, instantDetail);
   const categories = useRef<HTMLDivElement>(null);
+  const detailClose = useRef<HTMLButtonElement>(null);
   const [categoryEdges, setCategoryEdges] = useState({ start: false, end: false });
   useEffect(() => {
     const element = categories.current;
@@ -77,9 +78,10 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
   }, []);
   const instruction = useRef<HTMLPreElement>(null), command = useRef<HTMLPreElement>(null), search = useRef<HTMLInputElement>(null);
   useEffect(() => {
+    if (detailOnly) return;
     const focus = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); search.current?.focus(); } };
     window.addEventListener('keydown', focus); return () => window.removeEventListener('keydown', focus);
-  }, []);
+  }, [detailOnly]);
   // Select the failed text in its own visible surface so one ⌘C copies the requested content.
   useEffect(() => {
     if (!manualCopy || (manualCopy.surface === 'command' && !commandOpen)) return;
@@ -114,12 +116,13 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
     setParameters(next);
   };
   // One page view per visit; one detail view per opened Skill; one search result per settled query (500 ms after typing stops).
-  useEffect(() => { tracking.reportSkillsPageView(hasProject); }, []);
+  useEffect(() => { if (!detailOnly) tracking.reportSkillsPageView(hasProject); }, []);
   const detailView = useRef<string | undefined>(undefined), searchId = useRef<string | undefined>(undefined);
   useEffect(() => {
     detailView.current = selected ? tracking.newTrackingId() : undefined;
     if (selected && detailView.current) tracking.reportSkillDetailShown(selected, detailView.current);
   }, [selected?.id]);
+  useEffect(() => { if (detailOnly && selected) detailClose.current?.focus({ preventScroll: true }); }, [detailOnly, selected]);
   // Any change to the query, category or interface language (which changes what matches) ends the previous search; a card opened before the new one settles carries no search id.
   const resultCount = visible.length;
   useEffect(() => {
@@ -157,10 +160,21 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
       setManualCopy({ text, surface }); toast.showToast(t(surface === 'command' ? 'Copy failed. Select and copy the command below.' : 'Copy failed. Select and copy the instruction below.'), 'error', 'feedback');
     }
   }
-  return <Collapsible.Root open={Boolean(selected)} className="om-gallery-surface om-skills-page om-skills-library" data-detail={Boolean(selected)}
-    onPointerDownCapture={() => setInstantDetail(false)} onKeyDownCapture={() => setInstantDetail(true)}>
+  const closeDetail = () => {
+    if (!selected) return;
+    captureLayout();
+    tracking.reportSkillDetailClick(selected, 'close_detail', detailView.current);
+    onSkillChange(null);
+  };
+  return <Collapsible.Root open={Boolean(selected)} className={detailOnly ? 'om-collection-skill' : 'om-gallery-surface om-skills-page om-skills-library'} data-detail={Boolean(selected)}
+    onPointerDownCapture={() => setInstantDetail(false)} onKeyDownCapture={() => setInstantDetail(true)}
+    onKeyDown={detailOnly ? event => {
+      if (event.key !== 'Escape' || event.defaultPrevented || commandOpen) return;
+      event.preventDefault();
+      closeDetail();
+    } : undefined}>
     <StudioToastViewport {...toast} />
-    <div ref={main} className="om-skills-main">
+    {!detailOnly && <div ref={main} className="om-skills-main">
       <main className="om-gallery-results">
         {studio ? <section className="om-specialty-intro">
           <div><h1 className="om-title">{t(studio.title)}</h1><p className="om-muted">{t(studio.briefHint)}</p>
@@ -194,11 +208,11 @@ export function SkillsPage({ skillId, onSkillChange, studio, onExplore, onCreate
         </div>
         {!visible.length && <div className="om-empty"><MotionIcon name="search" size={28} /><p>{t('No matching skills.')}</p><button className="om-button" onClick={() => { setQuery(''); setCategory(null); tracking.reportSkillFiltersCleared(); }}>{t('Clear filters')}</button></div>}
       </main>
-    </div>
+    </div>}
     <Collapsible.Panel render={<aside />} className="om-skill-detail om-surface-divider om-detail-reveal" data-instant={instantDetail}
       inert={!selected} aria-hidden={!selected || undefined} aria-label={selected ? displayName(selected) : undefined}>
       <RetainedDetailContent>{selected ? <>
-      <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button className="motion-icon-button" aria-label={t('Close skill')} onClick={() => { captureLayout(); tracking.reportSkillDetailClick(selected, 'close_detail', detailView.current); onSkillChange(null); }}><RemixIcon name="close-line" size={18} /></button></header>
+      <header className="om-skill-detail-header"><h2 className="om-subtitle">{displayName(selected)}</h2><button ref={detailClose} className="motion-icon-button" aria-label={t('Close skill')} onClick={closeDetail}><RemixIcon name="close-line" size={18} /></button></header>
       <SkillMedia key={selected.id} skill={selected} large />
       <section className="om-skill-form" aria-label={t('Brief')}>
         <label><span className="om-subtitle">{t('Your brief')}</span><span className="om-field"><textarea rows={4} maxLength={500} value={parameters.subject} placeholder={t(selected.example)} onChange={event => updateBrief({ ...parameters, subject: event.target.value })} /></span></label>
@@ -254,7 +268,7 @@ function RetainedDetailContent({ children }: { children: ReactElement | null }) 
 }
 
 function SkillCard({ skill, name, useWhen, selected, onSelect }: { skill: MotionSkill; name: string; useWhen: string; selected: boolean; onSelect: () => void }) {
-  const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false), [near, setNear] = useState(false);
+  const [hovered, setHovered] = useState(false), [visible, setVisible] = useState(false);
   const card = useRef<HTMLButtonElement>(null);
   // Autoplay while at least half the card is on screen (paused off screen, so only the visible few load).
   // Reduced-motion users keep hover-to-play.
@@ -262,10 +276,8 @@ function SkillCard({ skill, name, useWhen, selected, onSelect }: { skill: Motion
     const element = card.current;
     if (!element || typeof IntersectionObserver === 'undefined' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.5 });
-    // Start buffering a screen ahead so playback is smooth when the card arrives.
-    const ahead = new IntersectionObserver(([entry]) => { if (entry.isIntersecting) setNear(true); }, { rootMargin: '100% 0px' });
-    observer.observe(element); ahead.observe(element);
-    return () => { observer.disconnect(); ahead.disconnect(); };
+    observer.observe(element);
+    return () => observer.disconnect();
   }, []);
   const active = hovered || visible;
   const setActive = setHovered;
@@ -273,7 +285,7 @@ function SkillCard({ skill, name, useWhen, selected, onSelect }: { skill: Motion
     onClick={onSelect} aria-pressed={selected} aria-labelledby={`skill-title-${skill.id}`} aria-describedby={`skill-purpose-${skill.id}`}
     onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)} onFocus={() => setActive(true)} onBlur={() => setActive(false)}>
     <span className="om-gallery-cover om-skill-card-demo">
-      <SkillMedia skill={skill} playing={active} near={near || hovered} />
+      <SkillMedia skill={skill} playing={active} />
     </span>
     <span className="om-skill-card-meta">
       <span className="om-skill-card-heading"><strong id={`skill-title-${skill.id}`}>{name}</strong></span>

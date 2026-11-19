@@ -140,6 +140,9 @@ jobs:
       - name: Check capture failure classification and bounded recovery
         if: steps.scope.outputs.full == 'true'
         run: node --test tests/capture-retry.test.ts
+      - name: Check composition, discovery and install attribution
+        if: steps.scope.outputs.full == 'true'
+        run: node --test tests/composition-canvas.test.ts tests/short-form-discovery.test.ts tests/install-attribution-worker.test.ts
 
   platform-reliability:
     name: Workspace reliability (${{ matrix.os }})
@@ -458,6 +461,31 @@ jobs:
               node scripts/test-package.mjs build "$target" "$version" --template-env="$TEMPLATE_ENVIRONMENT"
             done
           fi
+      - name: Report default npm package size and enforce its budget
+        if: steps.scope.outputs.full == 'true' && (inputs.format || 'npm') == 'npm'
+        env:
+          TEMPLATE_ENVIRONMENT: ${{ inputs.template_environment || 'dev' }}
+        run: |
+          version=$(node scripts/test-package.mjs version "$GITHUB_RUN_NUMBER" "${GITHUB_RUN_ATTEMPT:-1}")
+          baseline=()
+          if [[ "$GITHUB_EVENT_NAME" == pull_request ]]; then
+            base_tree="$RUNNER_TEMP/package-size-base"
+            base_output="$RUNNER_TEMP/package-size-base-dist"
+            # The first parent is the exact target commit used to build this PR merge tree.
+            if git worktree add --detach "$base_tree" HEAD^1 && (
+              cd "$base_tree" &&
+              npm ci --no-audit --no-fund &&
+              npm run build:studio &&
+              node scripts/package-npm.mjs "$base_output" "$version" --template-env="$TEMPLATE_ENVIRONMENT"
+            ) > "$RUNNER_TEMP/npm-package-baseline.log" 2>&1; then
+              baseline=(--baseline "$base_output/openmotion-app-$version.tgz")
+            else
+              echo "::warning::Could not build the PR baseline. The candidate size and budget are still checked."
+              tail -40 "$RUNNER_TEMP/npm-package-baseline.log" 2>/dev/null || true
+              echo 'Package baseline unavailable. Reporting candidate size only.' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+          python3 .github/scripts/npm-package-size.py "dist/$version/openmotion-app-$version.tgz" "${baseline[@]}"
       - name: Generate candidate installation guide
         if: steps.scope.outputs.full == 'true' && (inputs.format || 'npm') == 'npm' && (inputs.template_environment || 'dev') == 'dev'
         run: |

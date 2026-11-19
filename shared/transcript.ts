@@ -114,17 +114,22 @@ export function exportTranscript(document: TranscriptDocument, format: Transcrip
 export function exportSubtitleSegments(segments: TranscriptSegment[], format: 'srt' | 'vtt') {
   if (format !== 'srt' && format !== 'vtt') throw new Error('Choose SRT or VTT');
   const separator = format === 'vtt' ? '.' : ',';
-  const cues = segments.map((s, index) => `${index + 1}\n${transcriptTimestamp(s.start!, separator)} --> ${transcriptTimestamp(s.end!, separator)}\n${s.text.replace(/\r?\n\s*\r?\n/g, '\n')}`);
+  // WebVTT cue text is markup: a bare "<" opens a tag and "&" a character reference. SRT is plain text.
+  const cueText = (text: string) => format === 'vtt' ? text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : text;
+  const cues = segments.map((s, index) => `${index + 1}\n${transcriptTimestamp(s.start!, separator)} --> ${transcriptTimestamp(s.end!, separator)}\n${cueText(s.text.replace(/\r?\n\s*\r?\n/g, '\n'))}`);
   return { content: (format === 'vtt' ? 'WEBVTT\n\n' : '') + cues.join('\n\n') + '\n', mimeType: format === 'vtt' ? 'text/vtt' : 'application/x-subrip', extension: format };
 }
 
 export function parseTranscriptSubtitles(text: string): TranscriptSegment[] {
   if (typeof text !== 'string' || text.length > 2_000_000) throw new Error('Subtitle file exceeds 2 MB');
   const time = (s: string) => { const parts = s.replace(',', '.').split(':').map(Number); const seconds = parts.pop()!, minutes = parts.pop()!, hours = parts.pop() ?? 0; if (minutes >= 60 || seconds >= 60) throw new Error('Invalid subtitle timestamp'); return hours * 3600 + minutes * 60 + seconds; };
+  // Read back the references a WebVTT export writes; one pass, so "&amp;lt;" stays the text "&lt;".
+  const references: Record<string, string> = { amp: '&', lt: '<', gt: '>' };
+  const cueText = /^\uFEFF?WEBVTT/.test(text) ? (value: string) => value.replace(/&(amp|lt|gt);/g, (_, name: string) => references[name]) : (value: string) => value;
   const rows = text.replace(/^\uFEFF/, '').replace(/\r/g, '').split(/\n\s*\n/).flatMap(block => {
     const match = block.match(/(?:^|\n)((?:\d{2,}:)?\d{2}:\d{2}[,.]\d{3})\s+-->\s+((?:\d{2,}:)?\d{2}:\d{2}[,.]\d{3})[^\n]*\n([\s\S]+)/);
     if (!match && block.includes('-->')) throw new Error('Invalid subtitle cue');
-    return match ? [{ start: time(match[1]), end: time(match[2]), text: match[3].trim() }] : [];
+    return match ? [{ start: time(match[1]), end: time(match[2]), text: cueText(match[3].trim()) }] : [];
   });
   if (!rows.length) throw new Error('No valid subtitle cues were found');
   return validateSegments(rows);

@@ -435,6 +435,7 @@ it('filters Explore by media and opens a reusable editing preset or template det
   expect([...scenes].map(button => button.dataset.scene)).toEqual(['music', 'speech']);
   await act(async () => filter[0].click());
   await click('Next');
+  await click('Next');
   expect(container.querySelector('.om-discovery-hero')?.getAttribute('data-scene')).toBe('shot-image');
   await click('Preview template Product Promo');
   expect(page()).toMatchObject({ explore: true, templates: true, template: 'product-promo' });
@@ -506,21 +507,23 @@ it('rotates the visible Explore spotlight and plays visible Skill previews witho
     container.querySelector<HTMLElement>(section + ' [data-playback-id]')!);
   vi.useFakeTimers();
   try {
-    act(() => { observed.get(hero)!(true); cards.forEach(card => observed.get(card)!(true)); });
+    await act(async () => { observed.get(hero)!(true); cards.forEach(card => observed.get(card)!(true)); });
     expect(hero.dataset.scene).toBe('motion');
-    expect(hero.querySelector('video[src]')).toBeTruthy();
+    expect(hero.querySelector('video[src]')?.getAttribute('src')).toMatch(/^blob:/);
     for (const card of cards) expect(card.querySelector('video[src]')).toBeTruthy();
     act(() => { vi.advanceTimersByTime(6000); });
-    expect(hero.dataset.scene).toBe('shot-image');
+    expect(hero.dataset.scene).toBe('black-friday');
     expect(hero.querySelectorAll('.om-feature-slide:not([inert])')).toHaveLength(1);
     act(() => { vi.advanceTimersByTime(2500); });
     await click('Pause');
     act(() => { vi.advanceTimersByTime(6000); });
-    expect(hero.dataset.scene).toBe('shot-image');
+    expect(hero.dataset.scene).toBe('black-friday');
     await click('Play');
     act(() => { vi.advanceTimersByTime(3500); });
+    expect(hero.dataset.scene).toBe('shot-image');
+    await act(async () => { vi.advanceTimersByTime(6000); });
     expect(hero.dataset.scene).toBe('text-to-video');
-    expect(hero.querySelector('video[src]')).toBeTruthy();
+    expect(hero.querySelector('video[src]')?.getAttribute('src')).toMatch(/^blob:/);
     act(() => { observed.get(hero)!(false); cards.forEach(card => observed.get(card)!(false)); });
     expect(hero.querySelector('video[src]')).toBeNull();
     for (const card of cards) expect(card.querySelector('video[src]')).toBeNull();
@@ -529,6 +532,35 @@ it('rotates the visible Explore spotlight and plays visible Skill previews witho
     await act(async () => hero.querySelector<HTMLButtonElement>('.om-media-segments [aria-label="Featured · Product portrait"]')!.click());
     expect(hero.dataset.scene).toBe('text-to-image');
   } finally { vi.useRealTimers(); }
+});
+
+it('opens Black Friday from the second Explore slide and reuses the native Skill detail in the collection', async () => {
+  await mount();
+  await click('Explore');
+  const hero = container.querySelector<HTMLElement>('.om-feature-carousel')!;
+  const segments = hero.querySelectorAll<HTMLButtonElement>('.om-media-segments button');
+  expect(segments[1].getAttribute('aria-label')).toBe('Featured · Black Friday collection');
+  await act(async () => segments[1].click());
+  await click('View collection');
+  expect(page()).toMatchObject({ explore: true, templates: true, blackFriday: true });
+  expect(container.querySelector('[aria-label="Video purpose"]')).toBeNull();
+  const skill = container.querySelector<HTMLButtonElement>('[data-black-friday] .om-skill-gallery-card')!;
+  await act(async () => skill.click());
+  expect(page().skill).toBe('openmotion-sale-countdown');
+  expect(container.querySelector('.om-collection-skill aside .om-skill-form')).toBeTruthy();
+  expect(container.querySelector('.om-collection-skill aside .om-skill-prompt')).toBeTruthy();
+  const close = button('Close skill');
+  expect(document.activeElement).toBe(close);
+  await act(async () => close.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  expect(page()).toMatchObject({ explore: true, templates: true, blackFriday: true, skill: null });
+  expect(document.activeElement).toBe(skill);
+  expect(container.querySelector('[data-black-friday] .om-skill-gallery-card')).toBe(skill);
+  await click('Back to Explore');
+  expect(page()).toMatchObject({ explore: true, templates: false, blackFriday: false });
+  expect(hero.dataset.scene).toBe('black-friday');
+  await click('Template library');
+  expect(container.querySelector('[aria-label="Video purpose"]')).toBeTruthy();
+  expect(container.querySelector('[aria-label="Video purpose"] [aria-label="Black Friday collection"]')).toBeNull();
 });
 
 it('carries a community template brief and an audio example into the matching studio without submitting generation', async () => {

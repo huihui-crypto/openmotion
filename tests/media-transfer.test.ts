@@ -69,6 +69,37 @@ test('cleanup accepts LFS as an input and records legacy paths for verified opti
   assert(Buffer.from(plan.changes.find(change => change.path === '.gitignore')!.content!, 'base64').toString().includes('/' + name));
 });
 
+test('prepares a small Skill preview GIF for the hosted poster workflow', async t => {
+  const f = fixture(), name = 'studio/src/motion/skill-covers/animated-card.gif';
+  const poster = 'studio/src/motion/skill-covers/animated-card.webp';
+  const base = f.tree();
+  f.contents.set(name, f.bytes); f.contents.set(poster, Buffer.from('poster'));
+  const plan = await prepareMediaCleanup({ ...f.inputs(), base }, f.read);
+  assert.deepEqual(plan.media.map(file => file.path), [name]);
+  assert.equal(plan.changes.find(change => change.path === name)?.content, null);
+  assert(!plan.changes.some(change => change.path === poster));
+  const directory = await isolated(t);
+  git(directory, ['init']);
+  for (const filename of [name, poster]) {
+    const file = path.join(directory, filename);
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, f.contents.get(filename)!);
+  }
+  git(directory, ['add', '.']);
+  assert.match(checkRepositoryStorage(directory).errors.join('\n'), /Skill previews are hosted/);
+  for (const change of plan.changes) {
+    const file = path.join(directory, change.path);
+    if (change.content === null) await rm(file);
+    else await writeFile(file, Buffer.from(change.content, 'base64'));
+  }
+  git(directory, ['add', '.']);
+  assert.deepEqual(checkRepositoryStorage(directory).errors, []);
+  const fetcher = async () => new Response(new Uint8Array(f.bytes));
+  assert.deepEqual(await pullMedia(directory, undefined, fetcher), { selected: 0 });
+  assert.deepEqual(await pullMedia(directory, 'studio/src/motion/skill-covers', fetcher), { selected: 1 });
+  assert.deepEqual(await readFile(path.join(directory, name)), f.bytes);
+});
+
 test('encoded filenames and a later revision of prepared media retain working references', async t => {
   const f = fixture(), name = prefix + 'source/assets/ref one.mp4';
   f.contents.set(name, f.bytes);

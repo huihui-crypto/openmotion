@@ -2,43 +2,43 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import type { MotionSkill, SkillMotif } from './skillCatalog';
+import { useSkillPreview } from './useSkillPreview';
 import './skills.css';
 
 /** Upstream demo media when available; otherwise the package-token illustration. */
-export function SkillMedia({ skill, playing = false, near = false, large = false }: { skill: MotionSkill; playing?: boolean; near?: boolean; large?: boolean }) {
+export function SkillMedia({ skill, playing = false, large = false }: { skill: MotionSkill; playing?: boolean; large?: boolean }) {
   const { t } = useI18n();
   const [failed, setFailed] = useState(false);
   const cover = failed ? undefined : skill.cover;
   const play = large || playing;
-  if (!cover || (!play && cover.gif && !cover.poster)) return <SkillCover motif={skill.motif} name={skill.name} large={large} playing={play} />;
+  const video = useSkillPreview(cover?.video, play);
+  if (!cover || (!video && !cover.poster && !(play && cover.gif))) return <SkillCover motif={skill.motif} name={skill.name} large={large} playing={play} />;
   // A side-by-side before/after demo becomes a split cover (like an upscale preview):
   // each half fills one side, a divider runs down the middle and the skill name sits on it.
   if (cover.compare) return <span className="om-skill-media om-skill-split" data-large={large}>
     {(['before', 'after'] as const).map(side => <span key={side} className="om-skill-split-half" data-side={side}>
-      <CoverMedia cover={cover} play={play} near={near} large={large} onFail={() => setFailed(true)} />
+      <CoverMedia cover={cover} video={video} play={play} large={large} onFail={() => setFailed(true)} />
     </span>)}
     <span className="om-skill-split-divider" aria-hidden="true" />
     <span className="om-skill-split-label" aria-hidden="true"><RemixIcon name="sparkling-line" size={14} />{t('Remove the AI look')}</span>
     <span className="om-skill-split-caption" data-side="before" aria-hidden="true">{t('Before')}</span>
     <span className="om-skill-split-caption" data-side="after" aria-hidden="true">{t('After')}</span>
   </span>;
-  return <span className="om-skill-media" data-large={large}><CoverMedia cover={cover} play={play} near={near} large={large} onFail={() => setFailed(true)} /></span>;
+  return <span className="om-skill-media" data-large={large}><CoverMedia cover={cover} video={video} play={play} large={large} onFail={() => setFailed(true)} /></span>;
 }
 
-/** Poster first; the demo video (or GIF) plays only while the card is active.
- * The video element owns its poster, so playback starts in place with no image-to-video swap,
- * and it starts buffering as soon as the card nears the viewport. */
-function CoverMedia({ cover, play, near, large, onFail }: { cover: NonNullable<MotionSkill['cover']>; play: boolean; near: boolean; large: boolean; onFail: () => void }) {
-  const video = useRef<HTMLVideoElement>(null);
+/** Keep the poster visible while an active card's demo loads. */
+function CoverMedia({ cover, video, play, large, onFail }: { cover: NonNullable<MotionSkill['cover']>; video?: string; play: boolean; large: boolean; onFail: () => void }) {
+  const player = useRef<HTMLVideoElement>(null);
   // A video the browser cannot load or decode falls back to its poster before the motif illustration.
   const [videoFailed, setVideoFailed] = useState(false);
   useEffect(() => {
-    const element = video.current;
-    if (!element || !cover.video) return;
+    const element = player.current;
+    if (!element || !video) return;
     if (play) void element.play().catch(() => {}); else element.pause();
-  }, [play, cover.video]);
-  if (cover.video && !videoFailed) return <video ref={video} src={near || play ? cover.video : undefined} poster={cover.poster} muted playsInline loop
-    preload={large || near || play ? 'auto' : cover.poster ? 'none' : 'metadata'} aria-hidden="true" onError={() => cover.poster ? setVideoFailed(true) : onFail()} />;
+  }, [play, video]);
+  if (video && !videoFailed) return <video ref={player} src={video} poster={cover.poster} muted playsInline loop
+    preload="auto" aria-hidden="true" onError={() => cover.poster ? setVideoFailed(true) : onFail()} />;
   const still = cover.poster ?? cover.gif;
   return <>{cover.gif && <img src={play ? cover.gif : still} alt="" loading="lazy" decoding="async" onError={onFail} />}
     {!cover.gif && cover.poster && <img src={cover.poster} alt="" loading="lazy" decoding="async" onError={onFail} />}</>;

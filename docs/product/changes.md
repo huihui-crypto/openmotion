@@ -1,5 +1,10 @@
 # 公开变更记录
 
+## 2026-11-19: Load Skill card animation on demand
+
+- Bundle static WebP posters for Skills. Load preview videos when viewport autoplay, hover, keyboard focus or opening the Skill triggers playback. Keep the poster available when the network is unavailable.
+- Use the media preparation workflow for new previews and report the default npm package size in PR and release candidate builds.
+
 ## 2026-11-18: Add the holiday-sale library Skills
 
 - Add optional [`openmotion-sale-promo`](../../library/skills/openmotion-sale-promo/SKILL.md): one offer → a 10 or 15 s promo (occasion, discount, regular price struck through before the sale price lands, code and real deadline, call to action) in 9:16, 4:5, 1:1 or 16:9.

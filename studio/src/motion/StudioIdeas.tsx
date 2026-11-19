@@ -5,12 +5,18 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { MediaPreviewPlayer } from '../components/nle/MediaPreviewPlayer';
 import { needsImage, type StudioDestination } from './creativeStudios';
 import { studioExamples, sceneLayout, type SceneExample } from './sceneShowcase';
+import { skillPreviewSnapshot } from './skillCatalog';
+import { useSkillPreview } from './useSkillPreview';
 
 function ExampleMedia({ example, enabled }: { example: SceneExample; enabled: boolean }) {
   const { t } = useI18n();
   const stage = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
   const [audioUrl, setAudioUrl] = useState('');
+  const [requestedClip, setRequestedClip] = useState<string>();
+  const archivedClip = example.clip?.startsWith(skillPreviewSnapshot);
+  const clip = useSkillPreview(example.clip, enabled && !failed && (!archivedClip || requestedClip === example.clip), setFailed);
+  useEffect(() => { if (!enabled) setRequestedClip(undefined); }, [enabled]);
   useEffect(() => {
     if (!example.audio || !enabled || failed) return;
     // The bundled demo is small. A blob URL supports seeking even on static hosts without byte ranges.
@@ -42,7 +48,9 @@ function ExampleMedia({ example, enabled }: { example: SceneExample; enabled: bo
     return () => { observer?.disconnect(); document.removeEventListener('visibilitychange', pause); };
   }, [enabled]);
   return <div ref={stage} className="om-scene-example-media">
-    {example.clip && !failed && enabled ? <video controls playsInline preload="none" poster={example.poster} src={example.clip} aria-label={t(example.title)} onError={() => setFailed(true)} /> : !example.audio && <img src={example.poster} alt="" />}
+    {clip && !failed ? <video controls playsInline autoPlay={archivedClip} preload="none" poster={example.poster} src={clip} aria-label={t(example.title)} onError={() => setFailed(true)} /> : !example.audio && <img src={example.poster} alt="" />}
+    {enabled && archivedClip && !clip && !failed && <button type="button" className="om-button om-scene-preview-action"
+      disabled={requestedClip === example.clip} onClick={() => setRequestedClip(example.clip)}>{t(requestedClip === example.clip ? 'Loading…' : 'Play')}</button>}
     {example.audio && !failed && enabled && <div className="om-scene-audio">
       <div className="om-sound-sleeve" aria-hidden="true"><img src={example.poster} alt="" /></div>
       <div className="om-sound-track"><h3 className="om-subtitle">{t('OpenMotion welcome soundtrack')}</h3>
@@ -51,7 +59,7 @@ function ExampleMedia({ example, enabled }: { example: SceneExample; enabled: bo
           : <div className="om-sound-loading" role="status" aria-label={t('Loading…')}><Skeleton /></div>}
       </div>
     </div>}
-    {failed && <button className="om-button om-scene-retry" onClick={() => setFailed(false)}>{t('Retry preview')}</button>}
+    {failed && <button className="om-button om-scene-preview-action" onClick={() => setFailed(false)}>{t('Retry preview')}</button>}
     {example.credit && <small className="om-scene-credit">{example.credit}</small>}
   </div>;
 }
@@ -73,7 +81,7 @@ export function StudioIdeas({ destination, onPrompt, active = true }: { destinat
   </section> : <section className="om-scene-guide">
     <div className="om-guide-heading">{idea.title !== scene.label && <span className="om-eyebrow">{t(scene.label)}</span>}<h2 className="om-title">{t(idea.title)}</h2></div>
     <div className="om-scene-example om-card">
-      {scene.id === 'speech' ? <blockquote className="om-speech-script"><RemixIcon name="voiceprint-line" size={28} /><p>{t(idea.prompt)}</p></blockquote> : <ExampleMedia example={idea} enabled={active} />}
+      {scene.id === 'speech' ? <blockquote className="om-speech-script"><RemixIcon name="voiceprint-line" size={28} /><p>{t(idea.prompt)}</p></blockquote> : <ExampleMedia key={idea.title} example={idea} enabled={active} />}
       <div className="om-scene-example-copy">{scene.id === 'speech' ? <span className="om-muted">{t('Speech text')}</span> : <p>{t(idea.prompt)}</p>}<button className="om-button" onClick={() => onPrompt(t(idea.prompt))}><RemixIcon name="add-line" size={15} />{t('Use prompt')}</button></div>
     </div>
     <ol className="om-guide-steps">{[

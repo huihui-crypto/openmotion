@@ -36,8 +36,8 @@ export function reportSkillSearch(searchId: string, query: string, resultCount: 
   send('skill_search_result', { ...skills, area: 'skill_discovery', search_id: searchId, search_keyword: keyword, query_length: query.trim().length,
     result_count: resultCount, outcome: 'success', ...(category ? { skill_category: skillCategoryId(category) } : {}) });
 }
-export function reportSkillCardOpened(skill: MotionSkill, position: number, searchId: string | undefined) {
-  send('ui_click', { ...skills, area: 'skill_card', element: 'open_detail', ...skillFields(skill), position, ...(searchId ? { search_id: searchId } : {}) });
+export function reportSkillCardOpened(skill: MotionSkill, position: number, searchId: string | undefined, placement?: 'black_friday') {
+  send('ui_click', { ...skills, area: 'skill_card', element: 'open_detail', ...skillFields(skill), position, ...(placement ? { placement } : {}), ...(searchId ? { search_id: searchId } : {}) });
 }
 export function reportSkillDetailShown(skill: MotionSkill, detailViewId: string) {
   send('surface_view', { ...skills, area: 'skill_detail', element: 'detail', ...skillFields(skill), detail_view_id: detailViewId });

@@ -7,6 +7,7 @@ import { transport } from './http.ts';
 import { execute, pluginRoot } from '../hyperframes.ts';
 import { verificationBinaries } from '../scripts/verify-export.ts';
 import { AssetLibrary, assetHash } from '../gateway/asset-library.ts';
+import { probeLibraryMedia } from '../gateway/asset-probe.ts';
 import { ModelGateway, gatewayFor } from '../gateway/service.ts';
 import { assetOperation } from '../gateway/asset-operations.ts';
 import { AssetConversations, type AssetAgentRpc } from '../gateway/asset-chat.ts';
@@ -65,6 +66,16 @@ test('immutable upload versions, content-based receipts, filters and reversible 
   await writeFile(path.join(store.directory, 'fake.png'), '<script>bad</script>');
   await assert.rejects(library.importFile(path.join(store.directory, 'fake.png'), { requestId: 'fake', name: 'fake' }), /not readable/);
 }, false));
+
+test('an AVIF still is probed as an image, not as the MP4 its container resembles', () => fixture(async store => {
+  // 64 x 64 red still, major brand "avif".
+  const still = Buffer.from('AAAAIGZ0eXBhdmlmAAAAAGF2aWZtaWYxbWlhZk1BMUIAAAD5bWV0YQAAAAAAAAAvaGRscgAAAAAAAAAAcGljdAAAAAAAAAAAAAAAAFBpY3R1cmVIYW5kbGVyAAAAAA5waXRtAAAAAAABAAAAHmlsb2MAAAAARAAAAQABAAAAAQAAASEAAAAlAAAAKGlpbmYAAAAAAAEAAAAaaW5mZQIAAAAAAQAAYXYwMUNvbG9yAAAAAGppcHJwAAAAS2lwY28AAAAUaXNwZQAAAAAAAABAAAAAQAAAABBwaXhpAAAAAAMICAgAAAAMYXYxQ4EADAAAAAATY29scm5jbHgAAgACAAIAAAAAF2lwbWEAAAAAAAAAAQABBAECgwQAAAAtbWRhdAoLAgAABVV//Gr5gEAyFhAA1wIZZMMCAAAIAYtJxybx8/EU+8A=', 'base64');
+  const file = path.join(store.directory, 'still.avif');
+  await writeFile(file, still);
+  assert.deepEqual(await probeLibraryMedia(file), { modality: 'image', mimeType: 'image/avif', extension: 'avif', bytes: still.length, width: 64, height: 64 });
+  const asset = await new AssetLibrary(store).importFile(file, { requestId: 'avif', name: 'Still' });
+  assert.equal(asset.modality, 'image');
+}));
 
 test('workspace generation keeps job identity and pinned references without requiring a project', () => fixture(async store => {
   const original = await image(store.directory), bytes = await readFile(original); let calls = 0;

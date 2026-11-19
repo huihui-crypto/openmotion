@@ -92,6 +92,8 @@ a.om-skill-source { color: var(--motion-strong); }
 .om-skill-prompt { display: grid; gap: var(--motion-space-6); }
 .om-skill-prompt pre { max-height: 120px; overflow: auto; margin: 0; padding: var(--motion-space-12); white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--motion-font-mono); font-size: var(--motion-text-sm); line-height: 1.6; color: var(--motion-text); background: var(--motion-inset); border-radius: var(--motion-radius-md); user-select: text; }
 .om-skill-detail { padding-block: 0; }
+.om-collection-skill { display: flex; flex: none; width: 400px; max-width: 46%; min-height: 0; }
+.om-collection-skill > .om-skill-detail { width: 100%; max-width: none; }
 /* The copy and connect actions stay pinned to the panel bottom while the brief scrolls. */
 .om-skill-footer { position: sticky; bottom: 0; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--motion-space-8); margin-top: auto; margin-inline: calc(var(--motion-space-20) * -1); padding: var(--motion-space-12) var(--motion-space-20) var(--motion-space-16); background: var(--color-template-surface); border-top: 1px solid var(--color-template-line); }
 .om-skill-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--motion-space-8); }
@@ -100,6 +102,8 @@ a.om-skill-source { color: var(--motion-strong); }
 @media (max-width: 999px) {
   .om-skills-page:has(.om-skill-detail:not([hidden])) .om-skills-main { display: none; }
   .om-skill-detail { width: 100%; max-width: none; }
+  .om-collection-skill { flex: 1; width: 100%; max-width: none; }
+  [data-workspace-gallery]:has(+ .om-collection-skill) { display: none; }
 }
 .om-skill-shortcut { display: grid; gap: var(--motion-space-8); width: min(380px, calc(100vw - 32px)); }
 .om-skill-shortcut p { margin: 0; }

@@ -10,6 +10,9 @@ export function attributeGuide(text: string, source: string | null): string {
 }
 
 export function guideKey(url: URL): string | null {
+  if (url.hostname === 'releases.open-design.ai' && ['/motion', '/motion/'].includes(url.pathname)) {
+    return 'open-motion/install.md';
+  }
   if (url.pathname === '/motion/install.md') {
     if (url.hostname === 'open-design.powerformer.net') return 'open-motion/dev/install.md';
     if (url.hostname === 'open-design.ai') return 'open-motion/install.md';
