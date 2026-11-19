@@ -412,6 +412,10 @@ backend/data directory. Deterministic coverage lives in
   Studio form reports `asset_generation_submit_result` with `page_name=creative_studio` and the Studio, scene
   and model. Destinations are catalogue ids accepted only as `slug`s (a model id that is not one is left out);
   prompts, example copy and model labels are never fields.
+- Model hubs (`page=model-hub`): one `page_view` with `page_name=model_hub`, `hub_id` and `signed_in` once the
+  sign-in state is known; clicks in areas `hub_header`, `hub_hero`, `hub_videos`, `hub_video_detail` and
+  `hub_availability` carry `hub_id`, `hub_video_id` (catalogue id), `signed_in` and, for scene filters, a
+  `filter_value` slug. Video titles, creators, post links and search text are never fields.
 - The template gallery shared with the website (`web/template-gallery.ts`, shown in the
   connection dialog):
   copy click and the actual copy result, preview open, use, category change and

@@ -11,6 +11,7 @@ import { StudioToastViewport } from '../components/StudioToastViewport';
 import { useI18n } from '../i18n/I18n';
 import { RemixIcon } from '../icons/RemixIcons';
 import type { HubVideo } from './gemini4Videos';
+import { reportHubClick } from './exploreTracking';
 import { designSystemAsset } from '../../../packages/design-system/index.js';
 import { platformIcons } from '../../../packages/design-system/platform-icons.js';
 
@@ -47,7 +48,7 @@ function rowMajorColumns(videos: HubVideo[], count: number) {
 }
 
 /** Community videos for a model hub. Each card plays its original post's media and links back to the author. */
-export function HubVideoWall({ videos, title, query = '' }: { videos: HubVideo[]; title: string; query?: string }) {
+export function HubVideoWall({ hubId, signedIn, videos, title, query = '' }: { hubId: string; signedIn?: boolean; videos: HubVideo[]; title: string; query?: string }) {
   const { t, locale } = useI18n();
   const [filter, setFilter] = useState<Filter>('all');
   // Cards autoplay while on screen, like the template gallery; reduced motion keeps posters.
@@ -101,13 +102,16 @@ export function HubVideoWall({ videos, title, query = '' }: { videos: HubVideo[]
     </div>
       <div className="om-hub-video-filters">
       <nav className="om-choice-tabs" aria-label={t('Filter videos')}>{tabs.map(([id, label]) => <button key={id} className="om-nav-item" aria-pressed={filter === id}
-        onClick={() => setFilter(id)}>{label}</button>)}</nav></div>
+        onClick={() => { reportHubClick(hubId, 'hub_videos', 'filter_option', { filter: id, signedIn }); setFilter(id); }}>{label}</button>)}</nav></div>
     </div>
     {!visible.length && <p className="om-muted om-hub-video-empty">{t('No videos match. Try another title, creator or scene.')}</p>}
     <div ref={grid} className="om-hub-video-grid">{rowMajorColumns(visible, columns).map((column, c) => <div key={c} className="om-hub-video-column">{column.map(video => <article key={video.id} className="om-gallery-card om-hub-video" data-has-video="true" data-video-id={video.id}>
       <div className="om-gallery-card-media">
         <button className="om-gallery-cover" style={{ aspectRatio: aspect(video) }}
-          aria-label={t('Preview video {title}', { title: t(video.title) })} onClick={event => { returnFocus.current = event.currentTarget; setOpen(video.id); }}>
+          aria-label={t('Preview video {title}', { title: t(video.title) })} onClick={event => {
+            reportHubClick(hubId, 'hub_videos', 'open_detail', { video: video.id, position: shown.indexOf(video), signedIn });
+            returnFocus.current = event.currentTarget; setOpen(video.id);
+          }}>
           <div className="om-gallery-poster" data-loaded="true"><img src={video.poster} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" /></div>
           <span className="om-gallery-card-shade" />
           <span className="om-gallery-card-top"><span>{video.variant}</span>{video.code && <span>{t('Made in code')}</span>}<span>{t('{value}s', { value: video.duration })}</span></span>
@@ -123,7 +127,8 @@ export function HubVideoWall({ videos, title, query = '' }: { videos: HubVideo[]
         {!still && inView.has(video.id) && video.platform === 'x' && <iframe className="om-gallery-animation" srcDoc={previewDocument(video)} sandbox="allow-scripts" allow="autoplay" tabIndex={-1} aria-hidden="true" title="" />}
       </div>
     </article>)}</div>)}</div>
-    {open && <HubVideoDetail videos={shown} id={open} onChange={setOpen} onClose={() => setOpen(null)} returnFocus={returnFocus} title={title} />}
+    {open && <HubVideoDetail videos={shown} id={open} onChange={setOpen} onClose={() => setOpen(null)} returnFocus={returnFocus} title={title}
+      track={(element, fields) => reportHubClick(hubId, 'hub_video_detail', element, { ...fields, signedIn })} />}
   </section>;
 }
 
@@ -143,8 +148,9 @@ My request:
 }
 
 /** The template detail, field for field: same native dialog, module classes, copy and actions as TemplateLibraryDialog's review mode. */
-function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title }: {
+function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title, track }: {
   videos: HubVideo[]; id: string; onChange: (id: string) => void; onClose: () => void; returnFocus: RefObject<HTMLElement | null>; title: string;
+  track: (element: Parameters<typeof reportHubClick>[2], fields: Parameters<typeof reportHubClick>[3]) => void;
 }) {
   const { t, locale } = useI18n();
   const { toasts, showToast, dismissToast } = useToast();
@@ -152,6 +158,7 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title }: {
   const [expanded, setExpanded] = useState(false), [manualCopy, setManualCopy] = useState(''), [downloading, setDownloading] = useState(false);
   async function downloadMotion() {
     const url = motionDocuments[video.id]; if (!url) return;
+    track('download_guide', { video: video.id });
     setDownloading(true);
     try {
       const response = await fetch(url); if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -162,7 +169,11 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title }: {
     finally { setDownloading(false); }
   }
   const index = Math.max(0, videos.findIndex(video => video.id === id)), video = videos[index];
-  const step = (delta: number) => onChange(videos[(index + delta + videos.length) % videos.length].id);
+  const step = (delta: number) => {
+    const next = videos[(index + delta + videos.length) % videos.length].id;
+    track(delta < 0 ? 'detail_previous' : 'detail_next', { video: next });
+    onChange(next);
+  };
   useEffect(() => {
     const element = dialog.current, focus = returnFocus.current;
     if (element && !element.open) element.showModal();
@@ -179,13 +190,17 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title }: {
     .concat(videos.filter(item => item.id !== video.id && item.category !== video.category && item.variant === video.variant)).slice(0, 8);
   const compact = new Intl.NumberFormat(locale, { notation: 'compact', maximumFractionDigits: 1 });
   async function copy(submit = false) {
+    track('start_use', { video: video.id, action: submit ? 'recreate_submit' : 'recreate' });
     const text = submit ? templateSubmissionPrompt(prompt, locale) : prompt;
     try {
       await navigator.clipboard.writeText(text); setManualCopy('');
       showToast(t(submit ? 'Contribution instruction copied. Paste into your Agent to prepare a reusable template and contribution PR.' : 'Copied. Paste into your Agent, add your materials and requirements, then send.'), 'info');
     } catch { setManualCopy(text); setExpanded(true); showToast(t('Copy failed. Select the instruction in this section to copy manually, or try again.'), 'error', 'feedback'); }
   }
-  const copyColor = (color: string) => void navigator.clipboard.writeText(color).then(() => showToast(t('Copied {color}', { color }), 'info')).catch(() => showToast(t('Could not copy color. Try again.'), 'error'));
+  const copyColor = (color: string) => {
+    track('copy_color', { video: video.id });
+    void navigator.clipboard.writeText(color).then(() => showToast(t('Copied {color}', { color }), 'info')).catch(() => showToast(t('Could not copy color. Try again.'), 'error'));
+  };
   return <div className={styles.library} style={{ display: 'contents' }}>
     <dialog ref={dialog} className={`${styles.detail} ${styles.reviewDetail} om-hub-video-detail`} aria-label={t('Video preview')}
       onCancel={event => { if (event.target !== dialog.current) return; event.preventDefault(); onClose(); }}
@@ -211,7 +226,7 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title }: {
           </div>
           <div className={styles.detailInfo}>
             <div className={styles.detailNav}>
-              <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus onClick={onClose} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
+              <Tooltip withinDialog wrap label={t('Close template preview')}><button className={styles.iconButton} autoFocus onClick={() => { track('close_detail', { video: video.id }); onClose(); }} aria-label={t('Close template preview')}><MotionIcon name="close" size={20} /></button></Tooltip>
               <span className={styles.detailCount}>{index + 1} / {videos.length}</span>
               <Tooltip withinDialog wrap label={t('Previous template')}><button className={styles.iconButton} disabled={videos.length < 2} onClick={() => step(-1)} aria-label={t('Previous template')}><MotionIcon name="arrow-left" size={18} /></button></Tooltip>
               <Tooltip withinDialog wrap label={t('Next template')}><button className={styles.iconButton} disabled={videos.length < 2} onClick={() => step(1)} aria-label={t('Next template')}><MotionIcon name="arrow-right" size={18} /></button></Tooltip>
@@ -221,10 +236,10 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title }: {
               <div className={styles.creator}>
                 <span className="om-gallery-avatar" aria-hidden="true">{video.authorName.slice(0, 1).toUpperCase()}{video.avatar && <img src={video.avatar} alt="" referrerPolicy="no-referrer" />}</span>
                 <div><strong>{video.author}</strong></div>
-                <Tooltip withinDialog wrap label={t('Source')}><a className={styles.sourceLink} href={video.post} target="_blank" rel="noreferrer" aria-label={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a></Tooltip>
+                <Tooltip withinDialog wrap label={t('Source')}><a className={styles.sourceLink} href={video.post} target="_blank" rel="noreferrer" onClick={() => track('view_source', { video: video.id })} aria-label={t('Source')}><MotionIcon name="arrow-up-right" size={18} /></a></Tooltip>
               </div>
               <section className={styles.reviewResources} aria-label={t('Video info')}>
-                <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={video.post} target="_blank" rel="noreferrer">{video.platform === 'x' ? <>{xMark}{t('View on X')}</> : <><MotionIcon name="arrow-up-right" size={16} />{t('View original')}</>}</a>
+                <a className={`om-text-link ${styles.repositoryLink}`} data-quiet href={video.post} target="_blank" rel="noreferrer" onClick={() => track('view_source', { video: video.id })}>{video.platform === 'x' ? <>{xMark}{t('View on X')}</> : <><MotionIcon name="arrow-up-right" size={16} />{t('View original')}</>}</a>
                 <div className={styles.reviewResourceActions}>{motionDocuments[video.id] && <Tooltip withinDialog wrap label="motion.md" description={t('Download the shot and motion notes.')}>
                   <button className={`om-text-link ${styles.repositoryLink}`} data-quiet disabled={downloading} onClick={() => void downloadMotion()}><MotionIcon name="download" size={17} />{t(downloading ? 'Downloading…' : 'Download motion.md')}</button>
                 </Tooltip>}</div>
@@ -253,7 +268,7 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title }: {
                 </header>
                 {manualCopy ? <textarea className={styles.manualCopy} readOnly rows={8} value={manualCopy} aria-label={t('Content to copy')} onFocus={event => event.currentTarget.select()} />
                   : <p className={expanded ? styles.fullInstruction : styles.shortInstruction}>{prompt}</p>}
-                <button className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{t(expanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button>
+                <button className={`om-text-link ${styles.expandInstruction}`} data-quiet aria-expanded={expanded} onClick={() => { track('expand_instruction', { video: video.id }); setExpanded(!expanded); }}>{t(expanded ? 'Show less' : 'Show instruction')}<MotionIcon name="chevron-down" size={14} /></button>
               </section>
               <section className={styles.productionNotes} aria-label={t('Production details')}>
                 <h3>{t('Production details')}</h3>
@@ -275,7 +290,7 @@ function HubVideoDetail({ videos, id, onChange, onClose, returnFocus, title }: {
         {similar.length > 0 && <section className={`om-gallery-results ${styles.relatedShelf}`} aria-label={t('Similar videos')}>
           <header className={styles.relatedHeading}><h3>{t('Similar templates')}</h3><p>{t(video.category)}</p></header>
           <div className="om-gallery-masonry">{similar.map(item => <article key={item.id} className="om-gallery-card om-hub-video">
-            <div className="om-gallery-card-media"><button className="om-gallery-cover" style={{ aspectRatio: aspect(item) }} aria-label={t('Preview video {title}', { title: t(item.title) })} onClick={() => onChange(item.id)}>
+            <div className="om-gallery-card-media"><button className="om-gallery-cover" style={{ aspectRatio: aspect(item) }} aria-label={t('Preview video {title}', { title: t(item.title) })} onClick={() => { track('open_detail', { video: item.id, position: similar.indexOf(item) }); onChange(item.id); }}>
               <div className="om-gallery-poster" data-loaded="true"><img src={item.poster} alt="" loading="lazy" referrerPolicy="no-referrer" /></div>
               <span className="om-gallery-card-shade" />
               {item.platform === 'x' && <span className="om-hub-video-heat">{xMark}<RemixIcon name="eye-line" size={12} />{compact.format(item.views)}</span>}
