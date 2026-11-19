@@ -47,7 +47,8 @@ const templateList = { ...templateSearchContext, result_count: 'integer', search
 const pages = ['home', 'studio', 'skills', 'brand_kit', 'mcp', 'assets', 'settings', 'projects', 'explore', 'creative_studio', 'api', 'model_overview', 'model_hub'] as const;
 // Explore, the top navigation and the creative Studios. Destinations are catalogue ids only: Studio, scene, community, carousel slide or model.
 // A model id that is not a bounded slug is left out. Prompts, example text and model labels never become fields.
-const creative = { studio_id: 'slug', scene_id: 'slug', model_id: 'slug', explore_community: 'slug', medium: ['all', 'image', 'video', 'audio'],
+// A catalogue model key `provider:modelId` is sent as model_provider + model_id; custom providers send neither.
+const creative = { studio_id: 'slug', scene_id: 'slug', model_provider: 'slug', model_id: 'code', explore_community: 'slug', medium: ['all', 'image', 'video', 'audio'],
   nav_target: 'slug', slide_id: 'slug', collection_id: 'slug', in_overflow: 'boolean', landing: 'boolean' } as const;
 // A model hub (page=model-hub) and one of its community videos, by catalogue id; whether the viewer is signed in to OpenDesign.
 const modelHub = { hub_id: 'slug', hub_video_id: 'slug', signed_in: 'boolean' } as const;
@@ -137,7 +138,7 @@ export const omEvents = {
   incident_confirmed: { producers: ['mcp', 'worker'], fields: { incident_id: 'uuid', incident_type: ['false_success', 'duplicate_charge', 'content_loss', 'cross_project_write', 'wrong_version_delivery', 'other'], severity: ['sev1', 'sev2', 'sev3'], subject_id: 'code', evidence_ref: 'code' }, required: ['incident_id', 'incident_type', 'severity', 'subject_id'] },
   recovery_recorded: { producers: ['mcp', 'worker'], fields: { incident_id: 'uuid', test_case_id: 'code', fault_type: 'code', data_integrity: ['preserved', 'lost', 'unknown'], duplicate_charge_check: ['clear', 'found', 'unknown'], recovery_result: ['success', 'failure', 'unknown'] }, required: ['incident_id', 'test_case_id', 'fault_type', 'data_integrity', 'duplicate_charge_check', 'recovery_result'] },
   page_view: { producers: ['studio'], fields: { page_name: pages, view_id: 'uuid', embedded: 'boolean', has_project: 'boolean', brand_collection: brandCollection, entry_from: entryFrom, mcp_client: mcpClient, settings_section: settingsSection,
-    studio_id: creative.studio_id, scene_id: creative.scene_id, model_id: creative.model_id, explore_community: creative.explore_community, medium: creative.medium, landing: creative.landing, hub_id: modelHub.hub_id, signed_in: modelHub.signed_in }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
+    studio_id: creative.studio_id, scene_id: creative.scene_id, model_provider: creative.model_provider, model_id: creative.model_id, explore_community: creative.explore_community, medium: creative.medium, landing: creative.landing, hub_id: modelHub.hub_id, signed_in: modelHub.signed_in }, required: ['page_name', 'view_id', 'embedded', 'has_project'] },
   provider_setup_opened: { producers: ['mcp'], fields: { entry_from: providerSetupEntries, presentation: ['foreground', 'background', 'now'], embedded: 'boolean' },
     required: ['entry_from', 'presentation', 'embedded'] },
   studio_load_result: { producers: ['studio'], fields: { load_id: 'uuid', outcome, duration_ms: 'integer', embedded: 'boolean', ...project, ...projectScale, ...template }, required: ['load_id', 'outcome', 'duration_ms', 'embedded'] },
@@ -263,7 +264,7 @@ export const omEvents = {
     copy_status: ['clipboard_written', 'failed'], includes_setup: 'boolean' }, required: ['copy_kind', 'copy_status', 'mcp_client'] },
   // Workspace assets. A submitted generation is accepted work, not a finished asset; the worker reports the media result.
   asset_generation_submit_result: { producers: ['studio'], fields: { page_name: ['assets', 'creative_studio'], modality, outcome: ['success', 'failure'],
-    reference_count: 'integer', new_version: 'boolean', studio_id: creative.studio_id, scene_id: creative.scene_id, model_id: creative.model_id }, required: ['modality', 'outcome', 'reference_count', 'new_version'] },
+    reference_count: 'integer', new_version: 'boolean', studio_id: creative.studio_id, scene_id: creative.scene_id, model_provider: creative.model_provider, model_id: creative.model_id }, required: ['modality', 'outcome', 'reference_count', 'new_version'] },
   asset_update_result: { producers: ['studio'], fields: { page_name: ['assets'], modality, action: ['rename', 'trash', 'restore', 'switch_version', 'other'],
     outcome: ['success', 'failure'] }, required: ['action', 'outcome'] },
   // Settings. One result per saved change; credentials, names, URLs and model ids never become fields.

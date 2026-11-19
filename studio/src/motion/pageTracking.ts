@@ -5,7 +5,7 @@ import { slug } from '../../../tracking/core.ts';
 import { providerSetupEntries, type ProviderSetupEntry } from '../../../tracking/events.ts';
 import type { BrandKit } from '../../../shared/brand-kit';
 import type { MotionSkill, SkillParameters } from './skillCatalog';
-import { embeddedView, newTrackingId, optionId, searchKeyword, send, slugField, type Fields } from './reporting';
+import { embeddedView, newTrackingId, optionId, searchKeyword, send, slugField, type Fields, modelFields } from './reporting';
 
 export { newTrackingId };
 type Click = Fields<'ui_click'>;
@@ -163,7 +163,7 @@ export function reportAssetGenerationSubmit(modality: unknown, outcome: 'success
   const field = modalityField(modality);
   if (!field.modality) return;
   send('asset_generation_submit_result', { ...(studio ? { page_name: 'creative_studio' as const, ...slugField('studio_id', studio.studio), ...slugField('scene_id', studio.scene),
-    ...slugField('model_id', studio.model) } : assetsPage), modality: field.modality, outcome, reference_count: referenceCount, new_version: newVersion });
+    ...modelFields(studio.model) } : assetsPage), modality: field.modality, outcome, reference_count: referenceCount, new_version: newVersion });
 }
 /** Which change an asset write made: only the kind of change, never the new name. */
 export function assetUpdateAction(changes: Record<string, unknown>): Fields<'asset_update_result'>['action'] {

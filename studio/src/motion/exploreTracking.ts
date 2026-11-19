@@ -2,7 +2,7 @@
 // Motion landing, model overview and API). They follow the page_name + area + element convention of the
 // other page reporters. Destinations are catalogue ids only; prompts, example copy and model labels never leave the browser.
 import type { StudioDestination } from './creativeStudios';
-import { embeddedView, newTrackingId, optionId, send, slugField, type Fields } from './reporting';
+import { embeddedView, modelFields, newTrackingId, optionId, send, slugField, type Fields } from './reporting';
 
 type Click = Fields<'ui_click'>;
 export type CreativePage = NonNullable<Click['page_name']>;
@@ -21,7 +21,7 @@ export const destinationTarget = (destination: StudioDestination | null | undefi
 
 function targetFields(target: CreativeTarget) {
   return {
-    ...slugField('studio_id', target.studio), ...slugField('scene_id', target.scene), ...slugField('model_id', target.model ?? undefined),
+    ...slugField('studio_id', target.studio), ...slugField('scene_id', target.scene), ...modelFields(target.model),
     ...slugField('skill_id', target.skill), ...slugField('template_id', target.template), ...slugField('explore_community', target.community ?? undefined),
     ...slugField('nav_target', target.navTarget), ...slugField('slide_id', target.slide), ...slugField('collection_id', target.collection),
     ...(target.medium ? { medium: target.medium } : {}), ...(target.position === undefined ? {} : { position: target.position }),
@@ -38,16 +38,10 @@ type ViewPage = Extract<CreativePage, 'explore' | 'creative_studio' | 'api' | 'm
 export function reportCreativePageView(page: ViewPage, hasProject: boolean, target: CreativeTarget & { landing?: boolean } = {}) {
   const { studio, scene, model, community, medium, landing } = target;
   send('page_view', { page_name: page, view_id: newTrackingId(), embedded: embeddedView(), has_project: hasProject,
-    ...slugField('studio_id', studio), ...slugField('scene_id', scene), ...slugField('model_id', model ?? undefined),
+    ...slugField('studio_id', studio), ...slugField('scene_id', scene), ...modelFields(model),
     ...slugField('explore_community', community ?? undefined), ...(medium ? { medium } : {}), ...(landing === undefined ? {} : { landing }) });
 }
 
-/** The page the top navigation is shown on, so its clicks segment by where the user was. */
-export function navigationPage(currentPage: 'explore' | 'api' | 'mcp' | null, motionActive: boolean, specialty: boolean): CreativePage {
-  if (currentPage) return currentPage;
-  if (motionActive) return 'studio';
-  return specialty ? 'skills' : 'creative_studio';
-}
 
 
 // ---------- Model hub ----------
@@ -57,7 +51,7 @@ export function reportHubClick(hub: string, area: HubArea, element: Click['eleme
   fields: { video?: string; position?: number; model?: string; signedIn?: boolean; filter?: string; action?: Click['template_action'] } = {}) {
   const { video, position, model, signedIn, filter, action } = fields;
   const filterId = filter === undefined ? {} : optionId(filter);
-  send('ui_click', { page_name: 'model_hub', area, element, ...slugField('hub_id', hub), ...slugField('hub_video_id', video), ...slugField('model_id', model),
+  send('ui_click', { page_name: 'model_hub', area, element, ...slugField('hub_id', hub), ...slugField('hub_video_id', video), ...modelFields(model),
     ...(position === undefined ? {} : { position }), ...(signedIn === undefined ? {} : { signed_in: signedIn }), ...filterId, ...(action ? { template_action: action } : {}) });
 }
 export function reportHubPageView(hub: string, hasProject: boolean, signedIn: boolean) {

@@ -10,7 +10,7 @@ import { mcpClients, type McpClient } from './mcpClients';
 import { useMediaCatalog } from './useMediaCatalog';
 import { editingPresets } from './skillCatalog';
 import { MediaModelChoices } from './MediaModelChoices';
-import { destinationTarget, navigationPage, reportCreativeClick, type CreativePage, type CreativeTarget } from './exploreTracking';
+import { destinationTarget, reportCreativeClick, type CreativePage, type CreativeTarget } from './exploreTracking';
 
 export type CreativeNavigationProps = {
   onModel: (id: string) => void;
@@ -23,8 +23,8 @@ export type CreativeNavigationProps = {
   onSkill: (id: string) => void;
   currentPage: 'explore' | 'api' | 'mcp' | null;
   onOpenPage: (page: 'explore' | 'api' | 'mcp', client?: McpClient) => void;
-  /** The page this navigation is shown on, when it is not derived from the current destination (the template library). */
-  trackingPage?: CreativePage;
+  /** The page this navigation is shown on, so its clicks segment by where the user was. */
+  trackingPage: CreativePage;
 };
 
 function MediaChoices({ kind, onModel, destination, onNavigate, onModelNavigate, onSkill, openProviders, catalog, failed, retry }: Pick<CreativeNavigationProps, 'destination' | 'onModel' | 'onNavigate' | 'openProviders' | 'onSkill'> & ReturnType<typeof useMediaCatalog> & {
@@ -74,7 +74,7 @@ export function CreativeNavigation({ specialty, onModel, onChooseStudio, destina
   const navId = useId();
   const rail = useRef<HTMLElement>(null);
   const catalog = useMediaCatalog(open !== null && open !== 'mcp');
-  const trackPage = trackingPage ?? navigationPage(currentPage, motionActive, Boolean(specialty));
+  const trackPage = trackingPage;
   const track = (element: Parameters<typeof reportCreativeClick>[2], target: CreativeTarget) => reportCreativeClick(trackPage, 'creative_nav', element, target);
 
   const [visibleCount, setVisibleCount] = useState(Infinity);

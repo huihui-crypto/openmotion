@@ -410,7 +410,7 @@ backend/data directory. Deterministic coverage lives in
   the navigation is shown on), `explore_tabs`, `explore_spotlight`, `explore_featured`, `explore_feed`,
   `explore_collection`, `capability_index`, `studio_bar` and `model_overview`. A generation submitted from a
   Studio form reports `asset_generation_submit_result` with `page_name=creative_studio` and the Studio, scene
-  and model. Destinations are catalogue ids accepted only as `slug`s (a model id that is not one is left out);
+  and model (`model_provider` + `model_id` split from the catalogue key; custom providers send neither). Other destinations are catalogue ids accepted only as `slug`s;
   prompts, example copy and model labels are never fields.
 - Model hubs (`page=model-hub`): one `page_view` with `page_name=model_hub`, `hub_id` and `signed_in` once the
   sign-in state is known; clicks in areas `hub_header`, `hub_hero`, `hub_videos`, `hub_video_detail` and
