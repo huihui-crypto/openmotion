@@ -181,7 +181,7 @@ export const omEvents = {
       'delete_project', 'copy_path', 'reveal_project', 'open_history', 'history_filter', 'select_version', 'keep_current', 'pin_version', 'restore_version',
       'nav_explore', 'nav_media', 'nav_mcp', 'nav_api', 'nav_studio', 'nav_more', 'nav_menu', 'select_scene', 'select_model', 'select_skill', 'select_client', 'filter_scene_models',
       'community_tab', 'creators', 'media_filter', 'open_scene', 'open_skill', 'open_template', 'try_prompt', 'open_studio', 'slide_select', 'slide_toggle', 'slide_action',
-      'load_more', 'view_all_templates', 'models_toggle', 'skill_category', 'open_brand_kit', 'open_assets', 'open_providers', 'open_mcp', 'open_skills',
+      'load_more', 'auto_load_more', 'view_all_templates', 'models_toggle', 'skill_category', 'open_brand_kit', 'open_assets', 'open_providers', 'open_mcp', 'open_skills',
       'back_to_explore', 'open_editor', 'scene_tab', 'open_in_studio', 'connect_key', 'manage_connection', 'view_plans'],
     // The chosen value of a control with a small fixed set of choices; never free text.
     option: ['on', 'off', 'light', 'dark', 'en', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr',

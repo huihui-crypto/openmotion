@@ -1,4 +1,5 @@
 import { Button } from 'open-design-ui/button';
+import { AutoLoadMore } from './AutoLoadMore';
 import { HorizontalRail } from './HorizontalRail';
 import { collectionFacet, industryCollection } from './templateCollections';
 import { TemplateIndustryMenu } from './TemplateIndustryMenu';
@@ -338,7 +339,8 @@ function ExploreCollection({ community, root, firstPages, ...props }: ExplorePro
         {medium && initialTemplateError && templateError}
         {templates.loading && (medium || templates.pages.length > 0) && <div className="om-feed-loading" aria-label={t('Loading templates…')} role="status">{[0, 1, 2].map(n => <Skeleton key={n} />)}</div>}
         {templates.error && !initialTemplateError && templateError}
-        {!templates.error && !templates.loading && (templates.hasMore ? <Button variant="ghost" className="om-button h-auto" onClick={() => { track('explore_feed', 'load_more', { community: community?.id, medium: medium ?? 'all' }); templates.loadMore(); }}>{t('More community templates')}<RemixIcon name="add-line" size={16} /></Button> :
+        {!templates.error && !templates.loading && (templates.hasMore ? <AutoLoadMore onLoad={() => { track('explore_feed', 'auto_load_more', { community: community?.id, medium: medium ?? 'all' }); templates.loadMore(); }}
+          fallback={<Button variant="ghost" className="om-button h-auto" onClick={() => { track('explore_feed', 'load_more', { community: community?.id, medium: medium ?? 'all' }); templates.loadMore(); }}>{t('More community templates')}<RemixIcon name="add-line" size={16} /></Button>} /> :
           !firstPage.length && <span className="om-muted">{t('No templates available. Open the library or try again later.')}</span>)}
         <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'view_all_templates', { community: community?.id }); openLibrary(event.currentTarget); }}>{t('View all templates')}<RemixIcon name="arrow-right-line" size={16} /></Button>
         {!showCommunityPicks && <Button variant="plain" className="om-nav-item" onClick={event => { track('explore_feed', 'creators', { community: community?.id }); props.onCreators(event.currentTarget); }}>{t('Creators')}<RemixIcon name="arrow-right-line" size={16} /></Button>}

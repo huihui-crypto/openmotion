@@ -1,4 +1,5 @@
 import { Button } from 'open-design-ui/button';
+import { AutoLoadMore } from './AutoLoadMore';
 import { useState, type RefObject } from 'react';
 import type { TechniqueStudio } from '../../../shared/studio-catalog';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -38,7 +39,8 @@ export function StudioTemplateShelf({ studio, root, active }: {
     </div>
     {templates.loading && <div className="om-studio-template-grid" role="status" aria-label={t('Loading templates…')}>{[0, 1, 2, 3].map(n => <Skeleton key={n} />)}</div>}
     {templates.error ? <div className="om-discovery-empty"><span>{t('Templates could not be loaded.')}</span><Button variant="ghost" className="om-button h-auto" onClick={templates.retry}>{t('Retry')}</Button></div>
-      : !templates.loading && (templates.hasMore ? <Button variant="plain" className="om-button om-shelf-more" onClick={templates.loadMore}>{t('More templates')}<RemixIcon name="arrow-down-line" size={16} /></Button>
+      : !templates.loading && (templates.hasMore ? <AutoLoadMore onLoad={templates.loadMore}
+        fallback={<Button variant="plain" className="om-button om-shelf-more" onClick={templates.loadMore}>{t('More templates')}<RemixIcon name="arrow-down-line" size={16} /></Button>} />
       : !items.length && <p className="om-muted">{t('No templates available. Open the library or try again later.')}</p>)}
   </section>;
 }

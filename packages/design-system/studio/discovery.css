@@ -111,7 +111,7 @@
 .om-gallery-chips > button { display: flex; align-items: center; gap: var(--motion-space-6); border: 0; border-radius: var(--motion-radius-full); padding: 5px 10px; background: var(--color-template-controls-bg); color: var(--color-template-text); cursor: pointer; }
 .om-gallery-chips > button:hover { background: var(--color-template-hover); }
 .om-gallery-skeleton { break-inside: avoid; margin-bottom: var(--motion-space-12); border-radius: var(--motion-radius-xl); overflow: hidden; }
-.om-gallery-load-more { display: block; width: 100%; height: 1px; margin-top: var(--motion-space-12); }
+.om-gallery-load-more, .om-auto-load-more { display: block; width: 100%; height: 1px; margin-top: var(--motion-space-12); }
 @media (min-width: 1800px) { .om-gallery-masonry { columns: 5; } .om-gallery-header,.om-gallery-toolbar,.om-gallery-results { padding-inline: 40px; } }
 @media (max-width: 1199px) { .om-gallery-masonry { columns: 3; } .om-gallery-header,.om-gallery-toolbar,.om-gallery-results { padding-inline: 24px; } }
 @media (max-width: 849px) { .om-gallery-masonry { columns: 2; } .om-gallery-categories { flex-basis: 100%; } .om-gallery-controls { width: 100%; } .om-gallery-header { flex-wrap: wrap; } .om-gallery-header > .om-search-field { flex: 1; min-width: 180px; } }

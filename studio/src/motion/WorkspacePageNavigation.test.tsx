@@ -911,6 +911,14 @@ it('recovers template discovery and appends only new cards without replacing ear
     const offset = Number(url.searchParams.get('offset'));
     return Response.json({ offset, items: (offset ? ['second', 'third', 'third'] : ['first', 'second']).map(template), next: offset ? null : 2 });
   });
+  const observed = new Map<Element, (visible: boolean) => void>();
+  vi.stubGlobal('IntersectionObserver', class {
+    constructor(private callback: (entries: Partial<IntersectionObserverEntry>[]) => void) {}
+    observe(target: Element) {
+      observed.set(target, visible => this.callback([{ target, isIntersecting: visible, intersectionRatio: Number(visible) }]));
+    }
+    disconnect() {}
+  });
   await mount(); await click('Explore');
   const spotlight = container.querySelector('.om-explore-features')!;
   expect(spotlight.textContent).toContain('Templates could not be loaded.');
@@ -923,11 +931,44 @@ it('recovers template discovery and appends only new cards without replacing ear
   const picks = container.querySelector('[aria-labelledby="explore-community"]')!;
   const card = picks.querySelector('[data-template-id="second"]');
   expect(card).not.toBeNull();
-  await click('More community templates');
+  const sentinel = container.querySelector('.om-feed-more [data-auto-load-more]')!;
+  await act(async () => observed.get(sentinel)!(true));
   expect(container.querySelector('[data-template-id="second"]')).toBe(card);
   expect([...picks.querySelectorAll('[data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['second']);
   expect([...container.querySelectorAll('.om-feed-group [data-template-id]')].map(node => node.getAttribute('data-template-id'))).toEqual(['third']);
+  expect(container.querySelector('.om-feed-more [data-auto-load-more]')).toBeNull();
+});
+
+it('loads the next community templates when the end of the Explore feed scrolls into view', async () => {
+  const fallback = fetcher.getMockImplementation()!;
+  const template = (id: string) => ({ id, title: id, description: 'A product reveal.', kind: 'builtin', tags: [] });
+  const offsets: number[] = [];
+  fetcher.mockImplementation(async (input: string, options?: RequestInit) => {
+    const url = new URL(input, location.origin);
+    if (!url.pathname.endsWith('/template-catalog') || url.searchParams.get('limit') === '60') return fallback(input, options);
+    const offset = Number(url.searchParams.get('offset'));
+    offsets.push(offset);
+    return Response.json({ offset, items: (offset ? ['third', 'fourth'] : ['first', 'second']).map(template), next: offset ? null : 2 });
+  });
+  const observed = new Map<Element, (visible: boolean) => void>();
+  vi.stubGlobal('IntersectionObserver', class {
+    constructor(private callback: (entries: Partial<IntersectionObserverEntry>[]) => void) {}
+    observe(target: Element) {
+      observed.set(target, visible => this.callback([{ target, isIntersecting: visible, intersectionRatio: Number(visible) }]));
+    }
+    disconnect() {}
+  });
+  await mount(); await click('Explore');
   expect(button('More community templates')).toBeUndefined();
+  const sentinel = container.querySelector('.om-feed-more [data-auto-load-more]')!;
+  expect(sentinel).not.toBeNull();
+  await act(async () => observed.get(sentinel)!(false));
+  expect(offsets.filter(offset => offset > 0)).toEqual([]);
+  await act(async () => observed.get(sentinel)!(true));
+  await act(async () => observed.get(sentinel)!(true));
+  expect(offsets.filter(offset => offset > 0)).toEqual([2]);
+  expect([...container.querySelectorAll('.om-feed-group [data-template-id]')].map(node => node.getAttribute('data-template-id'))).toContain('fourth');
+  expect(container.querySelector('.om-feed-more [data-auto-load-more]')).toBeNull();
 });
 
 it('returns from a 3D technique to the same community feed and keeps its scroll position', async () => {
