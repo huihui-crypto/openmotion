@@ -1810,8 +1810,13 @@ export function SuperAgentWorkspace({
 
     void (async () => {
       setSending(true);
+      const useExisting = payload.newChat === false && activeChat && !payload.initialArtifact;
+      let handoffChatId: string | undefined = useExisting ? activeChat.id : undefined;
+      const handoffContext = (): SuperAgentTurnContext => ({
+        mode: payload.mode, chatId: handoffChatId, engine: selection.engine, model: selection.model, permissionMode,
+        attachmentCount: handoffAttachments.length, contextTagCount: payload.contextTags?.length ?? 0, handoff: true,
+      });
       try {
-        const useExisting = payload.newChat === false && activeChat && !payload.initialArtifact;
         const intent = modeChatIntent(payload.mode);
         const target = useExisting
           ? activeChat
@@ -1827,6 +1832,7 @@ export function SuperAgentWorkspace({
               })
             ).conversation;
 
+        handoffChatId = target.id;
         if (target.id !== activeChat?.id) {
           applyChatSnapshot(target, true);
           if (target.artifacts.length > 0) setViewerOpen(true);
@@ -1853,7 +1859,9 @@ export function SuperAgentWorkspace({
           attachments: handoffAttachments,
         });
         applyChatSnapshot(result.conversation, false);
+        reportSuperAgentSend(useExisting ? 'follow_up' : 'new_chat', 'success', handoffContext());
       } catch (error) {
+        reportSuperAgentSend(useExisting ? 'follow_up' : 'new_chat', 'failure', handoffContext());
         setAttachments(handoffAttachments);
         setDraftSeed({
           id: ++handoffSeqRef.current,

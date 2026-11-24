@@ -670,7 +670,7 @@ All plugin login and upgrade touchpoints share the closed `entitlementHookIds` e
 
 | Signal | Emission point | Meaning |
 | --- | --- | --- |
-| `super_agent_turn_result` (`action=send`) | After the Super Agent service accepted or rejected a composer send or an automatic hand-off. | `turn_kind` is `new_chat` (no conversation yet), `follow_up` (conversation idle), `steer` (sent into a running turn) or `queue` (queued for the next turn). `success` means the turn started or was queued, not that it finished. |
+| `super_agent_turn_result` (`action=send`) | After the Super Agent service accepted or rejected a composer send or an automatic hand-off from another surface (for example Game Studio Start building, `handoff=true`). | `turn_kind` is `new_chat` (no conversation yet), `follow_up` (conversation idle), `steer` (sent into a running turn) or `queue` (queued for the next turn). `success` means the turn started or was queued, not that it finished. |
 | `super_agent_turn_result` (`action=stop`) | After the service answered the Stop control. | |
 | `asset_generation_submit_result` (`studio_id=workflows`) | After the workflow service accepted or rejected a Generate in a step (`generate_origin=step`), the quick Generate bar (`quick`) or Retry on an output (`retry`). | `scene_id` is the workflow id. `error_kind` separates `provider_unavailable`, `conflict` and `invalid`. Same event as Design, Cinema and Sound Studio generation. |
 | `review_comment_result` | After the workspace answered a comment write in the editor's comments panel. | `action` is `create`, `edit`, `resolve`, `reopen` or `delete`; `comment_scope` (`project`, `frame`, `element`) and `has_annotation` describe a new comment. Replayed requests are not reported again. |
