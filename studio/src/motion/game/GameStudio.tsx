@@ -416,7 +416,7 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
       return target.pathname + target.search;
     };
     void playableUrl(game).then(withRoom).then(next => { if (cancelled) { if (next.startsWith('blob:')) URL.revokeObjectURL(next); return; } if (next.startsWith('blob:')) revoked = next; setUrl(next); })
-      .catch(() => { if (!playReported.current) { playReported.current = true; reportGameAction('play', 'failure', game); } notify(t('This game could not be loaded.'), 'error'); });
+      .catch(() => { if (cancelled) return; if (!playReported.current) { playReported.current = true; reportGameAction('play', 'failure', game); } notify(t('This game could not be loaded.'), 'error'); });
     return () => { cancelled = true; if (revoked) URL.revokeObjectURL(revoked); };
     // playUrl changes from the built-in copy to the served game once the catalogue loads; follow it so ./assets resolve.
   }, [game.id, game.playUrl, playable, reload]);
