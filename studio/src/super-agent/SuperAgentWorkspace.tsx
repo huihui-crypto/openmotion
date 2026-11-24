@@ -3,6 +3,7 @@ import { Button } from 'open-design-ui/button';
 import { IconButton } from 'open-design-ui/icon-button';
 import { Suspense, useCallback, useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 import { LOCAL_DIRECT_RUNTIME_ID, type AgentRuntimeInfo } from '../../../shared/agent-runtimes';
+import { reportSuperAgentSend, reportSuperAgentStop, type SuperAgentTurnContext } from './superAgentTracking';
 import { pickPreferredLocalAgent } from '../../../shared/local-agents';
 import { assetMediaUrl } from '../../../shared/asset-library';
 import type { SuperAgentHandoffPayload } from '../../../shared/capability-hub';
@@ -1018,6 +1019,13 @@ export function SuperAgentWorkspace({
     },
   ): Promise<boolean> => {
     setSending(true);
+    const trackingContext = (chat: string | null | undefined): SuperAgentTurnContext => ({
+      mode: meta?.mode ?? requestedMode, chatId: chat, engine: selection.engine, model: selection.model, permissionMode,
+      attachmentCount: (meta?.overrideAttachments ?? attachments).length, contextTagCount: meta?.contextTags?.length ?? 0,
+      handoff: Boolean(meta?.hiddenInstructions?.trim() || meta?.initialArtifact),
+    });
+    let turnKind: 'new_chat' | 'follow_up' | 'steer' | 'queue' = activeChat ? 'follow_up' : 'new_chat';
+    let turnChatId: string | null | undefined = activeChat?.id;
     try {
       const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
@@ -1041,18 +1049,22 @@ export function SuperAgentWorkspace({
       if (activeChat?.state === 'running' && !(activeChat.approvals?.length)) {
         const effectiveBehavior = meta?.followUpBehavior ?? followUpBehavior;
         if (effectiveBehavior === 'queue') {
+          turnKind = 'queue';
           const result = await enqueueSuperAgentMessage(activeChat.id, turnPayload);
           applyChatSnapshot(result.conversation, false);
           setAttachments([]);
           showToast(t('Queued for next turn'), 'info', 'feedback');
+          reportSuperAgentSend(turnKind, 'success', trackingContext(activeChat.id));
           return true;
         }
+        turnKind = 'steer';
         const result = await startSuperAgentTurn(activeChat.id, {
           ...turnPayload,
           followUpBehavior: 'steer',
         });
         applyChatSnapshot(result.conversation, false);
         setAttachments([]);
+        reportSuperAgentSend(turnKind, 'success', trackingContext(activeChat.id));
         return true;
       }
       const targetIntent = modeChatIntent(meta?.mode);
@@ -1064,11 +1076,14 @@ export function SuperAgentWorkspace({
             }
           : undefined,
       );
+      turnChatId = target.id;
       const result = await startSuperAgentTurn(target.id, turnPayload);
       applyChatSnapshot(result.conversation, false);
       setAttachments([]);
+      reportSuperAgentSend(turnKind, 'success', trackingContext(target.id));
       return true;
     } catch (error) {
+      reportSuperAgentSend(turnKind, 'failure', trackingContext(turnChatId));
       showToast(error instanceof Error ? error.message : t('Could not start Super Agent'));
       return false;
     } finally {
@@ -1079,10 +1094,13 @@ export function SuperAgentWorkspace({
   const handleStop = async () => {
     if (!activeChat) return;
     setSending(true);
+    const stopContext: SuperAgentTurnContext = { mode: requestedMode, chatId: activeChat.id, engine: selection.engine, model: selection.model, permissionMode };
     try {
       const result = await stopSuperAgentChat(activeChat.id);
       applyChatSnapshot(result.conversation, false);
+      reportSuperAgentStop('success', stopContext);
     } catch (error) {
+      reportSuperAgentStop('failure', stopContext);
       showToast(error instanceof Error ? error.message : t('Could not stop Agent'));
     } finally {
       setSending(false);
