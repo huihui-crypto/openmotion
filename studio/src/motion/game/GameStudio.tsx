@@ -19,6 +19,8 @@ import { Tooltip } from '../../components/ui/Tooltip';
 import { GameMasonry, interleavePortrait } from './GameMasonry';
 import { bundledGames, communityGames, communityRemixPrompt, composeBrief, coverUrl, formatPlays, gameApi, gameSource, storedInstruction, genreCovers, genreLabels, settingCovers, styleCovers, genrePlaceholders, isLocalOnly, playableUrl, rememberInstruction, settingLabels, styleLabels } from './gameCatalog';
 import { buildGameContextTags, buildGameHiddenInstructions, buildGameUserPrompt, toGameArtifact, toGameCapabilityRef } from './gameSuperAgent';
+import { optionId as optionFilter } from '../reporting';
+import { reportGameAction, reportGameClick, reportGameCreate } from './gameTracking';
 import './gameStudio.css';
 
 type Menu = 'genre' | 'style' | 'setting';
@@ -140,7 +142,7 @@ export function GameStudio({
   const failure = (error: unknown) => error instanceof TypeError || offline
     ? t('The local game service is not available. Update OpenMotion and try again.')
     : t('The game could not be created: {reason}', { reason: (error as Error).message });
-  const started = (created: GameCreated) => {
+  const started = (created: GameCreated): 'super_agent' | 'detail' => {
     rememberInstruction(created.game.id, created.agentInstruction);
     statuses.current.set(created.game.id, created.game.status);
     setGames(list => [created.game, ...list.filter(game => game.id !== created.game.id)]);
@@ -158,10 +160,12 @@ export function GameStudio({
         ...(ready ? { initialArtifact: toGameArtifact(created.game, displayTitle) } : {}),
       });
       chrome.openInSuperAgent({ ...handoff, title: ready ? displayTitle : undefined });
-      return;
+      return 'super_agent';
     }
     setOpenId(created.game.id);
+    return 'detail';
   };
+  const createError = (error: unknown) => error instanceof TypeError || offline ? 'service_unavailable' as const : 'rejected' as const;
   const continueInSuperAgent = (game: GameCard, instruction: string) => {
     if (!chrome?.openInSuperAgent || game.multiplayer) return;
     const displayTitle = getGameTitle(game);
@@ -193,20 +197,28 @@ export function GameStudio({
   const submit = async () => {
     if (!brief || submitting) return;
     setSubmitting(true);
+    const tracked = { brief: { genre, style, setting, orientation, multiplayer: false, playableAd: adBuild, hasPrompt: Boolean(prompt.trim()) } };
     // Choosing options without typing is enough to start: the composed brief becomes the prompt.
-    try { started(await gameApi.create({ prompt: prompt.trim() || brief, genre, style, setting, multiplayer: false, orientation, playableAd: adBuild })); setPrompt(''); }
-    catch (error) { notify(failure(error), 'error'); }
+    try {
+      const created = await gameApi.create({ prompt: prompt.trim() || brief, genre, style, setting, multiplayer: false, orientation, playableAd: adBuild });
+      reportGameCreate('brief', { game: created.game, handoff: started(created) }, tracked); setPrompt('');
+    }
+    catch (error) { reportGameCreate('brief', { error: createError(error) }, tracked); notify(failure(error), 'error'); }
     finally { setSubmitting(false); }
   };
   const remix = async (game: GameCard) => {
     if (game.multiplayer) return;
     // Community games are not copied: a new original game is briefed from their genre, style and description.
-    try { started(game.external
-      ? await gameApi.create({ prompt: communityRemixPrompt(game), genre: game.genre, style: game.style, setting: game.setting, multiplayer: false, orientation: game.orientation ?? 'landscape' })
-      : await gameApi.remix(game.id)); }
-    catch (error) { notify(failure(error), 'error'); }
+    try {
+      const created = game.external
+        ? await gameApi.create({ prompt: communityRemixPrompt(game), genre: game.genre, style: game.style, setting: game.setting, multiplayer: false, orientation: game.orientation ?? 'landscape' })
+        : await gameApi.remix(game.id);
+      reportGameCreate('remix', { game: created.game, handoff: started(created) }, { source: game });
+    }
+    catch (error) { reportGameCreate('remix', { error: createError(error) }, { source: game }); notify(failure(error), 'error'); }
   };
-  const open = (game: GameCard) => {
+  const open = (game: GameCard, area: 'game_market' | 'game_sidebar' = 'game_market', position?: number) => {
+    reportGameClick(area, 'open_game', game, position === undefined ? {} : { position });
     // Sites that refuse to be embedded open in a new window; everything else plays in the project view.
     setOpenId(game.id);
   };
@@ -244,14 +256,14 @@ export function GameStudio({
         {mode === 'dock' && <IconButton variant="ghost" className="motion-icon-button om-game-dock-toggle" aria-expanded={expanded} aria-label={expanded ? t('Collapse') : t('Expand')}
           onClick={() => { setToggled(!expanded); if (expanded) { setFocused(false); setMenu('genre'); input.current?.blur(); } }} icon={<RemixIcon name={expanded ? 'arrow-down-s-line' : 'arrow-up-s-line'} size={18} />} />}
         <div className="om-game-options" role="group" aria-label={menu === 'genre' ? t('Genre') : menu === 'style' ? t('Style') : t('Setting')} data-menu={menu} data-collapsed={mode === 'dock' && !expanded}>
-          {options.map(option => <Button key={option.id} variant="plain" className="om-game-option" aria-pressed={option.selected} onClick={option.pick}>
+          {options.map(option => <Button key={option.id} variant="plain" className="om-game-option" aria-pressed={option.selected} onClick={() => { reportGameClick('game_composer', 'game_option', null, { game_option_kind: menu, selected: !option.selected, ...optionFilter(option.id) }); option.pick(); }}>
             {option.cover !== undefined && <span className="om-game-option-art">{option.cover && <img src={option.cover} alt="" />}</span>}
             <span>{option.label}</span>
           </Button>)}
         </div>
         <div className="om-game-input">
           <textarea ref={mode === 'hero' ? input : undefined} rows={3} maxLength={600} value={prompt} placeholder={t(genrePlaceholders[genre ?? 'none'])} aria-label={t('Describe your game')}
-            onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void submit(); } }} />
+            onChange={event => setPrompt(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (brief && !submitting) reportGameClick('game_composer', 'submit_game'); void submit(); } }} />
           <div className="om-game-input-bar">
             {genre && <span className="om-game-chip" data-active="true"><span className="om-game-chip-art">{genreCovers[genre] && <img src={genreCovers[genre]!} alt="" />}</span>{t(genreLabels[genre])}
               <IconButton variant="plain" className="om-game-chip-clear" aria-label={t('Remove genre')} onClick={() => setGenre(null)} icon={<RemixIcon name="close-line" size={14} />} /></span>}
@@ -260,25 +272,25 @@ export function GameStudio({
             <Button variant="plain" className="om-game-chip" aria-expanded={menu === 'setting'} data-active={Boolean(setting)} onClick={() => { setToggled(null); setMenu(menu === 'setting' ? 'genre' : 'setting'); }}>
               <RemixIcon name="landscape-line" size={15} />{setting ? t(settingLabels[setting]) : t('Setting')}</Button>
             <span className="om-game-ratio" role="radiogroup" aria-label={t('Aspect ratio')}>
-              {(['landscape', 'portrait'] as const).map(id => <Button key={id} variant="plain" role="radio" className="om-game-ratio-option" aria-checked={orientation === id} onClick={() => { if (id === 'portrait' && orientation !== 'portrait') setPlayableAd(true); setOrientation(id); }}>
+              {(['landscape', 'portrait'] as const).map(id => <Button key={id} variant="plain" role="radio" className="om-game-ratio-option" aria-checked={orientation === id} onClick={() => { if (orientation !== id) reportGameClick('game_composer', 'game_option', null, { game_option_kind: 'orientation', selected: true, ...optionFilter(id) }); if (id === 'portrait' && orientation !== 'portrait') setPlayableAd(true); setOrientation(id); }}>
                 <RemixIcon name={id === 'portrait' ? 'smartphone-line' : 'computer-line'} size={15} />{t(id === 'portrait' ? 'Portrait' : 'Landscape')}</Button>)}
             </span>
-            {orientation === 'portrait' && <label className="om-game-switch"><input type="checkbox" role="switch" checked={playableAd} onChange={event => setPlayableAd(event.target.checked)} /><span aria-hidden="true" />{t('Playable ad')}</label>}
-            <IconButton variant="ghost" className="om-game-send" aria-label={t('Start building')} disabled={!brief || submitting} onClick={() => void submit()}
+            {orientation === 'portrait' && <label className="om-game-switch"><input type="checkbox" role="switch" checked={playableAd} onChange={event => { reportGameClick('game_composer', 'game_option', null, { game_option_kind: 'playable_ad', selected: event.target.checked }); setPlayableAd(event.target.checked); }} /><span aria-hidden="true" />{t('Playable ad')}</label>}
+            <IconButton variant="ghost" className="om-game-send" aria-label={t('Start building')} disabled={!brief || submitting} onClick={() => { reportGameClick('game_composer', 'submit_game'); void submit(); }}
               icon={<RemixIcon name={submitting ? 'loader-4-line' : 'arrow-up-line'} size={18} />} />
           </div>
         </div>
       </div>;
 
   return <div className="om-game-studio">
-    <GameSidebar games={mine} openId={openId} onOpen={open} />
+    <GameSidebar games={mine} openId={openId} onOpen={game => open(game, 'game_sidebar')} />
     <div className="om-game-main">
     <div ref={root} className="om-game-scroll">
     <div className="om-game-page">
       <WorkspaceBack fallback={onExplore} />
       <section className="om-game-showcase" aria-label={t('Game Studio')}>
         {/* The five most popular games fan out above the headline; each opens its detail page. */}
-        <div className="om-game-fan">{fanned.map((game, index) => <Button key={game.id} variant="plain" className="om-game-fan-card" data-slot={index} aria-label={t('Play {title}', { title: game.title })} onClick={() => open(game)}>
+        <div className="om-game-fan">{fanned.map((game, index) => <Button key={game.id} variant="plain" className="om-game-fan-card" data-slot={index} aria-label={t('Play {title}', { title: game.title })} onClick={() => open(game, 'game_market', index)}>
           {coverUrl(game) && <img src={coverUrl(game)!} alt="" />}<span className="om-game-fan-label">{t(genreLabels[game.genre])}</span>
         </Button>)}</div>
         <h1 className="om-game-headline">{t('Create your own game in minutes')}</h1>
@@ -288,13 +300,13 @@ export function GameStudio({
         <h2 className="om-title om-game-explore-title">{t('Explore templates')}</h2>
         <div className="om-game-filters">
           <div className="om-game-genres" role="tablist" aria-label={t('Category')}>
-            {(['all', ...gameGenres] as const).map(id => <Button key={id} variant="plain" role="tab" className="om-game-genre-chip" aria-selected={category === id} onClick={() => setCategory(id)}>
+            {(['all', ...gameGenres] as const).map(id => <Button key={id} variant="plain" role="tab" className="om-game-genre-chip" aria-selected={category === id} onClick={() => { if (category !== id) reportGameClick('game_market', 'category_select', null, optionFilter(id)); setCategory(id); }}>
               {id === 'all' ? <RemixIcon name="layout-grid-line" size={15} /> : genreCovers[id] && <img src={genreCovers[id]!} alt="" />}{id === 'all' ? t('All') : t(genreLabels[id])}</Button>)}
-            <Button variant="plain" role="tab" className="om-game-genre-chip" aria-selected={category === 'portrait'} onClick={() => setCategory('portrait')}><RemixIcon name="smartphone-line" size={15} />{t('Portrait')}</Button>
+            <Button variant="plain" role="tab" className="om-game-genre-chip" aria-selected={category === 'portrait'} onClick={() => { if (category !== 'portrait') reportGameClick('game_market', 'category_select', null, optionFilter('portrait')); setCategory('portrait'); }}><RemixIcon name="smartphone-line" size={15} />{t('Portrait')}</Button>
           </div>
           <span className="om-game-selects">
             <span className="om-field om-game-search"><RemixIcon name="search-line" size={15} /><input value={query} placeholder={t('Search')} aria-label={t('Search games')} onChange={event => setQuery(event.target.value)} /></span>
-            <label className="om-field"><RemixIcon name="sort-desc" size={15} /><select value={sort} aria-label={t('Sort')} onChange={event => setSort(event.target.value as Sort)}>
+            <label className="om-field"><RemixIcon name="sort-desc" size={15} /><select value={sort} aria-label={t('Sort')} onChange={event => { reportGameClick('game_market', 'sort_option', null, optionFilter(event.target.value)); setSort(event.target.value as Sort); }}>
               <option value="relevance">{t('Relevance')}</option><option value="plays">{t('Most played')}</option><option value="newest">{t('Newest')}</option></select></label>
           </span>
         </div>
@@ -313,7 +325,7 @@ export function GameStudio({
     </div>
 
     {/* The detail page covers the whole window, so it renders outside the workspace frame that clips fixed layers. */}
-    {opened && createPortal(<GameProject key={opened.id} game={opened} offline={offline} onClose={() => setOpenId(null)} onRemix={() => void remix(opened)} onChange={update} onOpenMcp={onOpenMcp} onContinueInSuperAgent={chrome?.openInSuperAgent ? (instruction => continueInSuperAgent(opened, instruction)) : undefined} onEditInSuperAgent={chrome?.openInSuperAgent ? (() => editInSuperAgent(opened)) : undefined} notify={notify} />, document.body)}
+    {opened && createPortal(<GameProject key={opened.id} game={opened} offline={offline} onClose={() => setOpenId(null)} onRemix={() => { reportGameClick('game_detail', 'remix_game', opened); void remix(opened); }} onChange={update} onOpenMcp={onOpenMcp} onContinueInSuperAgent={chrome?.openInSuperAgent ? (instruction => { reportGameClick('game_handoff', 'continue_in_agent', opened); continueInSuperAgent(opened, instruction); }) : undefined} onEditInSuperAgent={chrome?.openInSuperAgent ? (() => { reportGameClick('game_detail', 'edit_in_agent', opened); editInSuperAgent(opened); }) : undefined} notify={notify} />, document.body)}
     <StudioToastViewport toasts={toast.toasts} dismissToast={toast.dismissToast} />
   </div>;
 }
@@ -381,6 +393,8 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
   const [source, setSource] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const frame = useRef<HTMLIFrameElement>(null), close = useRef<HTMLButtonElement>(null), stage = useRef<HTMLDivElement>(null);
+  // One play result per opened game: reloads and the catalogue swapping the built-in copy for the served game are not new plays.
+  const playReported = useRef(false);
   const gameTitle = useGameTitle();
   const mine = game.source === 'mine';
   const playable = !pending(game) && game.status !== 'failed';
@@ -400,7 +414,8 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
       const target = new URL(value, location.href); if (!target.searchParams.has('room')) target.searchParams.set('room', 'play-' + Math.random().toString(36).slice(2, 8));
       return target.pathname + target.search;
     };
-    void playableUrl(game).then(withRoom).then(next => { if (cancelled) { if (next.startsWith('blob:')) URL.revokeObjectURL(next); return; } if (next.startsWith('blob:')) revoked = next; setUrl(next); }).catch(() => notify(t('This game could not be loaded.'), 'error'));
+    void playableUrl(game).then(withRoom).then(next => { if (cancelled) { if (next.startsWith('blob:')) URL.revokeObjectURL(next); return; } if (next.startsWith('blob:')) revoked = next; setUrl(next); if (!playReported.current) { playReported.current = true; reportGameAction('play', 'success', game); } })
+      .catch(() => { if (!playReported.current) { playReported.current = true; reportGameAction('play', 'failure', game); } notify(t('This game could not be loaded.'), 'error'); });
     return () => { cancelled = true; if (revoked) URL.revokeObjectURL(revoked); };
     // playUrl changes from the built-in copy to the served game once the catalogue loads; follow it so ./assets resolve.
   }, [game.id, game.playUrl, playable, reload]);
@@ -423,15 +438,19 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
   };
   const openTrailerProject = () => { if (trailer?.projectId) window.location.assign(trailerProjectHref(trailer.projectId, location.search)); };
   useEffect(() => { close.current?.focus(); const key = (event: KeyboardEvent) => { if (event.key === 'Escape' && !event.defaultPrevented && document.activeElement !== frame.current && !(document.activeElement instanceof Element && document.activeElement.closest('.om-web-publish-popover'))) onClose(); }; addEventListener('keydown', key); return () => removeEventListener('keydown', key); }, []);
-  const act = (request: () => Promise<GameCard>) => offline ? notify(t('Start the local game service to save reactions.'), 'info') : void request().then(onChange).catch(() => notify(t('Could not save. Try again.'), 'error'));
+  const act = (action: 'favorite' | 'unfavorite' | 'like' | 'dislike' | 'clear_reaction', request: () => Promise<GameCard>) => {
+    if (offline) { reportGameAction(action, 'unavailable', game); notify(t('Start the local game service to save reactions.'), 'info'); return; }
+    void request().then(next => { reportGameAction(action, 'success', game); onChange(next); }).catch(() => { reportGameAction(action, 'failure', game); notify(t('Could not save. Try again.'), 'error'); });
+  };
   // Games are published to this computer only. The link is copied for local use and labelled as such.
   const share = async () => {
-    if (!url || url.startsWith('blob:')) { notify(t('This game has no shareable link yet. Publishing to the web is not available.'), 'info'); return; }
+    reportGameClick('game_detail', 'copy_game_link', game);
+    if (!url || url.startsWith('blob:')) { reportGameAction('copy_link', 'unavailable', game); notify(t('This game has no shareable link yet. Publishing to the web is not available.'), 'info'); return; }
     const link = new URL(url, location.href).href;
-    try { await navigator.clipboard.writeText(link); notify(isLocalOnly(link) ? t('Link copied. It only opens on this computer; publishing to the web is not available yet.') : t('Game link copied.'), 'info'); }
-    catch { notify(t('Could not copy the link.'), 'error'); }
+    try { await navigator.clipboard.writeText(link); reportGameAction('copy_link', 'success', game); notify(isLocalOnly(link) ? t('Link copied. It only opens on this computer; publishing to the web is not available yet.') : t('Game link copied.'), 'info'); }
+    catch { reportGameAction('copy_link', 'failure', game); notify(t('Could not copy the link.'), 'error'); }
   };
-  const popout = () => { if (url) window.open(url.startsWith('blob:') ? url : new URL(url, location.href).href, '_blank', 'noopener'); };
+  const popout = () => { if (url) reportGameClick('game_detail', 'open_external', game); if (url) window.open(url.startsWith('blob:') ? url : new URL(url, location.href).href, '_blank', 'noopener'); };
   return <div className="om-game-project" role="dialog" aria-modal="true" aria-label={game.title}>
     <header className="om-game-project-top">
       <IconButton ref={close} variant="ghost" className="motion-icon-button" aria-label={t('All games')} onClick={onClose} icon={<RemixIcon name="arrow-left-line" size={18} />} />
@@ -466,9 +485,9 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
       </div>}
       {playable && !game.external && !mine && <footer className="om-game-actions" role="toolbar" aria-label={t('Game actions')}>
         {!game.multiplayer && <Button variant="ghost" className="om-button h-auto" data-primary onClick={onRemix}><RemixIcon name="add-line" size={16} />{t('Remix')}</Button>}
-        <IconButton variant="ghost" className="motion-icon-button" aria-pressed={game.favorite} aria-label={game.favorite ? t('Remove from favorites') : t('Add to favorites')} onClick={() => act(() => gameApi.favorite(game.id, !game.favorite))} icon={<RemixIcon name={game.favorite ? 'bookmark-fill' : 'bookmark-line'} size={17} />} />
-        <IconButton variant="ghost" className="motion-icon-button" aria-pressed={game.reaction === 1} aria-label={t('Like')} onClick={() => act(() => gameApi.react(game.id, game.reaction === 1 ? 0 : 1))} icon={<RemixIcon name={game.reaction === 1 ? 'thumb-up-fill' : 'thumb-up-line'} size={17} />} />
-        <IconButton variant="ghost" className="motion-icon-button" aria-pressed={game.reaction === -1} aria-label={t('Dislike')} onClick={() => act(() => gameApi.react(game.id, game.reaction === -1 ? 0 : -1))} icon={<RemixIcon name={game.reaction === -1 ? 'thumb-down-fill' : 'thumb-down-line'} size={17} />} />
+        <IconButton variant="ghost" className="motion-icon-button" aria-pressed={game.favorite} aria-label={game.favorite ? t('Remove from favorites') : t('Add to favorites')} onClick={() => { reportGameClick('game_detail', 'favorite_game', game, { selected: !game.favorite }); act(game.favorite ? 'unfavorite' : 'favorite', () => gameApi.favorite(game.id, !game.favorite)); }} icon={<RemixIcon name={game.favorite ? 'bookmark-fill' : 'bookmark-line'} size={17} />} />
+        <IconButton variant="ghost" className="motion-icon-button" aria-pressed={game.reaction === 1} aria-label={t('Like')} onClick={() => { reportGameClick('game_detail', 'like_game', game, { selected: game.reaction !== 1 }); act(game.reaction === 1 ? 'clear_reaction' : 'like', () => gameApi.react(game.id, game.reaction === 1 ? 0 : 1)); }} icon={<RemixIcon name={game.reaction === 1 ? 'thumb-up-fill' : 'thumb-up-line'} size={17} />} />
+        <IconButton variant="ghost" className="motion-icon-button" aria-pressed={game.reaction === -1} aria-label={t('Dislike')} onClick={() => { reportGameClick('game_detail', 'dislike_game', game, { selected: game.reaction !== -1 }); act(game.reaction === -1 ? 'clear_reaction' : 'dislike', () => gameApi.react(game.id, game.reaction === -1 ? 0 : -1)); }} icon={<RemixIcon name={game.reaction === -1 ? 'thumb-down-fill' : 'thumb-down-line'} size={17} />} />
         <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Copy link')} onClick={() => void share()} icon={<RemixIcon name="share-forward-line" size={17} />} />
       </footer>}
       {playable && !game.external && mine && <footer className="om-game-actions" role="toolbar" aria-label={t('Game actions')}>
@@ -480,9 +499,9 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
       <header>
         {/* The code tab only exists for games whose source is ours to show. */}
         {hasCode || trailerReady ? <div className="om-segmented" role="tablist">
-          <Button variant="plain" role="tab" className="om-nav-item" aria-selected={view === 'preview'} onClick={() => setView('preview')}><RemixIcon name="play-fill" size={15} />{t('Preview')}</Button>
-          {hasCode && <Button variant="plain" role="tab" className="om-nav-item" aria-selected={view === 'code'} onClick={() => setView('code')}><RemixIcon name="code-s-slash-line" size={15} />{t('Code')}</Button>}
-          {trailerReady && <Button variant="plain" role="tab" className="om-nav-item" aria-selected={view === 'trailer'} onClick={() => setView('trailer')}><RemixIcon name="film-line" size={15} />{t('Trailer')}</Button>}
+          <Button variant="plain" role="tab" className="om-nav-item" aria-selected={view === 'preview'} onClick={() => { if (view !== 'preview') reportGameClick('game_detail', 'game_tab', game, { game_view: 'preview' }); setView('preview'); }}><RemixIcon name="play-fill" size={15} />{t('Preview')}</Button>
+          {hasCode && <Button variant="plain" role="tab" className="om-nav-item" aria-selected={view === 'code'} onClick={() => { if (view !== 'code') reportGameClick('game_detail', 'game_tab', game, { game_view: 'code' }); setView('code'); }}><RemixIcon name="code-s-slash-line" size={15} />{t('Code')}</Button>}
+          {trailerReady && <Button variant="plain" role="tab" className="om-nav-item" aria-selected={view === 'trailer'} onClick={() => { if (view !== 'trailer') reportGameClick('game_detail', 'game_tab', game, { game_view: 'trailer' }); setView('trailer'); }}><RemixIcon name="film-line" size={15} />{t('Trailer')}</Button>}
         </div> : <span />}
         <span className="om-game-preview-tools">
           {playable && !game.external && !offline && (
@@ -494,8 +513,8 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
               onNotify={(message, tone) => notify(message, tone ?? 'info')}
             />
           )}
-          <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Reload game')} disabled={!playable} onClick={() => { setSource(null); setReload(value => value + 1); }} icon={<RemixIcon name="refresh-line" size={17} />} />
-          <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Full screen')} disabled={!url} onClick={() => void (view === 'preview' ? frame.current : stage.current)?.requestFullscreen?.()} icon={<RemixIcon name="fullscreen-line" size={17} />} />
+          <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Reload game')} disabled={!playable} onClick={() => { reportGameClick('game_detail', 'reload_game', game); setSource(null); setReload(value => value + 1); }} icon={<RemixIcon name="refresh-line" size={17} />} />
+          <IconButton variant="ghost" className="motion-icon-button" aria-label={t('Full screen')} disabled={!url} onClick={() => { reportGameClick('game_detail', 'fullscreen_game', game); void (view === 'preview' ? frame.current : stage.current)?.requestFullscreen?.(); }} icon={<RemixIcon name="fullscreen-line" size={17} />} />
           <Button variant="ghost" className="om-button h-auto" disabled={!url} onClick={popout}><RemixIcon name="external-link-line" size={15} />{t('Open external')}</Button>
         </span>
       </header>
@@ -568,8 +587,9 @@ function GameHandoff({ game, notify, onContinueInSuperAgent }: { game: GameCard;
   }, [game.id]);
   const copy = async () => {
     if (!instruction) return;
-    try { await navigator.clipboard.writeText(instruction); setCopied(true); notify(t('Instruction copied'), 'info'); }
-    catch { notify(t('Could not copy. Select the instruction and copy it.'), 'error'); }
+    reportGameClick('game_handoff', 'copy_instruction', game);
+    try { await navigator.clipboard.writeText(instruction); reportGameAction('copy_instruction', 'success', game); setCopied(true); notify(t('Instruction copied'), 'info'); }
+    catch { reportGameAction('copy_instruction', 'failure', game); notify(t('Could not copy. Select the instruction and copy it.'), 'error'); }
   };
   const stopped = game.status === 'failed';
   return <div className="om-game-handoff" data-tone={game.status}>
@@ -584,7 +604,7 @@ function GameHandoff({ game, notify, onContinueInSuperAgent }: { game: GameCard;
       {onContinueInSuperAgent && <Button variant="ghost" className="om-button h-auto" data-primary disabled={!instruction} onClick={() => instruction && onContinueInSuperAgent(instruction)}><RemixIcon name="gamepad-line" size={15} />{t('Continue in Super Agent')}</Button>}
       {/* Copy works with every Agent; the Codex link needs the Codex desktop app and only prefills a new chat (it does not send). */}
       <Button variant="ghost" className="om-button h-auto" {...(!onContinueInSuperAgent ? { 'data-primary': true } : {})} disabled={!instruction} onClick={() => void copy()}><RemixIcon name={copied ? 'check-line' : 'file-copy-line'} size={15} />{copied ? t('Instruction copied') : t('Copy instruction')}</Button>
-      <a className="om-button om-game-handoff-link" title={t('Needs the Codex desktop app. Opens a new chat with the instruction filled in; press send yourself.')} aria-disabled={!instruction || undefined} href={instruction ? `codex://new?prompt=${encodeURIComponent(instruction)}` : undefined}><RemixIcon name="external-link-line" size={15} />{t('Open in Codex')}</a>
+      <a className="om-button om-game-handoff-link" title={t('Needs the Codex desktop app. Opens a new chat with the instruction filled in; press send yourself.')} aria-disabled={!instruction || undefined} onClick={() => { if (instruction) reportGameClick('game_handoff', 'open_in_codex', game); }} href={instruction ? `codex://new?prompt=${encodeURIComponent(instruction)}` : undefined}><RemixIcon name="external-link-line" size={15} />{t('Open in Codex')}</a>
     </div>
     <pre className="om-game-handoff-text" tabIndex={0} aria-label={t('Agent instruction')}>{instruction ?? t('Loading instruction…')}</pre>
   </div>;

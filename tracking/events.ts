@@ -57,6 +57,10 @@ const creative = { studio_id: 'slug', scene_id: 'slug', model_provider: 'slug', 
   nav_target: 'slug', slide_id: 'slug', collection_id: 'slug', in_overflow: 'boolean', landing: 'boolean' } as const;
 // A model hub (page=model-hub) and one of its community videos, by catalogue id; whether the viewer is signed in to OpenDesign.
 const modelHub = { hub_id: 'slug', hub_video_id: 'slug', signed_in: 'boolean' } as const;
+// One game in Game Studio. Built-in and community games have catalogue ids; games made here have UUIDs. Titles, briefs and URLs never leave the browser.
+const game = { game_id: 'code', game_source: ['template', 'community', 'mine'], game_genre: 'slug', game_status: ['draft', 'building', 'ready', 'published', 'failed'],
+  game_orientation: ['landscape', 'portrait'], multiplayer: 'boolean' } as const;
+const webPublishTargets = ['design', 'game', 'motion', 'html'] as const;
 // A site campaign shown in the application chrome. entry_id is the od_entry_id placed on the Pricing link of that click,
 // so the click joins the Pricing visit and payment the website attributes to it.
 const campaign = { campaign_id: ['black_friday_2026'], entry_id: 'uuid' } as const;
@@ -162,7 +166,8 @@ export const omEvents = {
       'settings_nav', 'provider_list', 'provider_detail', 'default_agent', 'local_agents', 'account', 'diagnostics', 'help_resources',
       'project_manager', 'version_history',
       'creative_nav', 'explore_tabs', 'explore_spotlight', 'explore_featured', 'explore_feed', 'explore_collection', 'capability_index', 'studio_bar', 'model_overview',
-      'hub_header', 'hub_hero', 'hub_videos', 'hub_video_detail', 'hub_availability', 'campaign_banner'],
+      'hub_header', 'hub_hero', 'hub_videos', 'hub_video_detail', 'hub_availability', 'campaign_banner',
+      'game_composer', 'game_market', 'game_detail', 'game_handoff', 'game_sidebar', 'web_publish'],
     element: ['new_creation', 'recent_session', 'open_project', 'select_template', 'copy_template',
       'select_work', 'select_chapter', 'browse_timeline', 'expand_learning', 'compare_brands',
       'open_detail', 'start_use', 'expand_instruction', 'open_collection', 'category_select', 'filter_open', 'filter_clear',
@@ -192,7 +197,9 @@ export const omEvents = {
       'community_tab', 'creators', 'media_filter', 'open_scene', 'open_skill', 'open_template', 'try_prompt', 'open_studio', 'slide_select', 'slide_toggle', 'slide_action',
       'load_more', 'view_all_templates', 'models_toggle', 'skill_category', 'open_brand_kit', 'open_assets', 'open_providers', 'open_mcp', 'open_skills',
       'back_to_explore', 'open_editor', 'scene_tab', 'open_in_studio', 'connect_key', 'manage_connection', 'view_plans',
-      'claim_offer', 'close_banner', 'open_pricing'],
+      'claim_offer', 'close_banner', 'open_pricing',
+      'submit_game', 'game_option', 'open_game', 'remix_game', 'favorite_game', 'like_game', 'dislike_game', 'copy_game_link', 'edit_in_agent', 'continue_in_agent',
+      'open_in_codex', 'open_external', 'reload_game', 'fullscreen_game', 'game_tab', 'open_publish', 'toggle_link_access', 'publish_link', 'new_link', 'copy_publish_link'],
     // The chosen value of a control with a small fixed set of choices; never free text.
     option: ['on', 'off', 'light', 'dark', 'en', 'zh-CN', 'ja', 'ko', 'de', 'fr', 'ru', 'es', 'pt-BR', 'it', 'tr',
       'all', 'images', 'video', 'audio', 'fonts',
@@ -205,7 +212,8 @@ export const omEvents = {
     filter_group: ['brand', 'uses', 'styles', 'industries', 'creationModels', 'colors', 'ratio', 'duration', 'editable'], filter_value: 'slug',
     selected: 'boolean', expanded: 'boolean', previous_sort: sortOrder, changed: 'boolean', ...templateDetail, ...templateList,
     ...skill, ...brand, brand_collection: brandCollection, ...mcp, entry_from: entryFrom, ...referenceEntry, ...referenceSource,
-    doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer', ...workspacePages, ...creative, ...modelHub, ...campaign },
+    doc_id: ['mcp_tools', 'skills', 'agent_adapters', 'docs_home', 'repository'], section_id: 'slug', faq_index: 'integer', ...workspacePages, ...creative, ...modelHub, ...campaign,
+    ...game, game_option_kind: ['genre', 'style', 'setting', 'orientation', 'playable_ad', 'multiplayer'], game_view: ['preview', 'code', 'trailer'], publish_target: webPublishTargets },
     required: ['page_name', 'area', 'element'] },
   // Studio UI exports run in the editor's own render pipeline, not the worker that owns export_result.
   studio_export_request_result: { producers: ['studio'], fields: { export_id: 'uuid', outcome: ['accepted', 'rejected', 'unknown'], ...exportSettings,
@@ -292,6 +300,19 @@ export const omEvents = {
   version_history_result: { producers: ['studio'], fields: { page_name: ['studio'], action: ['keep_current', 'pin', 'unpin', 'restore'],
     outcome: ['success', 'failure'], ...project }, required: ['action', 'outcome'] },
   // Brand Kit page. `success` on create means the extraction was accepted and started, not that the kit is ready.
+  // One per Start building or Remix in Game Studio, after the local game service answered. Success means a draft exists, not a finished game.
+  game_create_result: { producers: ['studio'], fields: { page_name: ['creative_studio'], studio_id: creative.studio_id, create_attempt_id: 'uuid', create_route: ['brief', 'remix'],
+    outcome: ['success', 'failure'], error_kind: ['service_unavailable', 'rejected'], handoff: ['super_agent', 'detail'], has_prompt: 'boolean', playable_ad: 'boolean',
+    game_style: 'slug', game_setting: 'slug', source_game_id: 'code', source_game_source: ['template', 'community', 'mine'], ...game },
+    required: ['page_name', 'create_attempt_id', 'create_route', 'outcome'] },
+  // An observed result in a game's detail page: the game loaded for play, a reaction saved, or a link/instruction copied.
+  game_action_result: { producers: ['studio'], fields: { page_name: ['creative_studio'], studio_id: creative.studio_id,
+    action: ['play', 'favorite', 'unfavorite', 'like', 'dislike', 'clear_reaction', 'copy_link', 'copy_instruction'],
+    outcome: ['success', 'failure', 'unavailable'], ...game }, required: ['page_name', 'action', 'outcome'] },
+  // One per cloud-share operation in the shared publish popover (Design, Game, Super Agent artifacts). Success means the service answered.
+  web_publish_result: { producers: ['studio'], fields: { publish_target: webPublishTargets, action: ['publish', 'resume', 'new_link', 'stop', 'copy_link', 'sign_in'],
+    outcome: ['success', 'failure', 'cancelled'], copied: 'boolean', error_kind: ['auth_required', 'conflict', 'other'], publish_attempt_id: 'uuid' },
+    required: ['publish_target', 'action', 'outcome', 'publish_attempt_id'] },
   brand_kit_create_result: { producers: ['studio'], fields: { page_name: ['brand_kit'], outcome: ['success', 'failure'], create_attempt_id: 'uuid' },
     required: ['outcome', 'create_attempt_id'] },
   brand_kit_import_result: { producers: ['studio'], fields: { page_name: ['brand_kit'], catalog_id: 'slug', outcome: ['success', 'failure'], already_in_library: 'boolean',

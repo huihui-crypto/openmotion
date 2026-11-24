@@ -608,6 +608,30 @@ Generation uses the existing telemetry preference and installation identity.
 
 Studio recovery keeps request acknowledgement separate from execution outcome. An uncertain export receipt reports `studio_export_request_result.outcome=unknown`; a later identity-matched lookup can report one terminal result with the same browser `export_id`. Progress loss, cancelling and an inactive unknown record never produce a failed or cancelled terminal event. `studio_asset_import_result` retains its entry-point categories and reports confirmed failure, unknown and pending counts separately; unknown/pending items are not counted as failed. The manual `reload_editor` recovery action records only an unknown handoff outcome, not confirmed recovery.
 
+## Page arrivals, Game Studio and cloud sharing
+
+Every workspace surface reports one `page_view` when the user arrives. Game Studio, Super Agent, Workflows (hub and each
+workflow), the Design project list and the Design project editor use `page_name=creative_studio` with `studio_id`
+`game`, `super-agent`, `workflows` or `design`; `scene_id` carries the Super Agent mode, the workflow id, `projects` or
+`project-editor`. Opening a game, a chat or a workflow step inside the same surface is not a new arrival.
+
+Game Studio reports the try → create/remix → hand off → play → share funnel with `studio_id=game`:
+
+| Signal | Emission point | Meaning |
+| --- | --- | --- |
+| `ui_click` (`area` `game_composer`, `game_market`, `game_sidebar`, `game_detail`, `game_handoff`) | The handler of Start building, an option chip, a category/sort control, a game card, Remix, Edit in Agent, Continue in Super Agent, Copy instruction, Open in Codex, the detail tabs, Reload, Full screen and Open external. | Intent only. `game_option_kind`, `game_view`, `selected` and `filter_value` are fixed categories. |
+| `game_create_result` | After the local game service answered Start building (`create_route=brief`) or Remix (`remix`). | `success` means a draft exists and was handed to Super Agent (`handoff=super_agent`) or opened (`detail`); it is not a finished game. Failures distinguish `service_unavailable` from `rejected`. |
+| `game_action_result` | `play` once per opened game when its playable page loads or fails; `favorite`/`unfavorite`/`like`/`dislike`/`clear_reaction` after the service saved or rejected the change; `copy_link` and `copy_instruction` after the clipboard write. | `unavailable` means the action could not run (no shareable link, local service offline). |
+
+Game fields are `game_id` (catalogue id or UUID), `game_source` (`template`, `community`, `mine`), `game_genre`,
+`game_status`, `game_orientation` and `multiplayer`. Titles, briefs, prompts, instructions and links are never sent.
+
+The shared cloud-share popover (Design, Game and Super Agent artifacts) reports `ui_click`
+(`area=web_publish`, `element=open_publish`) when it opens and one `web_publish_result` per operation: `publish`,
+`resume`, `new_link`, `stop`, a user-initiated `copy_link`, and `sign_in` started from sharing. `copied` marks a publish
+that also copied its link; `error_kind` separates `auth_required` and `conflict`. The connector's own
+`account_sign_in_result` remains the sign-in result. URLs and titles are never sent.
+
 ## Template detail handoff coverage
 
 The approved detail is enabled from the normal template-library entry. The legacy

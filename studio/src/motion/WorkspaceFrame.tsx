@@ -47,7 +47,7 @@ import { StudioToastViewport } from '../components/StudioToastViewport';
 import { clickMethod, searchStarted, trackStudioClick } from './editorTracking';
 import { reportCreativePageView } from './exploreTracking';
 import type { ScenarioId } from '../../../shared/scenarios';
-import { isWorkspacePageOpen, resolveNavTrackingPage, resolveRouteArrival } from '../router/routeRegistry';
+import { isWorkspacePageOpen, resolveNavTrackingPage, resolveRouteArrival, routeArrivalTarget } from '../router/routeRegistry';
 import { RouteViewport } from '../router/RouteViewport';
 import { OverlayLayer } from '../router/OverlayLayer';
 import { StudioRouterProvider } from '../router/createAppRouter';
@@ -422,8 +422,8 @@ function WorkspaceFrameInner({ children, waitForSaves, projectId, sessionId, blo
     if (!routeView) return;
     const hasProject = Boolean(projectId);
     if (routeView === 'explore') reportCreativePageView('explore', hasProject, { community: page.community, medium: page.medium ?? 'all' });
-    else if (routeView === 'motion' || routeView === 'design' || routeView === 'cinema') reportCreativePageView('creative_studio', hasProject, { studio: routeView, landing: true });
-    else reportCreativePageView('model_overview', hasProject, { model: page.modelOverview });
+    else if (routeView.startsWith('model:')) reportCreativePageView('model_overview', hasProject, { model: page.modelOverview });
+    else reportCreativePageView('creative_studio', hasProject, routeArrivalTarget(routeView, page));
     // Only an arrival counts; filter changes within Explore are reported as clicks.
   }, [routeView]);
   // Where the top navigation is shown, so its clicks segment by the page the user was on.
