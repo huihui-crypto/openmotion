@@ -393,7 +393,8 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
   const [source, setSource] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const frame = useRef<HTMLIFrameElement>(null), close = useRef<HTMLButtonElement>(null), stage = useRef<HTMLDivElement>(null);
-  // One play result per opened game: reloads and the catalogue swapping the built-in copy for the served game are not new plays.
+  // One play result per opened game: success when the game frame finished loading, failure when no playable page could be resolved.
+  // Reloads and the catalogue swapping the built-in copy for the served game are not new plays.
   const playReported = useRef(false);
   const gameTitle = useGameTitle();
   const mine = game.source === 'mine';
@@ -414,7 +415,7 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
       const target = new URL(value, location.href); if (!target.searchParams.has('room')) target.searchParams.set('room', 'play-' + Math.random().toString(36).slice(2, 8));
       return target.pathname + target.search;
     };
-    void playableUrl(game).then(withRoom).then(next => { if (cancelled) { if (next.startsWith('blob:')) URL.revokeObjectURL(next); return; } if (next.startsWith('blob:')) revoked = next; setUrl(next); if (!playReported.current) { playReported.current = true; reportGameAction('play', 'success', game); } })
+    void playableUrl(game).then(withRoom).then(next => { if (cancelled) { if (next.startsWith('blob:')) URL.revokeObjectURL(next); return; } if (next.startsWith('blob:')) revoked = next; setUrl(next); })
       .catch(() => { if (!playReported.current) { playReported.current = true; reportGameAction('play', 'failure', game); } notify(t('This game could not be loaded.'), 'error'); });
     return () => { cancelled = true; if (revoked) URL.revokeObjectURL(revoked); };
     // playUrl changes from the built-in copy to the served game once the catalogue loads; follow it so ./assets resolve.
@@ -532,7 +533,7 @@ function GameProject({ game, offline, onClose, onRemix, onChange, onOpenMcp, onC
               <div><strong>{t('This game only runs on the creator’s site.')}</strong>
                 <Button variant="ghost" className="om-button h-auto" data-primary onClick={popout}><RemixIcon name="external-link-line" size={15} />{t('Open original')}</Button></div>
             </div>
-          : url ? <iframe key={reload} ref={frame} src={url} title={game.title} sandbox={game.external ? 'allow-scripts allow-same-origin allow-pointer-lock allow-popups' : 'allow-scripts allow-pointer-lock'} allow="fullscreen; gamepad; autoplay; clipboard-write" />
+          : url ? <iframe key={reload} ref={frame} src={url} title={game.title} onLoad={() => { if (!playReported.current) { playReported.current = true; reportGameAction('play', 'success', game); } }} sandbox={game.external ? 'allow-scripts allow-same-origin allow-pointer-lock allow-popups' : 'allow-scripts allow-pointer-lock'} allow="fullscreen; gamepad; autoplay; clipboard-write" />
           : <span className="om-muted">{t('Loading game…')}</span>}
       </div>
     </section>
